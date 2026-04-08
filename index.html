@@ -962,28 +962,123 @@ async function populateModels(p) {
 }
 
 async function fetchLiveModels(provider) {
-  try {
-    const key = getKey(provider);
-    if (!key) return null;
+  const key = getKey(provider);
+  if (!key) return null;
 
+  // ── Primary: direct provider API ──
+  try {
     const url = PROVIDERS[provider].url + '/models';
     const res = await fetch(url, {
+      method: 'GET',
       headers: {
         'Authorization': `Bearer ${key}`,
-        ...(provider === 'openrouter' ? {'HTTP-Referer':'https://multichat.local','X-Title':'MultiChat'} : {})
+        'Content-Type': 'application/json',
+        ...(provider === 'openrouter'
+          ? {'HTTP-Referer': location.origin, 'X-Title': 'MultiChat'}
+          : {})
       }
     });
 
+    if (res.ok) {
+      const json = await res.json();
+      const raw = json.data || json.models || [];
+      console.log(`[MultiChat] ${provider} live models: ${raw.length}`);
+      return formatLiveModels(provider, raw);
+    }
+
+    // Log non-OK for debugging
+    console.warn(`[MultiChat] ${provider} /models returned ${res.status}`);
+
+  } catch(e) {
+    // CORS errors throw TypeError: Failed to fetch
+    // Log detail so it shows in DevTools console
+    console.warn(`[MultiChat] ${provider} direct fetch failed (likely CORS):`, e.message);
+  }
+
+  // ── Fallback for Groq: fetch via OpenRouter's provider endpoint ──
+  // OpenRouter has permissive CORS and lists all Groq-hosted models
+  if (provider === 'groq') {
+    return await fetchGroqViaOpenRouter();
+  }
+
+  return null;
+}
+
+// OpenRouter exposes GET /models with full CORS support.
+// We filter for models served on Groq infrastructure using the `owned_by`
+// or provider metadata, giving us an always-current Groq model list
+// even when direct Groq CORS fails.
+async function fetchGroqViaOpenRouter() {
+  try {
+    // OpenRouter /models has open CORS — no auth needed for the list
+    const res = await fetch('https://openrouter.ai/api/v1/models', {
+      headers: {
+        'HTTP-Referer': location.origin,
+        'X-Title': 'MultiChat'
+      }
+    });
     if (!res.ok) return null;
     const json = await res.json();
-    const raw = json.data || json.models || [];
+    const raw = json.data || [];
 
-    return formatLiveModels(provider, raw);
+    // Filter to models that list "Groq" as a provider
+    const groqModels = raw.filter(m => {
+      const providers = m.supported_parameters?.providers ||
+                        (m.per_request_limits ? Object.keys(m.per_request_limits) : []);
+      // Check if 'Groq' appears in the providers array or description
+      const desc = (m.description || '').toLowerCase();
+      const hasGroq = Array.isArray(providers) && providers.some(p => /groq/i.test(p));
+      return hasGroq;
+    });
+
+    // If the provider filter didn't work (OpenRouter schema varies),
+    // fall back to fetching https://openrouter.ai/api/v1/models?provider=Groq
+    if (groqModels.length === 0) {
+      return await fetchGroqViaOpenRouterProvider();
+    }
+
+    console.log(`[MultiChat] Groq models via OpenRouter fallback: ${groqModels.length}`);
+    // Reuse the Groq formatter but pull context from OpenRouter data
+    return groqModels.map(m => ({
+      id: m.id,
+      name: groqDisplayNameFromOR(m),
+      p: groqPrice(m.id),
+    }));
   } catch(e) {
-    console.warn(`Live fetch failed for ${provider}:`, e.message);
+    console.warn('[MultiChat] OpenRouter Groq fallback failed:', e.message);
     return null;
   }
 }
+
+// OpenRouter supports ?provider=Groq query param on /models
+async function fetchGroqViaOpenRouterProvider() {
+  try {
+    const res = await fetch('https://openrouter.ai/api/v1/models?provider=Groq', {
+      headers: { 'HTTP-Referer': location.origin, 'X-Title': 'MultiChat' }
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    const raw = json.data || [];
+    if (!raw.length) return null;
+    console.log(`[MultiChat] Groq models via OR ?provider=Groq: ${raw.length}`);
+    return raw.map(m => ({
+      id: m.id,
+      name: groqDisplayNameFromOR(m),
+      p: groqPrice(m.id),
+    }));
+  } catch(e) {
+    return null;
+  }
+}
+
+function groqDisplayNameFromOR(m) {
+  // Check static list first for a curated name
+  const staticMatch = (PROVIDERS.groq?.models || []).find(s => s.id === m.id);
+  if (staticMatch) return staticMatch.name;
+  const ctx = m.context_length ? ` (${fmtCtx(m.context_length)})` : '';
+  return (m.name || m.id) + ctx;
+}
+
 
 function formatLiveModels(provider, raw) {
   if (provider === 'groq') {
@@ -1071,7 +1166,7 @@ function updateModelSourceBadge(provider, count, isLive) {
   if (!pill) {
     pill = document.createElement('span');
     pill.id = 'model-source-pill';
-    pill.style.cssText = `font-size:10px;font-family:var(--font-mono);padding:2px 7px;border-radius:20px;border:1px solid;cursor:pointer;`;
+    pill.style.cssText = `font-size:10px;font-family:var(--font-mono);padding:2px 7px;border-radius:20px;border:1px solid;cursor:pointer;white-space:nowrap;`;
     pill.title = 'Click to refresh model list';
     pill.onclick = () => refreshModels();
     document.getElementById('prov-badge').insertAdjacentElement('beforebegin', pill);
@@ -1081,8 +1176,15 @@ function updateModelSourceBadge(provider, count, isLive) {
     pill.style.color = 'var(--green)';
     pill.style.background = 'rgba(46,125,94,.08)';
     pill.style.borderColor = 'rgba(46,125,94,.25)';
+    pill.title = `${count} models fetched live. Click to refresh.`;
+  } else if (count > 0) {
+    pill.textContent = `${count} cached`;
+    pill.style.color = 'var(--text3)';
+    pill.style.background = 'var(--bg3)';
+    pill.style.borderColor = 'var(--border)';
+    pill.title = 'Using built-in model list. Add an API key to fetch live models.';
   } else {
-    pill.textContent = `${count} static`;
+    pill.textContent = `static`;
     pill.style.color = 'var(--text3)';
     pill.style.background = 'var(--bg3)';
     pill.style.borderColor = 'var(--border)';
@@ -1346,7 +1448,7 @@ async function sendMessage() {
       headers:{
         'Content-Type':'application/json',
         'Authorization':`Bearer ${apiKey}`,
-        ...(provider==='openrouter'?{'HTTP-Referer':'https://multichat.local','X-Title':'MultiChat'}:{})
+        ...(provider==='openrouter'?{'HTTP-Referer':location.origin,'X-Title':'MultiChat'}:{})
       },
       body: JSON.stringify(payload)
     });
