@@ -726,11 +726,11 @@ let ragFiles = [];      // {name, content, size} for persistent RAG context
 // ══════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════
-window.onload = () => {
+window.onload = async () => {
   loadKeys();
   loadChats();
   loadSettings();
-  populateModels('groq');
+  await populateModels('groq');
   updateProviderBadge('groq');
   loadTheme();
 };
@@ -753,8 +753,22 @@ function loadTheme() {
 // API KEYS
 // ══════════════════════════════════════════
 function saveKey(p, v) {
-  if (v.trim()) { localStorage.setItem('key_'+p, v.trim()); document.getElementById('dot-'+p)?.classList.add('saved'); }
-  else { localStorage.removeItem('key_'+p); document.getElementById('dot-'+p)?.classList.remove('saved'); }
+  const hadKey = !!getKey(p);
+  if (v.trim()) {
+    localStorage.setItem('key_'+p, v.trim());
+    document.getElementById('dot-'+p)?.classList.add('saved');
+    // If this is a live provider and we just got a key, refresh models
+    if (LIVE_PROVIDERS.has(p) && !hadKey) {
+      const currentProvider = document.getElementById('prov-sel').value;
+      if (currentProvider === p) {
+        delete modelCache[p];
+        populateModels(p);
+      }
+    }
+  } else {
+    localStorage.removeItem('key_'+p);
+    document.getElementById('dot-'+p)?.classList.remove('saved');
+  }
 }
 function getKey(p) { return localStorage.getItem('key_'+p) || ''; }
 function loadKeys() {
@@ -901,21 +915,187 @@ function renderAttachedFiles() {
 }
 
 // ══════════════════════════════════════════
-// PROVIDER / MODEL
+// PROVIDER / MODEL  — live fetch where supported
 // ══════════════════════════════════════════
-function onProviderChange() {
+
+// Which providers support a live /models endpoint
+const LIVE_PROVIDERS = new Set(['groq', 'openrouter']);
+
+// Cache fetched model lists per provider for the session
+const modelCache = {};
+
+async function onProviderChange() {
   const p = document.getElementById('prov-sel').value;
-  populateModels(p);
   updateProviderBadge(p);
+  await populateModels(p);
 }
-function populateModels(p) {
+
+async function populateModels(p) {
   const sel = document.getElementById('model-sel');
-  sel.innerHTML = (PROVIDERS[p]?.models || []).map(m =>
-    `<option value="${m.id}" data-price="${m.p||''}">${m.name}</option>`
+  sel.innerHTML = `<option disabled>Loading models…</option>`;
+
+  let models = null;
+
+  // Try live fetch if provider supports it AND we have a key
+  if (LIVE_PROVIDERS.has(p) && getKey(p)) {
+    if (modelCache[p]) {
+      models = modelCache[p];
+    } else {
+      models = await fetchLiveModels(p);
+      if (models) modelCache[p] = models;
+    }
+  }
+
+  // Fall back to static list
+  if (!models) models = PROVIDERS[p]?.models || [];
+
+  sel.innerHTML = models.map(m =>
+    `<option value="${m.id}" data-price="${m.p||''}" title="${m.id}">${m.name}</option>`
   ).join('');
+
   updatePricePill();
   sel.onchange = updatePricePill;
+
+  // Show source indicator
+  const isLive = LIVE_PROVIDERS.has(p) && getKey(p) && modelCache[p];
+  updateModelSourceBadge(p, models.length, isLive);
 }
+
+async function fetchLiveModels(provider) {
+  try {
+    const key = getKey(provider);
+    if (!key) return null;
+
+    const url = PROVIDERS[provider].url + '/models';
+    const res = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${key}`,
+        ...(provider === 'openrouter' ? {'HTTP-Referer':'https://multichat.local','X-Title':'MultiChat'} : {})
+      }
+    });
+
+    if (!res.ok) return null;
+    const json = await res.json();
+    const raw = json.data || json.models || [];
+
+    return formatLiveModels(provider, raw);
+  } catch(e) {
+    console.warn(`Live fetch failed for ${provider}:`, e.message);
+    return null;
+  }
+}
+
+function formatLiveModels(provider, raw) {
+  if (provider === 'groq') {
+    // Groq returns {id, object, owned_by, active, context_window, ...}
+    return raw
+      .filter(m => m.active !== false && m.object === 'model')
+      .sort((a, b) => (b.context_window||0) - (a.context_window||0))
+      .map(m => ({
+        id: m.id,
+        name: groqDisplayName(m),
+        p: groqPrice(m.id),
+      }));
+  }
+
+  if (provider === 'openrouter') {
+    // OpenRouter returns {id, name, description, pricing:{prompt,completion}, context_length, ...}
+    return raw
+      .sort((a, b) => {
+        // Sort: free first, then by context length desc
+        const aFree = parseFloat(a.pricing?.prompt||'1') === 0;
+        const bFree = parseFloat(b.pricing?.prompt||'1') === 0;
+        if (aFree && !bFree) return -1;
+        if (!aFree && bFree) return 1;
+        return (b.context_length||0) - (a.context_length||0);
+      })
+      .map(m => {
+        const inP = parseFloat(m.pricing?.prompt || '0');
+        const outP = parseFloat(m.pricing?.completion || '0');
+        const isFree = inP === 0 && outP === 0;
+        const priceStr = isFree
+          ? 'FREE'
+          : `$${fmtPrice(inP*1e6)}/$${fmtPrice(outP*1e6)}`;
+        const freeTag = isFree ? '🆓 ' : '';
+        const ctx = m.context_length ? ` (${fmtCtx(m.context_length)})` : '';
+        return {
+          id: m.id,
+          name: `${freeTag}${m.name || m.id}${ctx}`,
+          p: priceStr,
+        };
+      });
+  }
+
+  return raw.map(m => ({ id: m.id, name: m.id, p: '' }));
+}
+
+// Groom Groq model IDs into readable names
+function groqDisplayName(m) {
+  const id = m.id;
+  const ctx = m.context_window ? ` (${fmtCtx(m.context_window)})` : '';
+  // Check static list for a curated name first
+  const staticMatch = (PROVIDERS.groq?.models || []).find(s => s.id === id);
+  if (staticMatch) return staticMatch.name;
+  // Auto-format from ID
+  return id
+    .replace('openai/', '').replace('moonshotai/', '').replace('meta-llama/', '')
+    .replace('qwen/', '').replace(/-instruct$/i,'').replace(/-\d{4}$/,'')
+    .replace(/-/g,' ').replace(/\b\w/g, c => c.toUpperCase())
+    + ctx;
+}
+
+// Groq pricing lookup from static list (they don't return pricing in /models)
+function groqPrice(id) {
+  const m = (PROVIDERS.groq?.models || []).find(s => s.id === id);
+  return m?.p || '';
+}
+
+// Format context length: 131072 → "128K", 1048576 → "1M"
+function fmtCtx(n) {
+  if (n >= 1000000) return (n/1000000).toFixed(0)+'M';
+  if (n >= 1000) return Math.round(n/1024)+'K';
+  return n;
+}
+
+// Format price per 1M tokens
+function fmtPrice(n) {
+  if (n === 0) return '0';
+  if (n < 0.01) return n.toFixed(4);
+  if (n < 1) return n.toFixed(3);
+  return n.toFixed(2);
+}
+
+// Model source indicator (live vs static)
+function updateModelSourceBadge(provider, count, isLive) {
+  let pill = document.getElementById('model-source-pill');
+  if (!pill) {
+    pill = document.createElement('span');
+    pill.id = 'model-source-pill';
+    pill.style.cssText = `font-size:10px;font-family:var(--font-mono);padding:2px 7px;border-radius:20px;border:1px solid;cursor:pointer;`;
+    pill.title = 'Click to refresh model list';
+    pill.onclick = () => refreshModels();
+    document.getElementById('prov-badge').insertAdjacentElement('beforebegin', pill);
+  }
+  if (isLive) {
+    pill.textContent = `↺ ${count} live`;
+    pill.style.color = 'var(--green)';
+    pill.style.background = 'rgba(46,125,94,.08)';
+    pill.style.borderColor = 'rgba(46,125,94,.25)';
+  } else {
+    pill.textContent = `${count} static`;
+    pill.style.color = 'var(--text3)';
+    pill.style.background = 'var(--bg3)';
+    pill.style.borderColor = 'var(--border)';
+  }
+}
+
+async function refreshModels() {
+  const p = document.getElementById('prov-sel').value;
+  delete modelCache[p]; // bust cache
+  showToast(`Refreshing ${PROVIDERS[p].label} models…`);
+  await populateModels(p);
+}
+
 function updateProviderBadge(p) {
   const b = document.getElementById('prov-badge');
   const info = PROVIDERS[p];
