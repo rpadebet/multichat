@@ -1,0 +1,33 @@
+{
+  "name": "MultiChat — AI Models",
+  "short_name": "MultiChat",
+  "description": "Chat with Groq, MiniMax, DeepInfra & OpenRouter models in one place",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f5f0e8",
+  "theme_color": "#c96b2f",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "utilities"],
+  "shortcuts": [
+    {
+      "name": "New Chat",
+      "short_name": "New Chat",
+      "description": "Start a new conversation",
+      "url": "./index.html?new=1"
+    }
+  ]
+}
