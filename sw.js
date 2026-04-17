@@ -1,4 +1,4 @@
-const CACHE = 'multichat-v2';
+const CACHE = 'multichat-v3';
 const SHELL = [
   './',
   './index.html',
@@ -25,13 +25,9 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
 
-  // Always network-first for API calls (groq, openrouter, etc.)
+  // Bypass Service Worker entirely for cross-origin API calls 
+  // (Prevents WebKit/Safari bugs where SW drops Authorization headers on POST requests)
   if (url.hostname !== location.hostname) {
-    e.respondWith(fetch(e.request).catch(() =>
-      new Response(JSON.stringify({ error: 'Offline — no network' }), {
-        headers: { 'Content-Type': 'application/json' }
-      })
-    ));
     return;
   }
 
