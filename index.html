@@ -480,9 +480,10 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
       </select>
       <span class="sel-chev">▾</span>
     </div>
-    <div class="sel-wrap">
+    <div class="sel-wrap" style="display:flex;align-items:center;">
       <select class="hdr-select" id="model-sel" style="max-width:300px;"></select>
-      <span class="sel-chev">▾</span>
+      <span class="sel-chev" style="right: 30px;">▾</span>
+      <button class="icon-btn" onclick="onProviderChange(true)" title="Refresh live models" style="width:24px;height:24px;margin-left:4px;background:transparent;border:none;">🔄</button>
     </div>
 
     <div class="hdr-divider"></div>
@@ -919,14 +920,15 @@ function renderAttachedFiles() {
 // ══════════════════════════════════════════
 
 // Which providers support a live /models endpoint
-const LIVE_PROVIDERS = new Set(['groq', 'openrouter']);
+const LIVE_PROVIDERS = new Set(['groq', 'openrouter', 'deepinfra']);
 
 // Cache fetched model lists per provider for the session
 const modelCache = {};
 
-async function onProviderChange() {
+async function onProviderChange(forceRefresh = false) {
   const p = document.getElementById('prov-sel').value;
   updateProviderBadge(p);
+  if (forceRefresh && modelCache[p]) delete modelCache[p];
   await populateModels(p);
 }
 
@@ -936,8 +938,9 @@ async function populateModels(p) {
 
   let models = null;
 
-  // Try live fetch if provider supports it AND we have a key
-  if (LIVE_PROVIDERS.has(p) && getKey(p)) {
+  // Try live fetch if provider supports it
+  const canFetchLive = LIVE_PROVIDERS.has(p) && (getKey(p) || p === 'openrouter' || p === 'deepinfra');
+  if (canFetchLive) {
     if (modelCache[p]) {
       models = modelCache[p];
     } else {
@@ -957,13 +960,15 @@ async function populateModels(p) {
   sel.onchange = updatePricePill;
 
   // Show source indicator
-  const isLive = LIVE_PROVIDERS.has(p) && getKey(p) && modelCache[p];
+  // Show source indicator
+  const isLive = canFetchLive && modelCache[p];
   updateModelSourceBadge(p, models.length, isLive);
 }
 
 async function fetchLiveModels(provider) {
   const key = getKey(provider);
-  if (!key) return null;
+  // OpenRouter and DeepInfra endpoints are public, no key required to list models
+  if (!key && provider !== 'openrouter' && provider !== 'deepinfra') return null;
 
   // ── Primary: direct provider API ──
   try {
@@ -1091,6 +1096,24 @@ function formatLiveModels(provider, raw) {
         name: groqDisplayName(m),
         p: groqPrice(m.id),
       }));
+  }
+
+  if (provider === 'deepinfra') {
+    return raw
+      .filter(m => m.metadata && m.metadata.pricing && m.object === 'model')
+      .sort((a, b) => (b.metadata?.context_length || 0) - (a.metadata?.context_length || 0))
+      .map(m => {
+        const inP = m.metadata.pricing.input_tokens || 0;
+        const outP = m.metadata.pricing.output_tokens || 0;
+        const priceStr = `$${fmtPrice(inP)}/$${fmtPrice(outP)}`;
+        const ctx = m.metadata.context_length ? ` (${fmtCtx(m.metadata.context_length)})` : '';
+        const rawName = m.id.split('/').pop() || '';
+        return {
+          id: m.id,
+          name: rawName + ctx,
+          p: priceStr
+        };
+      });
   }
 
   if (provider === 'openrouter') {
