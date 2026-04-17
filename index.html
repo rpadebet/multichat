@@ -1016,12 +1016,7 @@ async function fetchLiveModels(provider) {
 async function fetchGroqViaOpenRouter() {
   try {
     // OpenRouter /models has open CORS — no auth needed for the list
-    const res = await fetch('https://openrouter.ai/api/v1/models', {
-      headers: {
-        'HTTP-Referer': location.origin,
-        'X-Title': 'MultiChat'
-      }
-    });
+    const res = await fetch('https://openrouter.ai/api/v1/models');
     if (!res.ok) return null;
     const json = await res.json();
     const raw = json.data || [];
@@ -1470,8 +1465,7 @@ async function sendMessage() {
       method:'POST',
       headers:{
         'Content-Type':'application/json',
-        'Authorization':`Bearer ${apiKey}`,
-        ...(provider==='openrouter'?{'HTTP-Referer':location.origin,'X-Title':'MultiChat'}:{})
+        'Authorization':`Bearer ${apiKey}`
       },
       body: JSON.stringify(payload)
     });
