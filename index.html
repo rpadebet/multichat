@@ -323,6 +323,23 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 .input-hint kbd{font-family:var(--font-mono);background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:1px 4px;font-size:10px;}
 .tok-count{font-size:11px;color:var(--text3);font-family:var(--font-mono);}
 
+/* ── Web Search panel & indicator ── */
+.search-block{margin-bottom:9px;border:1px solid var(--border2);border-radius:var(--radius);overflow:hidden;}
+.search-hdr{padding:6px 11px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;color:var(--text2);font-size:12px;font-weight:500;overflow:hidden;}
+.search-hdr-query{flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-width:0;}
+.search-hdr:hover{color:var(--text);}
+.search-chev{font-size:8px;transition:transform 0.18s;}
+.search-chev.open{transform:rotate(90deg);}
+.search-body{padding:8px 11px;background:var(--bg3);display:none;}
+.search-body.vis{display:block;}
+.search-source{padding:5px 0;border-bottom:1px solid var(--border);}
+.search-source:last-child{border-bottom:none;padding-bottom:0;}
+.search-source-title{font-size:12px;font-weight:500;color:var(--text);line-height:1.4;}
+.search-source-url{font-size:10px;font-family:var(--font-mono);color:var(--accent);text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:2px 0;}
+.search-source-url:hover{text-decoration:underline;}
+.search-source-snippet{font-size:11px;color:var(--text3);line-height:1.45;margin-top:2px;}
+#search-indicator{font-size:11px;color:var(--accent);font-family:var(--font-mono);display:none;align-items:center;gap:3px;}
+
 /* ── Typing ── */
 .typing-ind{display:flex;align-items:center;gap:4px;padding:5px 0;}
 .tdot{width:5px;height:5px;background:var(--accent);border-radius:50%;animation:td 1.3s infinite;opacity:.5;}
@@ -553,6 +570,7 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
     </div>
     <div class="input-footer">
       <span class="input-hint"><kbd>Enter</kbd> new line · tap <strong>↑</strong> to send</span>
+      <span id="search-indicator"></span>
       <span class="tok-count" id="tok-count">0 tokens</span>
     </div>
   </div>
@@ -607,6 +625,36 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
       <div style="margin-top:10px;">
         <div class="sp-label">Context Preview <span id="ctx-tokens">0 tokens</span></div>
         <div class="ctx-preview" id="ctx-preview">No files loaded</div>
+      </div>
+    </div>
+
+    <!-- Web Search -->
+    <div>
+      <div class="sp-section-title">🔍 Web Search</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div class="sp-label" style="margin:0;">Enable web search augmentation</div>
+        <label class="tog"><input type="checkbox" id="ws-enabled" onchange="onWebSearchToggle()"><div class="tog-track"></div><div class="tog-thumb"></div></label>
+      </div>
+      <div id="ws-config" style="display:none;flex-direction:column;gap:8px;">
+        <div>
+          <div class="sp-label">Search provider</div>
+          <select class="sp-select" id="ws-provider" onchange="onWebSearchProviderChange()">
+            <option value="tavily">Tavily · 1,000 free/month (recommended)</option>
+            <option value="serper">Serper · 2,500 free on signup</option>
+          </select>
+        </div>
+        <div id="ws-key-row" style="display:none;">
+          <div class="sp-label">API key</div>
+          <input class="key-input" id="ws-key-input" type="password" placeholder="Paste API key…" oninput="saveSearchKey(this.value)"/>
+        </div>
+        <div>
+          <div class="sp-label">When to search</div>
+          <select class="sp-select" id="ws-mode" onchange="saveWebSearchSettings()">
+            <option value="auto">Auto-detect (recommended)</option>
+            <option value="always">Always search</option>
+          </select>
+        </div>
+        <div id="ws-cost-note" style="font-size:11px;color:var(--text3);line-height:1.55;padding:7px 9px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);"></div>
       </div>
     </div>
 
@@ -732,6 +780,339 @@ let currentChatId = null;
 let isStreaming = false;
 let attachedFiles = []; // {name, content, size} for inline attach (per-message)
 let ragFiles = [];      // {name, content, size} for persistent RAG context
+let lastSearchMeta = null; // {queries[], provider, results[], grouped[]} for the current in-flight response
+
+// ══════════════════════════════════════════
+// WEB SEARCH
+// ══════════════════════════════════════════
+const SEARCH_PROVIDERS = {
+  tavily: {
+    label: 'Tavily (AI-optimized)',
+    keyName: 'key_search_tavily',
+    costNote: '1,000 free searches/month · ~$0.001/search after · Best quality for AI · Free key at tavily.com (no credit card)'
+  },
+  serper: {
+    label: 'Serper (Google results)',
+    keyName: 'key_search_serper',
+    costNote: '2,500 free on account creation · ~$0.001/search after · Google-quality results · Free key at serper.dev'
+  }
+};
+
+function getSearchKey(provider) {
+  const keyName = SEARCH_PROVIDERS[provider]?.keyName;
+  return keyName ? (localStorage.getItem(keyName) || '') : '';
+}
+
+function saveSearchKey(value) {
+  const provider = document.getElementById('ws-provider')?.value;
+  if (!provider) return;
+  const keyName = SEARCH_PROVIDERS[provider]?.keyName;
+  if (!keyName) return;
+  if (value.trim()) localStorage.setItem(keyName, value.trim());
+  else localStorage.removeItem(keyName);
+}
+
+function saveWebSearchSettings() {
+  const existing = JSON.parse(localStorage.getItem('mc_settings') || '{}');
+  existing.webSearchEnabled = document.getElementById('ws-enabled')?.checked || false;
+  existing.webSearchProvider = document.getElementById('ws-provider')?.value || 'tavily';
+  existing.webSearchMode = document.getElementById('ws-mode')?.value || 'auto';
+  localStorage.setItem('mc_settings', JSON.stringify(existing));
+  updateSearchIndicator();
+}
+
+function loadWebSearchSettings() {
+  try {
+    const s = JSON.parse(localStorage.getItem('mc_settings') || '{}');
+    const enabled = s.webSearchEnabled || false;
+    const provider = s.webSearchProvider || 'tavily';
+    const mode = s.webSearchMode || 'auto';
+
+    const elEnabled = document.getElementById('ws-enabled');
+    if (elEnabled) elEnabled.checked = enabled;
+
+    const elProvider = document.getElementById('ws-provider');
+    if (elProvider) elProvider.value = provider;
+
+    const elMode = document.getElementById('ws-mode');
+    if (elMode) elMode.value = mode;
+
+    const cfg = document.getElementById('ws-config');
+    if (cfg) cfg.style.display = enabled ? 'flex' : 'none';
+
+    updateSearchKeyRow(provider);
+    updateSearchCostNote(provider);
+
+    // Restore saved key for current provider
+    const keyName = SEARCH_PROVIDERS[provider]?.keyName;
+    if (keyName) {
+      const k = localStorage.getItem(keyName);
+      const kInput = document.getElementById('ws-key-input');
+      if (kInput && k) kInput.value = k;
+    }
+
+    updateSearchIndicator();
+  } catch(e) {}
+}
+
+function onWebSearchToggle() {
+  const enabled = document.getElementById('ws-enabled').checked;
+  const cfg = document.getElementById('ws-config');
+  if (cfg) cfg.style.display = enabled ? 'flex' : 'none';
+  saveWebSearchSettings();
+}
+
+function onWebSearchProviderChange() {
+  const provider = document.getElementById('ws-provider').value;
+  updateSearchKeyRow(provider);
+  updateSearchCostNote(provider);
+  // Load saved key for newly selected provider
+  const keyName = SEARCH_PROVIDERS[provider]?.keyName;
+  const kInput = document.getElementById('ws-key-input');
+  if (kInput) kInput.value = keyName ? (localStorage.getItem(keyName) || '') : '';
+  saveWebSearchSettings();
+}
+
+function updateSearchKeyRow(provider) {
+  const row = document.getElementById('ws-key-row');
+  if (!row) return;
+  row.style.display = SEARCH_PROVIDERS[provider]?.keyName ? 'block' : 'none';
+}
+
+function updateSearchCostNote(provider) {
+  const note = document.getElementById('ws-cost-note');
+  if (note) note.textContent = SEARCH_PROVIDERS[provider]?.costNote || '';
+}
+
+function updateSearchIndicator() {
+  const ind = document.getElementById('search-indicator');
+  if (!ind) return;
+  const s = JSON.parse(localStorage.getItem('mc_settings') || '{}');
+  if (s.webSearchEnabled) {
+    const mode = s.webSearchMode === 'always' ? 'Always' : 'Auto';
+    const prov = SEARCH_PROVIDERS[s.webSearchProvider || 'tavily'];
+    ind.textContent = `🔍 ${mode} · ${prov?.label || ''}`;
+    ind.style.display = 'inline-flex';
+  } else {
+    ind.style.display = 'none';
+  }
+}
+
+// ── Typing indicator search status ──
+function setTypingSearchStatus(query) {
+  const row = document.getElementById('typing-row');
+  if (!row) return;
+  const body = row.querySelector('.msg-body');
+  if (!body) return;
+  if (query) {
+    body.innerHTML = `<div class="msg-meta"><span class="msg-name">MultiChat</span></div>
+      <div style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text3);">
+        <span style="font-size:15px;">🔍</span>
+        <span>Searching: <em>${esc(query.slice(0, 70))}${query.length > 70 ? '…' : ''}</em></span>
+      </div>`;
+  } else {
+    body.innerHTML = `<div class="msg-meta"><span class="msg-name">MultiChat</span></div>
+      <div class="typing-ind"><div class="tdot"></div><div class="tdot"></div><div class="tdot"></div></div>`;
+  }
+}
+
+// ── Search need detection ──
+const SEARCH_PATTERNS = [
+  /\b(today|yesterday|this week|this month|right now|currently|at the moment)\b/i,
+  /\b(latest|newest|most recent|just released|just launched|just announced|recently announced)\b/i,
+  /\b(current|live|real.?time|up.?to.?date|as of)\b/i,
+  /\b(news|headline|breaking|update|trend|trending)\b/i,
+  /\b(price of|cost of|how much is|stock price|bitcoin|crypto|exchange rate)\b/i,
+  /\b(weather|temperature|forecast|rain|snow|humidity) (in|at|for)\b/i,
+  /\b(who is|who are|who was|who were|who won|who leads|who runs)\b/i,
+  /\b(what is the current|what are the latest|what was the recent|what is the new)\b/i,
+  /\b(when (is|was|did|will|does))\b/i,
+  /\b(score|result|winner|championship|tournament|election|vote|poll|standings)\b/i,
+  /\b202[3-9]|203[0-9]\b/,
+  /\b(release date|launch date|out now|available now|coming out)\b/i,
+  /\b(CEO|CTO|president|prime minister|chancellor|secretary of)\b/i,
+  /\b(version \d|v\d+\.\d+|changelog|patch notes)\b/i,
+  /\b(died|death of|passed away|born in|age of|how old is)\b/i,
+  /\b(founded|acquired|merger|IPO|valuation|funding round|series [A-E])\b/i,
+  /\b(latest model|new model|just released model|best model|top model)\b/i,
+];
+
+function detectSearchNeeded(message) {
+  const needed = SEARCH_PATTERNS.some(p => p.test(message));
+  // Extract a focused search query:
+  // 1. Strip conversational openers
+  // 2. Take only the first sentence/clause (before . or ?)
+  // 3. Remove trailing compound clauses ("and what is...", "and how does...")
+  // 4. Trim to 90 chars so search engines get a clean, focused query
+  let query = message
+    .replace(/^(can you |could you |please |tell me |i want to know |find out |look up |search for |what is the |what are the |what is |what are )/i, '')
+    .split(/[.!?]/)[0]                                             // first sentence only
+    .replace(/\s+(and what|and how|and why|and when|and where|and compare|and give|and also)\b.*/i, '') // drop compound clauses
+    .replace(/\?+$/, '')
+    .trim()
+    .slice(0, 90);
+  // Append current year for time-sensitive queries without an explicit year
+  if (needed && !/\b20\d\d\b/.test(query)) {
+    query = query + ' ' + new Date().getFullYear();
+  }
+  return { needed, query: query.trim() };
+}
+
+// ── Provider search implementations ──
+async function searchTavily(query, apiKey) {
+  const resp = await fetch('https://api.tavily.com/search', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ api_key: apiKey, query, search_depth: 'basic', max_results: 5, include_answer: true })
+  });
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err?.detail || err?.message || `Tavily HTTP ${resp.status}`);
+  }
+  const data = await resp.json();
+  const results = (data.results || []).map(r => ({ title: r.title || '', url: r.url || '', snippet: r.content || '' }));
+  if (data.answer) results.unshift({ title: 'Direct Answer', url: '', snippet: data.answer });
+  return results;
+}
+
+async function searchSerper(query, apiKey) {
+  const resp = await fetch('https://google.serper.dev/search', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-API-KEY': apiKey },
+    body: JSON.stringify({ q: query, num: 5 })
+  });
+  if (!resp.ok) throw new Error(`Serper HTTP ${resp.status}`);
+  const data = await resp.json();
+  const results = [];
+  if (data.answerBox?.answer || data.answerBox?.snippet) {
+    results.push({ title: 'Answer Box', url: data.answerBox?.link || '', snippet: data.answerBox.answer || data.answerBox.snippet });
+  }
+  (data.organic || []).slice(0, 5).forEach(r => results.push({ title: r.title || '', url: r.link || '', snippet: r.snippet || '' }));
+  return results;
+}
+
+async function executeSearch(query, provider) {
+  provider = provider || 'tavily';
+  const apiKey = getSearchKey(provider);
+  if (!apiKey) throw new Error(`No API key for ${SEARCH_PROVIDERS[provider]?.label || provider}. Add it in Settings → Web Search.`);
+  if (provider === 'tavily') return searchTavily(query, apiKey);
+  if (provider === 'serper') return searchSerper(query, apiKey);
+  throw new Error(`Unknown search provider: ${provider}`);
+}
+
+// ── LLM-guided search query planner ──
+// Asks the active LLM to decompose the user's message into optimal search queries.
+// Returns { needs_search: bool, search_queries: string[] }
+// Falls back to regex heuristic if the LLM call fails for any reason.
+async function planSearchQueries(userMessage, provider, model, apiKey) {
+  const yr = new Date().getFullYear();
+  const systemPrompt = `You are a web search query planner. Today: ${new Date().toLocaleDateString('en-US', {year:'numeric',month:'long',day:'numeric'})}.
+
+Your job: read the user's message and output a JSON object deciding whether web search is needed and what queries to run.
+
+needs_search = true for: current prices/stocks/crypto, live data, news from 2024 onwards, recent product releases, current events, status of living people/companies.
+needs_search = false for: definitions, explanations, math, coding, creative tasks, history before 2024.
+
+Query rules:
+- One query per DISTINCT information need — if user asks about 2 separate topics, output 2 queries
+- Never combine unrelated topics into one query
+- 4-8 words each, include ${yr} for time-sensitive data
+- Maximum 3 queries
+
+You MUST output ONLY a raw JSON object. No markdown. No explanation. No code fences. Just the JSON:
+{"needs_search": true, "search_queries": ["query 1", "query 2"]}`;
+
+  try {
+    const providerUrl = PROVIDERS[provider]?.url;
+    if (!providerUrl) throw new Error('Unknown provider');
+    const resp = await fetch(providerUrl + '/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userMessage.slice(0, 600) }
+        ],
+        max_tokens: 200,
+        temperature: 0.1,
+        stream: false
+      })
+    });
+    if (!resp.ok) throw new Error(`Planner HTTP ${resp.status}`);
+    const data = await resp.json();
+    let raw = data.choices?.[0]?.message?.content || '';
+    // Strip markdown code fences if present
+    raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+    const plan = JSON.parse(raw);
+    if (typeof plan.needs_search !== 'boolean' || !Array.isArray(plan.search_queries)) throw new Error('Bad plan format');
+    return { needs_search: plan.needs_search, search_queries: plan.search_queries.filter(q => q?.trim()).slice(0, 3) };
+  } catch(e) {
+    // Fallback: use regex heuristic
+    const fallback = detectSearchNeeded(userMessage);
+    return { needs_search: fallback.needed, search_queries: fallback.needed ? [fallback.query] : [] };
+  }
+}
+
+function formatSearchContext(queries, results) {
+  if (!results?.length) return '';
+  const date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  const queryList = Array.isArray(queries) ? queries : [queries];
+  let ctx = `[Web Search Results — retrieved: ${date}]\n`;
+  ctx += `[Queries: ${queryList.map(q => `"${q}"`).join(', ')}]\n\n`;
+  let idx = 1;
+  results.forEach(group => {
+    if (group.query && queryList.length > 1) ctx += `--- Results for: "${group.query}" ---\n`;
+    (group.items || [group]).forEach(r => {
+      ctx += r.url
+        ? `[${idx}] ${r.title}\nURL: ${r.url}\n${r.snippet}\n\n`
+        : `[${idx}] ${r.title}\n${r.snippet}\n\n`;
+      idx++;
+    });
+  });
+  ctx += `[End of search results. Answer accurately using the above. Cite sources by number, e.g. [1], when referencing specific facts.]`;
+  return ctx;
+}
+
+function renderSearchPanel(searchMeta) {
+  if (!searchMeta?.results?.length) return '';
+  const { provider, results } = searchMeta;
+  // Handle both new format (queries array) and old history format (query string)
+  const queries = searchMeta.queries || (searchMeta.query ? [searchMeta.query] : []);
+  const provLabel = SEARCH_PROVIDERS[provider]?.label || provider;
+  const queryList = Array.isArray(queries) ? queries : [queries].filter(Boolean);
+  const queryDisplay = queryList.length > 1
+    ? queryList.map(q => `"${q}"`).join(' · ')
+    : `"${queryList[0] || ''}"`;
+
+  const sourcesHTML = results.map((r, i) => {
+    const urlHtml = r.url
+      ? `<a class="search-source-url" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.url.replace(/^https?:\/\//,'').slice(0,70))}</a>`
+      : '';
+    const snippet = (r.snippet || '').slice(0, 220);
+    return `<div class="search-source">
+      <div class="search-source-title">${esc(r.title || `Source ${i+1}`)}</div>
+      ${urlHtml}
+      ${snippet ? `<div class="search-source-snippet">${esc(snippet)}${(r.snippet||'').length > 220 ? '…' : ''}</div>` : ''}
+    </div>`;
+  }).join('');
+
+  const totalSources = results.length;
+  const hdrQueryText = queryDisplay.length > 80 ? queryDisplay.slice(0, 80) + '…' : queryDisplay;
+  return `<div class="search-block">
+    <div class="search-hdr" onclick="toggleSearch(this)">
+      <span class="search-chev">▶</span>
+      <span class="search-hdr-query">🔍 Web search: ${esc(hdrQueryText)}</span>
+      <span style="flex-shrink:0;font-size:11px;white-space:nowrap;margin-left:6px;">${totalSources} source${totalSources===1?'':'s'} · ${esc(provLabel)}</span>
+    </div>
+    <div class="search-body">${sourcesHTML}</div>
+  </div>`;
+}
+
+function toggleSearch(hdr) {
+  hdr.querySelector('.search-chev').classList.toggle('open');
+  hdr.nextElementSibling.classList.toggle('vis');
+}
 
 // ══════════════════════════════════════════
 // INIT
@@ -803,7 +1184,12 @@ function toggleSettings() {
   btn.classList.toggle('active');
 }
 function saveSettings() {
+  const existing = JSON.parse(localStorage.getItem('mc_settings') || '{}');
   const s = {
+    // Preserve web search settings so saveSettings() doesn't clobber them
+    webSearchEnabled: existing.webSearchEnabled || false,
+    webSearchProvider: existing.webSearchProvider || 'tavily',
+    webSearchMode: existing.webSearchMode || 'auto',
     systemPrompt: document.getElementById('system-prompt').value,
     temperature: parseFloat(document.getElementById('temp-range').value),
     maxTokens: parseInt(document.getElementById('maxtok-range').value),
@@ -828,13 +1214,26 @@ function loadSettings() {
       document.getElementById('topp-val').textContent = s.topP.toFixed(2);
     }
   } catch(e) {}
+  loadWebSearchSettings();
 }
 function resetSettings() {
   document.getElementById('system-prompt').value = '';
   document.getElementById('temp-range').value = 0.7; document.getElementById('temp-val').textContent = '0.70';
   document.getElementById('maxtok-range').value = 4096; document.getElementById('maxtok-val').textContent = '4,096';
   document.getElementById('topp-range').value = 1.0; document.getElementById('topp-val').textContent = '1.00';
+  // Reset web search UI
+  const wsEl = document.getElementById('ws-enabled');
+  if (wsEl) wsEl.checked = false;
+  const cfg = document.getElementById('ws-config');
+  if (cfg) cfg.style.display = 'none';
+  const provEl = document.getElementById('ws-provider');
+  if (provEl) provEl.value = 'tavily';
+  const modeEl = document.getElementById('ws-mode');
+  if (modeEl) modeEl.value = 'auto';
+  updateSearchKeyRow('tavily');
+  updateSearchCostNote('tavily');
   localStorage.removeItem('mc_settings');
+  updateSearchIndicator();
   showToast('Settings reset to defaults');
 }
 function getSettings() {
@@ -1386,6 +1785,7 @@ function buildMsgHTML(m, msgIndex) {
       <div class="think-body">${esc(m.thinking)}</div>
     </div>`;
   }
+  const searchHTML = (!isUser && m.searchMeta?.results?.length) ? renderSearchPanel(m.searchMeta) : '';
   let attachHTML = '';
   if (isUser && m.attachments?.length) {
     attachHTML = `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px;">${
@@ -1415,7 +1815,7 @@ function buildMsgHTML(m, msgIndex) {
 
   return `<div class="msg-row"><div class="msg-inner">${av}<div class="msg-body">
     <div class="msg-meta">${name}</div>
-    ${attachHTML}${thinkHTML}
+    ${attachHTML}${searchHTML}${thinkHTML}
     <div class="msg-text">${fmtText(m.content||'')}</div>
   </div></div></div>`;
 }
@@ -1491,8 +1891,60 @@ async function sendMessage() {
 
   const settings = getSettings();
 
-  // Build API messages
-  const apiMessages = buildApiMessages(chat.messages, snapAttach, settings.systemPrompt);
+  // ── Pre-flight web search (two-phase: LLM plans queries → parallel search) ──
+  lastSearchMeta = null;
+  const wss = JSON.parse(localStorage.getItem('mc_settings') || '{}');
+  if (wss.webSearchEnabled) {
+    const searchProvider = wss.webSearchProvider || 'tavily';
+    try {
+      // Phase 1: LLM plans search queries
+      setTypingSearchStatus('Planning search…');
+      const plan = await planSearchQueries(text, provider, model, apiKey);
+
+      let queriesToRun = plan.search_queries;
+      const shouldSearch = wss.webSearchMode === 'always'
+        ? (queriesToRun.length > 0 || (queriesToRun = [detectSearchNeeded(text).query || text.slice(0,80)], true))
+        : (wss.webSearchMode === 'auto' && plan.needs_search && queriesToRun.length > 0);
+
+      if (shouldSearch) {
+        // Phase 2: Execute all queries in parallel
+        const queryLabel = queriesToRun.length > 1
+          ? queriesToRun.map(q => q.slice(0,30)).join(' · ')
+          : queriesToRun[0];
+        setTypingSearchStatus(queryLabel);
+
+        const searchResults = await Promise.all(
+          queriesToRun.map(q => executeSearch(q, searchProvider).then(items => ({ query: q, items })).catch(e => ({ query: q, items: [], error: e.message })))
+        );
+
+        const succeeded = searchResults.filter(r => r.items?.length > 0);
+        const failed    = searchResults.filter(r => r.error);
+
+        if (succeeded.length > 0) {
+          // Flatten all items for the panel, preserve query grouping for context
+          const allItems = succeeded.flatMap(r => r.items);
+          lastSearchMeta = { queries: queriesToRun, provider: searchProvider, results: allItems, grouped: succeeded };
+          const totalSrc = allItems.length;
+          const provLabel = SEARCH_PROVIDERS[searchProvider]?.label || searchProvider;
+          showToast(`🔍 ${totalSrc} source${totalSrc===1?'':'s'} via ${provLabel} (${queriesToRun.length} quer${queriesToRun.length===1?'y':'ies'})`);
+        } else {
+          showToast('🔍 Search returned no results — model will answer from training data');
+        }
+        if (failed.length > 0) {
+          showToast(`🔍 ${failed.length} quer${failed.length===1?'y':'ies'} failed: ${failed[0].error}`, 'err');
+        }
+      }
+    } catch(searchErr) {
+      showToast(`🔍 Search error: ${searchErr.message}`, 'err');
+    }
+    setTypingSearchStatus(null);
+  }
+
+  // Build API messages (with search context injected if available)
+  const searchContext = lastSearchMeta
+    ? formatSearchContext(lastSearchMeta.queries, lastSearchMeta.grouped || lastSearchMeta.results)
+    : null;
+  const apiMessages = buildApiMessages(chat.messages, snapAttach, settings.systemPrompt, searchContext);
 
   const payload = {
     model,
@@ -1552,6 +2004,8 @@ async function sendMessage() {
 
     aiMsg.content = stripThink(aiMsg.content);
     aiMsg.thinking = (aiMsg.thinking + extractThink(aiMsg.content)).trim();
+    if (lastSearchMeta) aiMsg.searchMeta = lastSearchMeta;
+    lastSearchMeta = null;
     saveChats();
     renderMessages();
 
@@ -1566,12 +2020,13 @@ async function sendMessage() {
   }
 }
 
-function buildApiMessages(chatMessages, snapAttach, systemPrompt) {
-  // Build system message combining: user system prompt + RAG files
+function buildApiMessages(chatMessages, snapAttach, systemPrompt, searchContext = null) {
+  // Build system message combining: user system prompt + RAG files + web search context
   const ragCtx = buildRagContext();
   let sysContent = '';
   if (systemPrompt) sysContent += systemPrompt + '\n\n';
   if (ragCtx) sysContent += `You have been provided the following files as context. Use them to answer questions:\n\n${ragCtx}`;
+  if (searchContext) sysContent += (sysContent ? '\n\n' : '') + searchContext;
 
   const isReasoner = /r1|qwq|think|reason|m2|gpt-oss|qwen3|glm/i.test(document.getElementById('model-sel').value);
   const defaultSys = isReasoner
@@ -1627,6 +2082,7 @@ function appendStreamRow(msg) {
   const pid = msg.provider || providerFromModel(msg.model);
   const icon = providerIcon(pid);
   const label = shortModelName(msg.model);
+  const searchHTML = lastSearchMeta ? renderSearchPanel(lastSearchMeta) : '';
   row.innerHTML = `<div class="msg-inner"><div class="avatar av-ai">◆</div><div class="msg-body">
     <div class="msg-meta">
       <span class="msg-name">MultiChat</span>
@@ -1634,6 +2090,7 @@ function appendStreamRow(msg) {
         <span class="model-badge-icon">${icon}</span>${esc(label)}
       </span>
     </div>
+    ${searchHTML}
     <div id="sth-block" class="think-block" style="display:none;">
       <div class="think-hdr" onclick="toggleThink(this)">
         <span class="think-chev">▶</span><span>Model thinking</span>
