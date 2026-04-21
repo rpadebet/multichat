@@ -17,6 +17,9 @@
 
 /* ══════════════════════════════════════════════════
    THEME SYSTEM
+   Each theme is a complete set of design tokens applied via [data-theme] on <html>.
+   All colours, fonts, radii, and shadows are CSS custom properties so every
+   component inherits the active theme without per-component overrides.
 ══════════════════════════════════════════════════ */
 [data-theme="claude"] {
   --bg:#f5f0e8; --bg2:#ede8df; --bg3:#e4ddd3;
@@ -86,27 +89,40 @@
 
 /* ══════════════════════════════════════════════════
    BASE RESET
+   Zeroes browser default margins/padding and locks the viewport to 100vh with
+   overflow:hidden so the two-column flex layout (sidebar + main) never scrolls
+   at the body level — only inner panels scroll independently.
 ══════════════════════════════════════════════════ */
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:100vh;display:flex;overflow:hidden;transition:background 0.2s,color 0.2s;}
 
 /* ══════════════════════════════════════════════════
    SIDEBAR
+   Fixed-width left column holding the logo, new-chat button, and conversation
+   list. Uses flex-direction:column so the chat list can flex:1 and scroll
+   independently while the header stays pinned at the top.
 ══════════════════════════════════════════════════ */
 #sidebar{width:268px;min-width:268px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;transition:background 0.2s;}
 
+/* Sidebar header: contains the logo mark, app name, collapse toggle, and
+   the new-chat button. Border-bottom visually separates it from the list. */
 .sidebar-header{padding:16px 16px 12px;border-bottom:1px solid var(--border);}
 .logo{display:flex;align-items:center;gap:9px;margin-bottom:12px;}
 .logo-mark{width:28px;height:28px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;color:white;font-size:14px;flex-shrink:0;}
 .logo-name{font-family:var(--font-head);font-weight:600;font-size:16px;color:var(--text);}
 
+/* Full-width button that creates a new chat session and resets the message area. */
 .new-chat-btn{width:100%;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);color:var(--text2);font-family:var(--font-body);font-size:13px;font-weight:500;cursor:pointer;transition:all 0.15s;display:flex;align-items:center;gap:6px;}
 .new-chat-btn:hover{background:var(--bg3);color:var(--text);}
 
+/* Scrollable conversation list. flex:1 makes it fill all remaining sidebar
+   height below the header. Thin custom scrollbar keeps it visually minimal. */
 .chat-list-wrap{flex:1;overflow-y:auto;padding:8px 6px;}
 .chat-list-wrap::-webkit-scrollbar{width:3px;}
 .chat-list-wrap::-webkit-scrollbar-thumb{background:var(--scrollbar);border-radius:3px;}
 .sec-label{padding:5px 8px 3px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.9px;color:var(--text3);}
+/* Single chat row: truncates long titles with ellipsis; transparent border on
+   idle state preserves layout so the active border doesn't cause reflow. */
 .chat-item{padding:7px 9px;border-radius:var(--radius);cursor:pointer;font-size:13px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:all 0.14s;margin-bottom:1px;border:1px solid transparent;}
 .chat-item:hover{background:var(--bg3);color:var(--text);}
 .chat-item.active{background:var(--surface);color:var(--text);border-color:var(--border);}
@@ -128,16 +144,51 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 .theme-btn:hover{color:var(--text);border-color:var(--border2);}
 .theme-btn.active{background:var(--accent);color:white;border-color:var(--accent);}
 
+/* ── Sidebar collapse toggle ──
+   Small icon-only button at the right of the logo row. margin-left:auto pushes
+   it flush to the right without needing absolute positioning. */
+.sidebar-collapse-btn{
+  width:24px;height:24px;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--surface);cursor:pointer;display:flex;align-items:center;justify-content:center;
+  color:var(--text3);font-size:11px;flex-shrink:0;transition:all 0.15s;margin-left:auto;
+}
+.sidebar-collapse-btn:hover{background:var(--bg3);color:var(--text);}
+
+/* Collapsed state: sidebar shrinks to 52px showing only icon glyphs.
+   Text labels are hidden via display:none so the icon-only layout remains
+   usable without a full redesign of the sidebar DOM. */
+#sidebar.collapsed{width:52px;min-width:52px;}
+#sidebar.collapsed .logo-name,
+#sidebar.collapsed .new-chat-btn .new-chat-label,
+#sidebar.collapsed .sec-label,
+#sidebar.collapsed .chat-item{display:none;}
+#sidebar.collapsed .sidebar-header{padding:12px 8px 10px;}
+#sidebar.collapsed .logo{justify-content:center;margin-bottom:8px;}
+#sidebar.collapsed .new-chat-btn{justify-content:center;padding:8px;}
+#sidebar.collapsed .sidebar-collapse-btn{margin-left:0;margin-top:4px;}
+
 /* ══════════════════════════════════════════════════
    MAIN
+   The right-hand flex column that grows to fill all space beside the sidebar
+   (and settings panel). min-width:0 prevents flex children from overflowing
+   when long words or code blocks are present.
 ══════════════════════════════════════════════════ */
 #main{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--surface);transition:background 0.2s;}
 
-/* ── Header ── */
+/* ── Header ──
+   Sticky top bar holding the provider select, custom model dropdown, think
+   toggle, price pill, and settings button. flex-wrap:wrap lets items reflow
+   to a second line on narrow screens rather than overflowing. */
 #header{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--surface);}
+
+/* Provider <select> wrapper: position:relative lets the custom chevron icon
+   be absolutely positioned over the native select without extra markup. */
 .sel-wrap{position:relative;}
+/* appearance:none removes the native OS dropdown arrow so our custom .sel-chev
+   is the only visible indicator, giving consistent cross-browser styling. */
 .hdr-select{padding:6px 26px 6px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:var(--font-body);font-size:13px;font-weight:500;cursor:pointer;outline:none;appearance:none;transition:border-color 0.15s;max-width:280px;}
 .hdr-select:hover{border-color:var(--border2);}
+/* pointer-events:none so clicks pass through to the underlying <select>. */
 .sel-chev{position:absolute;right:8px;top:50%;transform:translateY(-50%);color:var(--text3);pointer-events:none;font-size:9px;}
 .hdr-divider{width:1px;height:18px;background:var(--border);}
 .think-wrap{display:flex;align-items:center;gap:6px;}
@@ -156,13 +207,19 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 .badge-deepinfra{background:rgba(59,130,246,.08);color:#3b82f6;border:1px solid rgba(59,130,246,.2);}
 .badge-openrouter{background:rgba(107,99,246,.08);color:#6b63f6;border:1px solid rgba(107,99,246,.2);}
 
-/* settings icon btn */
+/* General-purpose square icon button used for settings toggle and the model
+   refresh button. The .active state (accent tint) signals the settings panel
+   is currently open without needing extra JS to track state visually. */
 .icon-btn{width:30px;height:30px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg2);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2);transition:all 0.15s;flex-shrink:0;}
 .icon-btn:hover{background:var(--bg3);color:var(--text);}
 .icon-btn.active{background:var(--accent-bg);border-color:var(--accent-border);color:var(--accent);}
 
 /* ══════════════════════════════════════════════════
    SETTINGS PANEL (slide-in right)
+   Third flex column that appears to the right of #main when .open is toggled.
+   Uses display:none / display:flex rather than a transform/translate so it
+   fully removes itself from the layout flow when closed, reclaiming space for
+   the message area rather than just hiding it off-screen.
 ══════════════════════════════════════════════════ */
 #settings-panel{width:300px;min-width:300px;background:var(--bg2);border-left:1px solid var(--border);display:none;flex-direction:column;overflow-y:auto;transition:background 0.2s;}
 #settings-panel.open{display:flex;}
@@ -183,13 +240,18 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 .sp-select{width:100%;padding:7px 10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:var(--font-body);font-size:13px;outline:none;cursor:pointer;}
 .sp-select:focus{border-color:var(--accent);}
 
-/* File upload area */
+/* ── File upload / RAG drop zone ──
+   Dashed border signals a drop target. The .drag-over class is added by JS
+   ondragover to give immediate visual feedback. #file-input is hidden because
+   the styled .file-drop div acts as a clickable proxy to trigger it. */
 .file-drop{border:2px dashed var(--border);border-radius:var(--radius-lg);padding:14px;text-align:center;cursor:pointer;transition:all 0.18s;background:var(--surface);}
 .file-drop:hover,.file-drop.drag-over{border-color:var(--accent);background:var(--accent-bg);}
 .file-drop-icon{font-size:22px;margin-bottom:6px;}
 .file-drop-text{font-size:12px;color:var(--text2);}
 .file-drop-hint{font-size:11px;color:var(--text3);margin-top:3px;}
 #file-input{display:none;}
+/* Loaded file list for the RAG panel. Each .file-chip shows icon, truncated
+   name, byte size, and a delete button — flex:1 on the name enables truncation. */
 .file-list{display:flex;flex-direction:column;gap:5px;margin-top:8px;}
 .file-chip{display:flex;align-items:center;gap:7px;padding:6px 9px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);font-size:12px;color:var(--text2);}
 .file-chip-icon{font-size:14px;}
@@ -203,13 +265,22 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 
 /* ══════════════════════════════════════════════════
    MESSAGES
+   The only vertically scrolling region in the main column. flex:1 makes it
+   absorb all remaining height between the header and input area. Smooth scroll
+   is set here so programmatic scrollTop assignments animate gracefully.
 ══════════════════════════════════════════════════ */
 #messages{flex:1;overflow-y:auto;padding:28px 0 16px;scroll-behavior:smooth;}
 #messages::-webkit-scrollbar{width:4px;}
 #messages::-webkit-scrollbar-thumb{background:var(--scrollbar);border-radius:4px;}
 
+/* ── Message row layout ──
+   Each row is centred and capped at 800px to keep long responses readable.
+   The slide-up entrance animation (msgIn) fires once per message render to
+   signal new content without being distracting on full history re-renders. */
 .msg-row{padding:4px 0;max-width:800px;margin:0 auto;width:100%;padding-left:22px;padding-right:22px;animation:msgIn 0.2s ease forwards;}
 @keyframes msgIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+/* Avatar + body side-by-side; align-items:flex-start keeps the avatar pinned
+   to the top of the message rather than vertically centred with tall content. */
 .msg-inner{display:flex;gap:13px;align-items:flex-start;}
 .avatar{width:29px;height:29px;border-radius:var(--radius);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;margin-top:1px;}
 .av-user{background:var(--bg3);color:var(--text2);border:1px solid var(--border);font-family:var(--font-body);}
@@ -219,7 +290,10 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 .msg-name{font-size:13px;font-weight:600;color:var(--text);}
 .msg-tag{font-size:10px;font-family:var(--font-mono);color:var(--text3);background:var(--bg3);padding:1px 5px;border-radius:3px;border:1px solid var(--border);}
 
-/* ── Prominent model badge on AI responses ── */
+/* ── Model badge on AI responses ──
+   Pill shown inline in the message meta row so the reader always knows which
+   model produced a reply — important when the model changes mid-conversation.
+   max-width + ellipsis prevents very long OpenRouter model IDs from overflowing. */
 .model-badge{
   display:inline-flex;align-items:center;gap:5px;
   padding:3px 9px 3px 7px;
@@ -229,7 +303,9 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
   white-space:nowrap;max-width:280px;overflow:hidden;text-overflow:ellipsis;
 }
 .model-badge-icon{font-size:11px;flex-shrink:0;}
-/* per-provider colours */
+/* Per-provider badge colour overrides — light themes use darker tones for
+   contrast on light backgrounds; dark/chatgpt/gemini themes swap to lighter,
+   more saturated variants so the badge remains readable on dark surfaces. */
 .mb-groq    {background:rgba(46,125,94,.12);color:#1a6644;border-color:rgba(46,125,94,.3);}
 .mb-minimax {background:rgba(201,107,47,.1);color:var(--accent);border-color:var(--accent-border);}
 .mb-deepinfra{background:rgba(59,130,246,.1);color:#1d5fa8;border-color:rgba(59,130,246,.25);}
@@ -241,7 +317,11 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 [data-theme="chatgpt"] .mb-openrouter,[data-theme="dark"] .mb-openrouter,[data-theme="gemini"] .mb-openrouter{color:#a78bfa;background:rgba(167,139,250,.1);border-color:rgba(167,139,250,.25);}
 [data-theme="gemini"] .mb-groq{color:#81c995;background:rgba(129,201,149,.1);border-color:rgba(129,201,149,.25);}
 
-/* ── Model switch divider ── */
+/* ── Model switch divider ──
+   Horizontal rule with a centred label injected between messages whenever the
+   AI model changes mid-conversation. The ::before/::after pseudo-elements grow
+   to fill equal space on both sides via flex:1, creating the ruled-line effect
+   without extra DOM nodes. */
 .model-switch-divider{
   max-width:800px;margin:10px auto;
   padding:0 22px;
@@ -255,6 +335,11 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
   white-space:nowrap;padding:3px 10px;
   background:var(--bg2);border:1px solid var(--border);border-radius:20px;
 }
+/* ── Collapsible thinking block ──
+   Wraps the model's internal <think> reasoning stream. Hidden by default
+   (display:none on .think-body) because most users only care about the final
+   answer; the header chevron rotates 90° via CSS transition when .open is
+   toggled by JS to signal expanded state without extra icon markup. */
 .think-block{margin-bottom:9px;border:1px solid var(--think-border);border-radius:var(--radius);overflow:hidden;font-size:13px;}
 .think-hdr{padding:6px 11px;background:var(--think-bg);border-bottom:1px solid var(--think-border);display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;color:var(--text3);font-size:12px;font-weight:500;}
 .think-hdr:hover{color:var(--text2);}
@@ -262,6 +347,11 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 .think-chev.open{transform:rotate(90deg);}
 .think-body{padding:9px 13px;background:var(--think-bg);color:var(--text3);font-style:italic;line-height:1.65;font-size:12px;display:none;white-space:pre-wrap;word-break:break-word;}
 .think-body.vis{display:block;}
+/* ── Rich text rendering for message content ──
+   white-space:pre-wrap preserves newlines from the API response while still
+   allowing word wrapping. The fmtText() JS function converts markdown-lite
+   syntax to HTML tags which these rules style — headings use the serif/display
+   font for visual hierarchy, code uses mono with accent colour for scannability. */
 .msg-text{font-family:var(--font-body);font-size:14.5px;line-height:1.75;color:var(--text);white-space:pre-wrap;word-break:break-word;}
 .msg-text strong{font-weight:600;}
 .msg-text em{font-style:italic;color:var(--text2);}
@@ -276,7 +366,10 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 .msg-text a{color:var(--accent);text-decoration:underline;}
 .msg-sep{height:1px;background:var(--border);max-width:800px;margin:2px auto;opacity:0.4;}
 
-/* ── Message edit button ── */
+/* ── Message edit button ──
+   Hidden (opacity:0) until the parent .msg-row is hovered, keeping the UI
+   uncluttered during reading. Only shown on user messages so the user can
+   truncate the history and resubmit an edited prompt. */
 .msg-edit-btn{
   background:none;border:none;cursor:pointer;padding:1px 4px;margin-left:5px;
   font-size:13px;opacity:0;transition:opacity 0.15s;line-height:1;
@@ -285,6 +378,9 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 .msg-row:hover .msg-edit-btn{opacity:1;}
 .msg-edit-btn:hover{opacity:1!important;color:var(--accent);}
 
+/* ── Copy pill on AI messages ──
+   Also hidden until hover to avoid visual noise. Pill shape (border-radius:20px)
+   differentiates it from square icon buttons in the header. */
 .msg-copy-pill{
   display:inline-flex;align-items:center;gap:5px;margin-top:9px;
   padding:5px 13px;background:var(--bg3);border:1px solid var(--border);border-radius:20px;
@@ -295,15 +391,65 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 .msg-row:hover .msg-copy-pill{opacity:1;}
 .msg-copy-pill:hover{background:var(--border2);color:var(--text);border-color:var(--border2);}
 .msg-copy-pill:active{transform:scale(0.97);}
-.model-search{
-  width:100%;padding:5px 10px 5px 28px;
-  background:var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") no-repeat 8px center;
-  border:1px solid var(--border);border-bottom:1px solid var(--border2);border-radius:var(--radius) var(--radius) 0 0;
-  color:var(--text);font-family:var(--font-body);font-size:12px;
-  outline:none;margin-bottom:0;transition:border-color 0.15s,box-shadow 0.15s;
+/* ── Custom model dropdown ──
+   Replaces a native <select> because native selects cannot contain a search
+   input or custom item styling. A trigger button opens a floating panel with
+   an integrated search box and scrollable item list. The hidden native
+   <select id="model-sel"> is kept in sync so all existing JS that reads
+   .value or iterates .options continues to work without modification. */
+.model-dd-wrap{position:relative;display:flex;align-items:center;gap:4px;}
+.model-dd-trigger{
+  display:flex;align-items:center;justify-content:space-between;gap:6px;
+  padding:6px 10px 6px 12px;
+  background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);
+  cursor:pointer;min-width:180px;max-width:300px;
+  font-family:var(--font-body);font-size:13px;font-weight:500;color:var(--text);
+  transition:border-color 0.15s;user-select:none;outline:none;
 }
-.model-search:focus{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-bg);}
+.model-dd-trigger:hover{border-color:var(--border2);}
+.model-dd-trigger.open{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-bg);}
+.model-dd-label{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;}
+.model-dd-chev{font-size:9px;color:var(--text3);flex-shrink:0;transition:transform 0.18s;}
+.model-dd-trigger.open .model-dd-chev{transform:rotate(180deg);}
+.model-dd-panel{
+  display:none;position:absolute;top:calc(100% + 5px);left:0;
+  min-width:280px;max-width:360px;
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  box-shadow:0 8px 24px var(--shadow);z-index:200;overflow:hidden;
+}
+.model-dd-panel.open{display:block;}
+/* Search input at top of panel — SVG magnifier is inlined as a data-URI
+   background image so no extra icon element is needed. Padding-left:30px
+   offsets text past the icon. focus tints the background to signal activity. */
+.model-search{
+  width:100%;padding:8px 10px 8px 30px;
+  background:var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") no-repeat 9px center;
+  border:none;border-bottom:1px solid var(--border);
+  color:var(--text);font-family:var(--font-body);font-size:12px;
+  outline:none;transition:background 0.15s;
+}
+.model-search:focus{background-color:var(--accent-bg);}
 .model-search::placeholder{color:var(--text3);}
+/* Scrollable model list — max-height:260px keeps the panel from growing taller
+   than the viewport on small screens while still showing ~10 items at once. */
+.model-dd-list{max-height:260px;overflow-y:auto;}
+.model-dd-list::-webkit-scrollbar{width:3px;}
+.model-dd-list::-webkit-scrollbar-thumb{background:var(--scrollbar);border-radius:3px;}
+.model-dd-item{
+  padding:7px 12px;cursor:pointer;font-size:12.5px;color:var(--text2);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  transition:background 0.12s,color 0.12s;
+}
+.model-dd-item:hover{background:var(--bg3);color:var(--text);}
+.model-dd-item.selected{background:var(--accent-bg);color:var(--accent);font-weight:500;}
+/* Refresh button sits beside the trigger to force a live model list re-fetch,
+   busting the session cache — useful when a provider releases a new model. */
+.model-dd-refresh{
+  width:26px;height:26px;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:12px;color:var(--text2);transition:all 0.15s;flex-shrink:0;
+}
+.model-dd-refresh:hover{background:var(--bg3);border-color:var(--border2);}
 .citation-link{color:var(--accent);font-family:var(--font-mono);font-size:11px;font-weight:600;text-decoration:none;background:var(--accent-bg);border:1px solid var(--accent-border);border-radius:3px;padding:0 3px;white-space:nowrap;}
 .citation-link:hover{text-decoration:underline;}
 
@@ -345,30 +491,44 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 .input-hint kbd{font-family:var(--font-mono);background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:1px 4px;font-size:10px;}
 .tok-count{font-size:11px;color:var(--text3);font-family:var(--font-mono);}
 
-/* ── Web Search panel & indicator ── */
+/* ── Web search result panel ──
+   Collapsible block rendered above the AI response text showing which queries
+   were run and all source cards. Uses the same chevron-rotate + display-toggle
+   pattern as the thinking block. .search-hdr-query uses min-width:0 so the
+   flex child can shrink and ellipsis long query strings correctly. */
 .search-block{margin-bottom:9px;border:1px solid var(--border2);border-radius:var(--radius);overflow:hidden;}
 .search-hdr{padding:6px 11px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;color:var(--text2);font-size:12px;font-weight:500;overflow:hidden;}
 .search-hdr-query{flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-width:0;}
 .search-hdr:hover{color:var(--text);}
 .search-chev{font-size:8px;transition:transform 0.18s;}
 .search-chev.open{transform:rotate(90deg);}
+/* Body hidden by default; JS toggles .vis to reveal source cards. */
 .search-body{padding:8px 11px;background:var(--bg3);display:none;}
 .search-body.vis{display:block;}
+/* Individual source card inside the search panel. */
 .search-source{padding:5px 0;border-bottom:1px solid var(--border);}
 .search-source:last-child{border-bottom:none;padding-bottom:0;}
 .search-source-title{font-size:12px;font-weight:500;color:var(--text);line-height:1.4;}
 .search-source-url{font-size:10px;font-family:var(--font-mono);color:var(--accent);text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:2px 0;}
 .search-source-url:hover{text-decoration:underline;}
 .search-source-snippet{font-size:11px;color:var(--text3);line-height:1.45;margin-top:2px;}
+/* Footer indicator in the input bar showing web search is active and its mode.
+   display:none when search is disabled; JS sets display:inline-flex when on. */
 #search-indicator{font-size:11px;color:var(--accent);font-family:var(--font-mono);display:none;align-items:center;gap:3px;}
 
-/* ── Typing ── */
+/* ── Typing indicator ──
+   Three dots that bounce sequentially via staggered animation-delay, giving a
+   natural "someone is typing" feel. Replaced by the actual stream row as soon
+   as the first API token arrives. */
 .typing-ind{display:flex;align-items:center;gap:4px;padding:5px 0;}
 .tdot{width:5px;height:5px;background:var(--accent);border-radius:50%;animation:td 1.3s infinite;opacity:.5;}
 .tdot:nth-child(2){animation-delay:.15s;} .tdot:nth-child(3){animation-delay:.3s;}
 @keyframes td{0%,60%,100%{transform:translateY(0);opacity:.4;}30%{transform:translateY(-4px);opacity:1;}}
 
-/* ── Toast ── */
+/* ── Toast notification ──
+   Fixed, horizontally centred above the input area (bottom:72px clears it).
+   z-index:300 keeps it above all panels. The .err variant uses red tones;
+   dark themes get their own override so the red stays readable on dark surfaces. */
 #toast{position:fixed;bottom:72px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);color:var(--text2);padding:8px 16px;border-radius:var(--radius);font-size:13px;display:none;z-index:300;max-width:480px;text-align:center;box-shadow:0 4px 14px var(--shadow);}
 #toast.err{background:#fef2f2;border-color:#fecaca;color:#b91c1c;}
 [data-theme="chatgpt"] #toast.err,[data-theme="gemini"] #toast.err,[data-theme="dark"] #toast.err{background:#3b1515;border-color:#7f1d1d;color:#fca5a5;}
@@ -379,24 +539,33 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
    MOBILE RESPONSIVE
 ══════════════════════════════════════════════════ */
 
-/* Sidebar overlay toggle on mobile */
+/* Semi-transparent full-screen overlay that appears behind the sidebar when it
+   slides in on mobile. Clicking it calls closeSidebar(). backdrop-filter:blur
+   gives depth without a hard black curtain. z-index:40 sits below sidebar (50). */
 #sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:40;backdrop-filter:blur(2px);}
 #sidebar-overlay.show{display:block;}
 
-/* Mobile menu button in header */
+/* Hamburger button hidden on desktop (display:none), shown as display:flex on
+   mobile via the @media block below. Kept in the DOM always to avoid layout shift. */
 #mob-menu-btn{display:none;width:34px;height:34px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg2);cursor:pointer;align-items:center;justify-content:center;color:var(--text2);flex-shrink:0;}
 
-/* Install banner */
+/* PWA install prompt banner — shown at top when the browser fires
+   beforeinstallprompt. Hidden by default; JS sets display:flex when eligible. */
 #install-banner{display:none;align-items:center;gap:10px;padding:9px 16px;background:var(--accent);color:white;font-size:13px;font-weight:500;}
 #install-banner button{padding:5px 12px;background:white;color:var(--accent);border:none;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;}
 #install-banner .ib-close{background:none;color:white;opacity:0.7;font-size:16px;margin-left:auto;flex-shrink:0;}
 
+/* ── Mobile layout (≤700px) ──
+   Sidebar becomes a slide-in overlay (transform-based) so it doesn't consume
+   horizontal space. Settings panel goes full-screen. env(safe-area-inset-bottom)
+   pads the input and messages areas for iPhone home-indicator notch.
+   font-size:16px on #chat-input specifically prevents iOS Safari from
+   auto-zooming the viewport when the textarea is focused. */
 @media (max-width: 700px) {
   /* Show hamburger */
   #mob-menu-btn{display:flex;}
 
-  /* Hide price pill and provider badge to save space */
-  .price-pill{display:none;}
+  /* Keep only provider badge hidden to save space; price-pill stays visible */
   .prov-badge{display:none;}
   .hdr-divider{display:none;}
   .think-wrap .think-lbl{display:none;}
@@ -436,6 +605,9 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
   .sel-wrap .hdr-select{max-width:calc(50vw - 60px);}
 }
 
+/* ── Tiny screens (≤420px) ──
+   Provider and model selects stack to full width so they don't fight for the
+   ~320px of usable space. Message padding reduced to reclaim horizontal room. */
 @media (max-width: 420px) {
   /* Stack provider + model selects vertically on tiny screens */
   #header{flex-wrap:wrap;}
@@ -444,7 +616,9 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
   .msg-row{padding-left:12px;padding-right:12px;}
 }
 
-/* Landscape mobile: keep sidebar hidden, more compact header */
+/* ── Landscape mobile (height ≤500px) ──
+   Reduce header and top message padding to maximise the visible chat area
+   when the keyboard is open or the device is held sideways. */
 @media (max-height: 500px) and (orientation: landscape) {
   #header{padding:6px 12px;}
   #messages{padding-top:12px;}
@@ -453,69 +627,62 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 </head>
 <body>
 
-<!-- Install PWA banner -->
+<!-- Install PWA banner — rendered at the very top of the flex body so it pushes
+     all content down rather than overlapping it. Shown only when the browser
+     fires beforeinstallprompt (desktop Chrome / Android). Hidden on iOS where
+     the prompt API is unavailable and the banner is never triggered. -->
 <div id="install-banner">
   <span>📲 Install MultiChat as an app</span>
   <button onclick="installPWA()">Install</button>
   <button class="ib-close" onclick="document.getElementById('install-banner').style.display='none'">✕</button>
 </div>
 
-<!-- Sidebar overlay (mobile) -->
+<!-- Sidebar overlay (mobile only) — full-screen dimmed backdrop that appears
+     behind the sidebar drawer. Clicking it dismisses the sidebar without
+     needing a close button, matching native app drawer behaviour. -->
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
-<!-- ════════════ SIDEBAR ════════════ -->
+<!-- ════════════ SIDEBAR ════════════
+     Left panel containing the app logo, collapse toggle, new-chat button, and
+     the dynamically rendered conversation list (#chat-list). On desktop it is
+     always visible; on mobile it transforms in as an overlay drawer. -->
 <div id="sidebar">
+  <!-- Logo row: mark + name + collapse toggle button -->
   <div class="sidebar-header">
     <div class="logo">
       <div class="logo-mark">◆</div>
       <span class="logo-name">MultiChat</span>
+      <button class="sidebar-collapse-btn" onclick="toggleSidebarCollapse()" title="Collapse sidebar">◀</button>
     </div>
+    <!-- Creates a new conversation, resets the message view, and closes the
+         sidebar on mobile via the patched window.newChat wrapper. -->
     <button class="new-chat-btn" onclick="newChat()">
-      <span style="font-size:14px;line-height:1">＋</span> New conversation
+      <span style="font-size:14px;line-height:1">＋</span><span class="new-chat-label"> New conversation</span>
     </button>
   </div>
 
+  <!-- Scrollable conversation list — populated by renderChatList() on every
+       chat create/load/save operation. -->
   <div class="chat-list-wrap">
     <div class="sec-label">Recent</div>
     <div id="chat-list"></div>
   </div>
 
-  <div class="api-panel">
-    <div class="panel-title">🔑 API Keys</div>
-    <div class="key-row">
-      <div class="key-label"><span class="key-dot" id="dot-groq"></span>Groq</div>
-      <input class="key-input" id="key-groq" type="password" placeholder="gsk_••••" oninput="saveKey('groq',this.value)"/>
-    </div>
-    <div class="key-row">
-      <div class="key-label"><span class="key-dot" id="dot-minimax"></span>MiniMax</div>
-      <input class="key-input" id="key-minimax" type="password" placeholder="sk-••••" oninput="saveKey('minimax',this.value)"/>
-    </div>
-    <div class="key-row">
-      <div class="key-label"><span class="key-dot" id="dot-deepinfra"></span>DeepInfra</div>
-      <input class="key-input" id="key-deepinfra" type="password" placeholder="••••" oninput="saveKey('deepinfra',this.value)"/>
-    </div>
-    <div class="key-row">
-      <div class="key-label"><span class="key-dot" id="dot-openrouter"></span>OpenRouter</div>
-      <input class="key-input" id="key-openrouter" type="password" placeholder="sk-or-••••" oninput="saveKey('openrouter',this.value)"/>
-    </div>
-
-    <div class="panel-title" style="margin-top:10px;">🎨 Theme</div>
-    <div class="theme-row" id="theme-row">
-      <button class="theme-btn active" data-theme="claude" onclick="setTheme('claude')">Claude</button>
-      <button class="theme-btn" data-theme="chatgpt" onclick="setTheme('chatgpt')">ChatGPT</button>
-      <button class="theme-btn" data-theme="gemini" onclick="setTheme('gemini')">Gemini</button>
-      <button class="theme-btn" data-theme="dark" onclick="setTheme('dark')">Dark</button>
-      <button class="theme-btn" data-theme="minimal" onclick="setTheme('minimal')">Minimal</button>
-    </div>
-  </div>
 </div>
 
-<!-- ════════════ MAIN ════════════ -->
+<!-- ════════════ MAIN ════════════
+     Central flex column containing the header bar, message area, and input
+     area. Grows to fill all space not occupied by the sidebar and settings
+     panel. min-width:0 (set in CSS) prevents overflow from long content. -->
 <div id="main">
 
-  <!-- Header -->
+  <!-- ── Header bar ──
+       Contains (left-to-right): mobile hamburger, provider <select>, custom
+       model dropdown with inline search, think toggle, price pill, provider
+       badge, and the settings icon button. flex-wrap:wrap lets items reflow
+       onto a second line on narrow viewports. -->
   <div id="header">
-    <!-- Mobile hamburger -->
+    <!-- Mobile hamburger — hidden on desktop via CSS, shown ≤700px -->
     <button id="mob-menu-btn" onclick="toggleSidebar()" title="Menu">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
     </button>
@@ -528,13 +695,21 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
       </select>
       <span class="sel-chev">▾</span>
     </div>
-    <div class="sel-wrap" style="display:flex;flex-direction:column;">
-      <input class="model-search" id="model-search" placeholder="Search models…" type="text">
-      <div style="position:relative;display:flex;align-items:center;">
-        <select class="hdr-select" id="model-sel" style="max-width:300px;"></select>
-        <span class="sel-chev" style="right:30px;">▾</span>
-        <button class="icon-btn" onclick="onProviderChange(true)" title="Refresh live models" style="width:24px;height:24px;margin-left:4px;background:transparent;border:none;">🔄</button>
+    <!-- Custom model dropdown: single trigger opens a panel with integrated search + list.
+         Hidden <select id="model-sel"> preserves the selected value for all JS reads. -->
+    <div class="model-dd-wrap" id="model-dd-wrap">
+      <div class="model-dd-trigger" id="model-dd-trigger" onclick="toggleModelDropdown()" role="combobox" aria-haspopup="listbox" aria-expanded="false">
+        <span class="model-dd-label" id="model-dd-label">Select model…</span>
+        <span class="model-dd-chev">▾</span>
       </div>
+      <button class="model-dd-refresh icon-btn" onclick="onProviderChange(true)" title="Refresh live model list">🔄</button>
+      <div class="model-dd-panel" id="model-dd-panel" role="listbox">
+        <input class="model-search" id="model-search" placeholder="Search models…" type="text"
+               oninput="filterModelList(this.value)" onclick="event.stopPropagation()">
+        <div class="model-dd-list" id="model-dd-list"></div>
+      </div>
+      <!-- Hidden native select keeps the selected model ID; consumed by sendMessage(), updatePricePill(), etc. -->
+      <select id="model-sel" style="display:none;" aria-hidden="true"></select>
     </div>
 
     <div class="hdr-divider"></div>
@@ -552,8 +727,13 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
     </div>
   </div>
 
-  <!-- Messages -->
+  <!-- ── Message area ──
+       Scrollable container that holds all rendered message rows. On first load
+       (or new chat) the #welcome screen is shown in its place. renderMessages()
+       and showWelcome() both write directly into this element's innerHTML. -->
   <div id="messages">
+    <!-- Welcome / empty-state screen shown when no messages exist yet.
+         Suggestion cards call useSug() which populates the input and auto-sends. -->
     <div id="welcome">
       <div class="wlc-icon">◆</div>
       <div class="wlc-title">MultiChat</div>
@@ -575,11 +755,18 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
     </div>
   </div>
 
-  <!-- Input -->
+  <!-- ── Input area ──
+       Fixed to the bottom of #main. Contains the optional attached-files strip,
+       the textarea with send/attach buttons, and the footer stats bar showing
+       live token count, per-query cost, and cumulative conversation cost. -->
   <div id="input-area">
     <div class="input-wrap">
+      <!-- Inline file attachment preview strip — hidden until files are attached,
+           shown as flex row of chips via the .has-files class added by JS. -->
       <div class="attached-files" id="attached-files"></div>
       <div class="input-row">
+        <!-- Auto-resizing textarea: oninput calls autoResize() to grow up to
+             max-height:200px, then scroll. handleKey() updates the token counter. -->
         <textarea id="chat-input" placeholder="Message MultiChat…" rows="1"
           onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
         <div class="input-actions">
@@ -606,7 +793,12 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
   </div>
 </div>
 
-<!-- ════════════ SETTINGS PANEL ════════════ -->
+<!-- ════════════ SETTINGS PANEL ════════════
+     Slide-in right column toggled by the settings icon button. Contains API
+     keys, theme picker, system prompt, generation parameters (temperature,
+     max tokens, top-p), RAG file upload, web search configuration, and a
+     reset action. Rendered as a third flex sibling of #sidebar and #main so
+     it pushes the chat area narrower rather than overlapping it on desktop. -->
 <div id="settings-panel">
   <div class="sp-head">
     <span class="sp-title">⚙ Model Settings</span>
@@ -614,14 +806,55 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
   </div>
   <div class="sp-body">
 
-    <!-- System Prompt -->
+    <!-- API Keys — one password input per provider. Keys are saved to
+         localStorage on every keystroke via saveKey(); the green dot indicator
+         updates immediately so the user knows the key is stored. -->
+    <div>
+      <div class="sp-section-title">🔑 API Keys</div>
+      <div class="key-row">
+        <div class="key-label"><span class="key-dot" id="dot-groq"></span>Groq</div>
+        <input class="key-input" id="key-groq" type="password" placeholder="gsk_••••" oninput="saveKey('groq',this.value)"/>
+      </div>
+      <div class="key-row">
+        <div class="key-label"><span class="key-dot" id="dot-minimax"></span>MiniMax</div>
+        <input class="key-input" id="key-minimax" type="password" placeholder="sk-••••" oninput="saveKey('minimax',this.value)"/>
+      </div>
+      <div class="key-row">
+        <div class="key-label"><span class="key-dot" id="dot-deepinfra"></span>DeepInfra</div>
+        <input class="key-input" id="key-deepinfra" type="password" placeholder="••••" oninput="saveKey('deepinfra',this.value)"/>
+      </div>
+      <div class="key-row">
+        <div class="key-label"><span class="key-dot" id="dot-openrouter"></span>OpenRouter</div>
+        <input class="key-input" id="key-openrouter" type="password" placeholder="sk-or-••••" oninput="saveKey('openrouter',this.value)"/>
+      </div>
+    </div>
+
+    <!-- Theme picker — pill buttons that call setTheme() which swaps the
+         data-theme attribute on <html>, persists to localStorage, and updates
+         the PWA theme-color meta tag for the browser chrome. -->
+    <div>
+      <div class="sp-section-title">🎨 Theme</div>
+      <div class="theme-row" id="theme-row">
+        <button class="theme-btn active" data-theme="claude" onclick="setTheme('claude')">Claude</button>
+        <button class="theme-btn" data-theme="chatgpt" onclick="setTheme('chatgpt')">ChatGPT</button>
+        <button class="theme-btn" data-theme="gemini" onclick="setTheme('gemini')">Gemini</button>
+        <button class="theme-btn" data-theme="dark" onclick="setTheme('dark')">Dark</button>
+        <button class="theme-btn" data-theme="minimal" onclick="setTheme('minimal')">Minimal</button>
+      </div>
+    </div>
+
+    <!-- System Prompt — free-text instructions prepended to every API request
+         as the system role message. Saved on every keystroke via saveSettings().
+         When blank, a sensible default is injected by buildApiMessages(). -->
     <div>
       <div class="sp-section-title">System Prompt</div>
       <div class="sp-label">Instructions for the model</div>
       <textarea class="sp-textarea" id="system-prompt" placeholder="You are a helpful assistant specialized in financial index operations and Databricks pipelines…" rows="5" oninput="saveSettings()"></textarea>
     </div>
 
-    <!-- Temperature -->
+    <!-- Generation parameters — temperature, max tokens, top-p are range sliders
+         whose live value labels update on every input event. All three are read
+         by getSettings() and passed directly into the API payload on each send. -->
     <div>
       <div class="sp-section-title">Parameters</div>
       <div class="sp-label">Temperature <span id="temp-val">0.7</span></div>
@@ -637,7 +870,10 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
         oninput="document.getElementById('topp-val').textContent=parseFloat(this.value).toFixed(2);saveSettings()"/>
     </div>
 
-    <!-- File / RAG -->
+    <!-- File context (RAG) — files dragged or selected here are read as text,
+         stored in the ragFiles array, and injected into every API request via
+         buildRagContext(). The context preview shows the first 600 chars and
+         an approximate token count so the user knows how much context they're using. -->
     <div>
       <div class="sp-section-title">📎 File Context (RAG)</div>
       <div class="sp-label" style="margin-bottom:8px;">Files are chunked and injected as context</div>
@@ -658,7 +894,11 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
       </div>
     </div>
 
-    <!-- Web Search -->
+    <!-- Web search configuration — master toggle, provider selector (Tavily/Serper),
+         per-provider API key input, and search mode (auto-detect vs always).
+         The #ws-config section is hidden until the toggle is enabled. API keys
+         are stored separately from main settings under provider-specific keys
+         so switching providers restores the correct saved key. -->
     <div>
       <div class="sp-section-title">🔍 Web Search</div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
@@ -688,7 +928,8 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
       </div>
     </div>
 
-    <!-- Reset -->
+    <!-- Actions — resets all settings sliders, system prompt, and web search
+         config to defaults and removes the mc_settings key from localStorage. -->
     <div>
       <div class="sp-section-title">Actions</div>
       <button onclick="resetSettings()" style="width:100%;padding:8px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text2);font-size:13px;cursor:pointer;font-family:var(--font-body);">↺ Reset to defaults</button>
@@ -697,12 +938,18 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
   </div>
 </div>
 
+<!-- Toast notification container — content and visibility controlled entirely
+     by showToast(). Placed outside all panels so z-index:300 puts it on top. -->
 <div id="toast"></div>
 <input type="file" id="attach-input-dup" style="display:none" multiple/>
 
 <script>
 // ══════════════════════════════════════════
 // PROVIDERS
+// Static model registry used as the fallback when live /models fetches fail or
+// when a provider (MiniMax) has no public listing endpoint. Each entry includes
+// a human-readable name, per-1M-token price string, and provider metadata used
+// for badge styling. Models are ordered by recommended usage (best first).
 // ══════════════════════════════════════════
 const PROVIDERS = {
   groq:{label:'Groq LPU',badge:'badge-groq',url:'https://api.groq.com/openai/v1',models:[
@@ -804,6 +1051,9 @@ const PROVIDERS = {
 
 // ══════════════════════════════════════════
 // STATE
+// All mutable runtime state lives here as module-level vars so every function
+// can read/write them without passing arguments through the call chain.
+// conversations is persisted to localStorage; the rest is session-only.
 // ══════════════════════════════════════════
 let conversations = {};
 let currentChatId = null;
@@ -814,6 +1064,10 @@ let lastSearchMeta = null; // {queries[], provider, results[], grouped[]} for th
 
 // ══════════════════════════════════════════
 // WEB SEARCH
+// SEARCH_PROVIDERS maps provider IDs to display labels, localStorage key names
+// for their API keys, and cost/signup notes shown in the settings panel.
+// Keeping keys separate from mc_settings lets each provider's key persist
+// independently when the user switches between Tavily and Serper.
 // ══════════════════════════════════════════
 const SEARCH_PROVIDERS = {
   tavily: {
@@ -828,11 +1082,14 @@ const SEARCH_PROVIDERS = {
   }
 };
 
+// Retrieves the stored API key for the given search provider from localStorage.
 function getSearchKey(provider) {
   const keyName = SEARCH_PROVIDERS[provider]?.keyName;
   return keyName ? (localStorage.getItem(keyName) || '') : '';
 }
 
+// Persists the search API key for whichever provider is currently selected in
+// the settings dropdown. Removes the key if the input is cleared.
 function saveSearchKey(value) {
   const provider = document.getElementById('ws-provider')?.value;
   if (!provider) return;
@@ -842,6 +1099,8 @@ function saveSearchKey(value) {
   else localStorage.removeItem(keyName);
 }
 
+// Persists web search settings (enabled, provider, mode) into mc_settings while
+// preserving all other settings already stored there (temperature, prompt, etc.).
 function saveWebSearchSettings() {
   const existing = JSON.parse(localStorage.getItem('mc_settings') || '{}');
   existing.webSearchEnabled = document.getElementById('ws-enabled')?.checked || false;
@@ -851,6 +1110,8 @@ function saveWebSearchSettings() {
   updateSearchIndicator();
 }
 
+// Restores web search UI state from localStorage on page load. Called from
+// loadSettings() so search config is always in sync with the stored settings.
 function loadWebSearchSettings() {
   try {
     const s = JSON.parse(localStorage.getItem('mc_settings') || '{}');
@@ -885,6 +1146,8 @@ function loadWebSearchSettings() {
   } catch(e) {}
 }
 
+// Shows/hides the #ws-config sub-section when the master web search toggle
+// is flipped, then persists the new state immediately.
 function onWebSearchToggle() {
   const enabled = document.getElementById('ws-enabled').checked;
   const cfg = document.getElementById('ws-config');
@@ -892,6 +1155,8 @@ function onWebSearchToggle() {
   saveWebSearchSettings();
 }
 
+// Handles switching between Tavily and Serper: updates the key row visibility,
+// cost note text, and loads the saved key for the newly selected provider.
 function onWebSearchProviderChange() {
   const provider = document.getElementById('ws-provider').value;
   updateSearchKeyRow(provider);
@@ -903,17 +1168,23 @@ function onWebSearchProviderChange() {
   saveWebSearchSettings();
 }
 
+// Shows the API key input row only for providers that require a key.
 function updateSearchKeyRow(provider) {
   const row = document.getElementById('ws-key-row');
   if (!row) return;
   row.style.display = SEARCH_PROVIDERS[provider]?.keyName ? 'block' : 'none';
 }
 
+// Updates the cost/signup info note below the provider selector with the
+// pricing text defined in SEARCH_PROVIDERS for the selected provider.
 function updateSearchCostNote(provider) {
   const note = document.getElementById('ws-cost-note');
   if (note) note.textContent = SEARCH_PROVIDERS[provider]?.costNote || '';
 }
 
+// Updates the footer search indicator pill in the input bar. Shows the active
+// mode (Auto/Always) and provider name when web search is enabled, hides it
+// when disabled so the indicator only appears when search is actually active.
 function updateSearchIndicator() {
   const ind = document.getElementById('search-indicator');
   if (!ind) return;
@@ -928,7 +1199,9 @@ function updateSearchIndicator() {
   }
 }
 
-// ── Typing indicator search status ──
+// Mutates the typing indicator row to show a live search status message while
+// queries are in flight, then reverts to the standard three-dot animation when
+// called with null (i.e. search phase is complete and streaming begins).
 function setTypingSearchStatus(query) {
   const row = document.getElementById('typing-row');
   if (!row) return;
@@ -946,7 +1219,12 @@ function setTypingSearchStatus(query) {
   }
 }
 
-// ── Search need detection ──
+// ── Heuristic search detection (regex fallback) ──
+// SEARCH_PATTERNS is an array of regexes covering the most common categories
+// of time-sensitive or live-data queries (prices, news, current events, recent
+// releases, people's current roles, etc.). Used as the fallback when the LLM
+// planner call fails. detectSearchNeeded() also extracts a clean search query
+// by stripping conversational openers and truncating to 90 chars.
 const SEARCH_PATTERNS = [
   /\b(today|yesterday|this week|this month|right now|currently|at the moment)\b/i,
   /\b(latest|newest|most recent|just released|just launched|just announced|recently announced)\b/i,
@@ -988,7 +1266,8 @@ function detectSearchNeeded(message) {
   return { needed, query: query.trim() };
 }
 
-// ── Provider search implementations ──
+// Calls the Tavily AI search API. Returns an array of {title, url, snippet}
+// objects. Snippets are capped at 800 chars to stay within context budget.
 async function searchTavily(query, apiKey) {
   const resp = await fetch('https://api.tavily.com/search', {
     method: 'POST',
@@ -1008,6 +1287,8 @@ async function searchTavily(query, apiKey) {
   return results;
 }
 
+// Calls the Serper Google Search API. Promotes the answer box (if present) as
+// the first result since it typically contains the most direct answer.
 async function searchSerper(query, apiKey) {
   const resp = await fetch('https://google.serper.dev/search', {
     method: 'POST',
@@ -1024,6 +1305,8 @@ async function searchSerper(query, apiKey) {
   return results;
 }
 
+// Dispatcher that routes a query to the correct search implementation based on
+// the selected provider. Throws a user-friendly error if no API key is stored.
 async function executeSearch(query, provider) {
   provider = provider || 'tavily';
   const apiKey = getSearchKey(provider);
@@ -1033,10 +1316,13 @@ async function executeSearch(query, provider) {
   throw new Error(`Unknown search provider: ${provider}`);
 }
 
-// ── LLM-guided search query planner ──
-// Asks the active LLM to decompose the user's message into optimal search queries.
-// Returns { needs_search: bool, search_queries: string[] }
-// Falls back to regex heuristic if the LLM call fails for any reason.
+// ── Two-phase LLM search planner ──
+// Phase 1: sends a lightweight non-streaming request to the active model asking
+// it to decide whether web search is needed and what queries to run. This gives
+// much better query decomposition than pure regex (e.g. splitting "BTC price and
+// AAPL earnings" into two separate queries). Returns { needs_search, search_queries }.
+// Falls back silently to the regex heuristic (detectSearchNeeded) if the LLM
+// call fails for any reason (CORS, rate limit, bad JSON, etc.).
 async function planSearchQueries(userMessage, provider, model, apiKey) {
   const yr = new Date().getFullYear();
   const systemPrompt = `You are a web search query planner. Today: ${new Date().toLocaleDateString('en-US', {year:'numeric',month:'long',day:'numeric'})}.
@@ -1088,6 +1374,11 @@ You MUST output ONLY a raw JSON object. No markdown. No explanation. No code fen
   }
 }
 
+// Formats search results into a structured text block injected into the system
+// prompt. Numbered citations [1],[2],... allow the model to reference specific
+// sources in its response, which fmtText() then converts to clickable links.
+// Explicit instructions at the end guard against the model hallucinating details
+// or echoing placeholder text that search APIs sometimes return in snippets.
 function formatSearchContext(queries, results) {
   if (!results?.length) return '';
   const date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -1116,6 +1407,9 @@ INSTRUCTIONS:
   return ctx;
 }
 
+// Builds the collapsible search result panel HTML string rendered above the AI
+// response. Handles both the new grouped format (queries array + grouped results)
+// and the legacy format (single query string) stored in older chat history entries.
 function renderSearchPanel(searchMeta) {
   if (!searchMeta?.results?.length) return '';
   const { provider, results } = searchMeta;
@@ -1151,6 +1445,8 @@ function renderSearchPanel(searchMeta) {
   </div>`;
 }
 
+// Toggles the search result body open/closed by rotating the chevron and
+// toggling the .vis class on the sibling .search-body element.
 function toggleSearch(hdr) {
   hdr.querySelector('.search-chev').classList.toggle('open');
   hdr.nextElementSibling.classList.toggle('vis');
@@ -1158,6 +1454,11 @@ function toggleSearch(hdr) {
 
 // ══════════════════════════════════════════
 // INIT
+// Bootstraps the app on page load: restores keys, chats, settings, and theme
+// from localStorage, populates the default provider's model list, then
+// registers a document-level click handler to close the custom model dropdown
+// whenever the user clicks outside it — avoiding a separate blur handler that
+// would fire before item click events and prevent selection.
 // ══════════════════════════════════════════
 window.onload = async () => {
   loadKeys();
@@ -1165,22 +1466,24 @@ window.onload = async () => {
   loadSettings();
   await populateModels('openrouter');
   updateProviderBadge('openrouter');
-  // Select DeepSeek V3.2 as default model if present
-  const modelSel = document.getElementById('model-sel');
-  const dsOpt = Array.from(modelSel.options).find(o => o.value.includes('deepseek-v3.2') || o.value.includes('deepseek/deepseek-v3.2'));
-  if (dsOpt) modelSel.value = dsOpt.value;
   updatePricePill();
   loadTheme();
-  document.getElementById('model-search').addEventListener('input', function() {
-    const q = this.value.toLowerCase();
-    Array.from(modelSel.options).forEach(opt => {
-      opt.style.display = !q || opt.text.toLowerCase().includes(q) || opt.value.toLowerCase().includes(q) ? '' : 'none';
-    });
+  // Close the custom model dropdown when the user clicks anywhere outside it
+  document.addEventListener('click', function(e) {
+    const wrap = document.getElementById('model-dd-wrap');
+    if (wrap && !wrap.contains(e.target)) {
+      document.getElementById('model-dd-panel')?.classList.remove('open');
+      const trigger = document.getElementById('model-dd-trigger');
+      if (trigger) { trigger.classList.remove('open'); trigger.setAttribute('aria-expanded','false'); }
+    }
   });
 };
 
 // ══════════════════════════════════════════
 // THEME
+// setTheme applies a theme by setting data-theme on <html> (triggering all
+// CSS custom property cascades), persists the choice, and marks the active
+// button in the theme picker. loadTheme reads it back on startup.
 // ══════════════════════════════════════════
 function setTheme(t) {
   document.documentElement.setAttribute('data-theme', t);
@@ -1195,6 +1498,10 @@ function loadTheme() {
 
 // ══════════════════════════════════════════
 // API KEYS
+// Keys are stored in localStorage under 'key_<provider>' and never sent
+// anywhere except the provider's own API endpoint. saveKey also triggers a
+// live model refresh if this is the first key entered for a live provider,
+// so the dropdown immediately populates without requiring a manual refresh.
 // ══════════════════════════════════════════
 function saveKey(p, v) {
   const hadKey = !!getKey(p);
@@ -1224,6 +1531,9 @@ function loadKeys() {
 
 // ══════════════════════════════════════════
 // SETTINGS PANEL
+// toggleSettings opens/closes the panel and mirrors the active state onto the
+// settings icon button. toggleSidebarCollapse shrinks the sidebar to icon-only
+// width and flips the arrow glyph to indicate the toggle direction.
 // ══════════════════════════════════════════
 function toggleSettings() {
   const panel = document.getElementById('settings-panel');
@@ -1231,6 +1541,15 @@ function toggleSettings() {
   panel.classList.toggle('open');
   btn.classList.toggle('active');
 }
+function toggleSidebarCollapse() {
+  const sb = document.getElementById('sidebar');
+  const btn = sb.querySelector('.sidebar-collapse-btn');
+  sb.classList.toggle('collapsed');
+  btn.textContent = sb.classList.contains('collapsed') ? '▶' : '◀';
+}
+// Persists UI parameters to mc_settings in localStorage. Explicitly reads and
+// re-merges existing web search settings so that saveSettings() (called by
+// slider/textarea oninput handlers) never accidentally clobbers them.
 function saveSettings() {
   const existing = JSON.parse(localStorage.getItem('mc_settings') || '{}');
   const s = {
@@ -1245,6 +1564,9 @@ function saveSettings() {
   };
   localStorage.setItem('mc_settings', JSON.stringify(s));
 }
+// Restores all settings sliders, system prompt textarea, and web search config
+// from localStorage. Falls back silently to defaults if the key is absent or
+// the JSON is malformed, so first-time users see sensible initial values.
 function loadSettings() {
   try {
     const s = JSON.parse(localStorage.getItem('mc_settings') || '{}');
@@ -1264,6 +1586,8 @@ function loadSettings() {
   } catch(e) {}
   loadWebSearchSettings();
 }
+// Resets all settings controls to their hardcoded defaults, clears mc_settings
+// from localStorage, and resets the web search UI. Does not clear API keys.
 function resetSettings() {
   document.getElementById('system-prompt').value = '';
   document.getElementById('temp-range').value = 0.7; document.getElementById('temp-val').textContent = '0.70';
@@ -1284,6 +1608,8 @@ function resetSettings() {
   updateSearchIndicator();
   showToast('Settings reset to defaults');
 }
+// Returns a plain object snapshot of the current settings values, used by
+// sendMessage() to build the API payload on each request.
 function getSettings() {
   return {
     systemPrompt: document.getElementById('system-prompt').value.trim(),
@@ -1295,6 +1621,11 @@ function getSettings() {
 
 // ══════════════════════════════════════════
 // RAG FILES (persistent context)
+// Files loaded here are injected into every API request for the session via
+// buildRagContext(). Unlike inline attachments (per-message), RAG files persist
+// across all messages until explicitly removed. Each file is read as text and
+// stored in the ragFiles array; content is capped at 50K chars per file to
+// stay within typical context windows.
 // ══════════════════════════════════════════
 function handleRagDrop(e) {
   e.preventDefault();
@@ -1330,6 +1661,9 @@ function renderRagFileList() {
       <button class="file-chip-del" onclick="removeRagFile(${i})">✕</button>
     </div>`).join('');
 }
+// Refreshes the context preview box and token estimate in the settings panel.
+// Uses a simple length/4 heuristic for token count — accurate enough for the
+// informational display without needing a full tokenizer.
 function updateCtxPreview() {
   const preview = document.getElementById('ctx-preview');
   const tokEl = document.getElementById('ctx-tokens');
@@ -1339,6 +1673,9 @@ function updateCtxPreview() {
   tokEl.textContent = `~${approxTok.toLocaleString()} tokens`;
   preview.textContent = combined.slice(0, 600) + (combined.length > 600 ? '\n…' : '');
 }
+// Concatenates all loaded RAG files into a single fenced-code-block string
+// suitable for injection into the system prompt. Each file is labelled with
+// its filename so the model can reference specific files by name in its answer.
 function buildRagContext() {
   if (!ragFiles.length) return '';
   return ragFiles.map(f =>
@@ -1348,6 +1685,10 @@ function buildRagContext() {
 
 // ══════════════════════════════════════════
 // INLINE ATTACH (per-message)
+// Unlike RAG files, inline attachments are cleared after each message send.
+// They are appended directly to the user message content in buildApiMessages()
+// and shown as chip previews above the textarea. Limited to 1MB per file to
+// avoid oversized payloads on per-message sends.
 // ══════════════════════════════════════════
 function handleFileAttach(fileList) {
   Array.from(fileList).forEach(f => {
@@ -1377,7 +1718,12 @@ function renderAttachedFiles() {
 }
 
 // ══════════════════════════════════════════
-// PROVIDER / MODEL  — live fetch where supported
+// PROVIDER / MODEL — live fetch where supported
+// LIVE_PROVIDERS lists the three providers whose /models endpoints are
+// accessible from the browser (OpenRouter and DeepInfra have open CORS;
+// Groq requires a key but has a fallback via OpenRouter's provider filter).
+// modelCache stores fetched lists keyed by provider for the session lifetime
+// so switching back to a provider doesn't re-fetch unnecessarily.
 // ══════════════════════════════════════════
 
 // Which providers support a live /models endpoint
@@ -1386,6 +1732,51 @@ const LIVE_PROVIDERS = new Set(['groq', 'openrouter', 'deepinfra']);
 // Cache fetched model lists per provider for the session
 const modelCache = {};
 
+// ── Custom model dropdown logic ──
+// toggleModelDropdown opens/closes the panel and auto-focuses the search input
+// so the user can start typing a model name immediately without an extra click.
+function toggleModelDropdown() {
+  const panel   = document.getElementById('model-dd-panel');
+  const trigger = document.getElementById('model-dd-trigger');
+  const isOpen  = panel.classList.toggle('open');
+  trigger.classList.toggle('open', isOpen);
+  trigger.setAttribute('aria-expanded', isOpen);
+  if (isOpen) {
+    // Auto-focus search so user can type immediately
+    const s = document.getElementById('model-search');
+    if (s) { s.value = ''; filterModelList(''); s.focus(); }
+  }
+}
+
+// Filters visible dropdown items by matching the typed query against both the
+// display name and model ID (data-name + data-id), so users can search by
+// partial ID (e.g. "deepseek") or friendly name (e.g. "reasoning").
+function filterModelList(q) {
+  q = q.toLowerCase();
+  document.querySelectorAll('#model-dd-list .model-dd-item').forEach(item => {
+    const haystack = (item.dataset.name + ' ' + item.dataset.id).toLowerCase();
+    item.style.display = !q || haystack.includes(q) ? '' : 'none';
+  });
+}
+
+// Handles model item click: syncs the hidden <select> value so all downstream
+// JS that reads model-sel.value picks up the new model, updates the trigger
+// label, marks the clicked item as .selected (deselecting all others), closes
+// the panel, and refreshes the price pill in the header.
+function selectModel(id, name, price) {
+  const sel = document.getElementById('model-sel');
+  if (sel) sel.value = id;
+  const label = document.getElementById('model-dd-label');
+  if (label) label.textContent = name;
+  document.querySelectorAll('#model-dd-list .model-dd-item').forEach(el => {
+    el.classList.toggle('selected', el.dataset.id === id);
+  });
+  document.getElementById('model-dd-panel')?.classList.remove('open');
+  const trigger = document.getElementById('model-dd-trigger');
+  if (trigger) { trigger.classList.remove('open'); trigger.setAttribute('aria-expanded','false'); }
+  updatePricePill();
+}
+
 async function onProviderChange(forceRefresh = false) {
   const p = document.getElementById('prov-sel').value;
   updateProviderBadge(p);
@@ -1393,6 +1784,11 @@ async function onProviderChange(forceRefresh = false) {
   await populateModels(p);
 }
 
+// Dual-populates models for the selected provider: first attempts a live fetch
+// (cached for the session), falls back to the static PROVIDERS list. Then writes
+// both the hidden <select> options (for .value reads) and the visible custom
+// dropdown list items (for display + search). Also updates the source badge
+// to indicate whether the list is live or static.
 async function populateModels(p) {
   const sel = document.getElementById('model-sel');
   sel.innerHTML = `<option disabled>Loading models…</option>`;
@@ -1413,22 +1809,44 @@ async function populateModels(p) {
   // Fall back to static list
   if (!models) models = PROVIDERS[p]?.models || [];
 
+  // Populate hidden <select> so all existing JS (.value reads) continue to work
   sel.innerHTML = models.map(m =>
     `<option value="${m.id}" data-price="${m.p||''}" title="${m.id}">${m.name}</option>`
   ).join('');
 
+  // Populate the custom visible dropdown list
+  const ddList = document.getElementById('model-dd-list');
+  if (ddList) {
+    ddList.innerHTML = models.map(m =>
+      `<div class="model-dd-item" data-id="${esc(m.id)}" data-name="${esc(m.name)}" data-price="${esc(m.p||'')}"
+            onclick="selectModel('${esc(m.id)}','${esc(m.name)}','${esc(m.p||'')}')"
+            role="option">${esc(m.name)}</div>`
+    ).join('');
+  }
+
+  // Show first model as selected in trigger label; mark it in the list
+  const first = models[0];
+  if (first) {
+    const label = document.getElementById('model-dd-label');
+    if (label) label.textContent = first.name;
+    ddList?.querySelector('.model-dd-item')?.classList.add('selected');
+  }
+
+  // Clear search input on provider switch so list resets
   const msearch = document.getElementById('model-search');
   if (msearch) msearch.value = '';
 
   updatePricePill();
-  sel.onchange = updatePricePill;
 
-  // Show source indicator
-  // Show source indicator
+  // Show source indicator (live fetch vs static list)
   const isLive = canFetchLive && modelCache[p];
   updateModelSourceBadge(p, models.length, isLive);
 }
 
+// Fetches the live model list for a provider. Tries the provider's own /models
+// endpoint first; catches CORS/network failures and falls back to the OpenRouter
+// proxy for Groq (which has permissive CORS and lists all Groq-hosted models).
+// Returns null on total failure so populateModels() falls back to the static list.
 async function fetchLiveModels(provider) {
   const key = getKey(provider);
   // OpenRouter and DeepInfra endpoints are public, no key required to list models
@@ -1969,7 +2387,8 @@ async function sendMessage() {
     try {
       // Phase 1: LLM plans search queries
       setTypingSearchStatus('Planning search…');
-      const plan = await planSearchQueries(text, provider, model, apiKey);
+      const currentModel = document.getElementById('model-sel').value;
+      const plan = await planSearchQueries(text, provider, currentModel, apiKey);
 
       let queriesToRun = plan.search_queries;
       const shouldSearch = wss.webSearchMode === 'always'
@@ -2105,6 +2524,8 @@ async function sendMessage() {
     showToast('❌ ' + (err.message||'Request failed'),'err');
     chat.messages.pop();
     renderMessages();
+    input.value = text;
+    autoResize(input);
   } finally {
     isStreaming = false;
     document.getElementById('send-btn').disabled = false;
