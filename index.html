@@ -285,6 +285,28 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 .msg-row:hover .msg-edit-btn{opacity:1;}
 .msg-edit-btn:hover{opacity:1!important;color:var(--accent);}
 
+.msg-copy-pill{
+  display:inline-flex;align-items:center;gap:5px;margin-top:9px;
+  padding:5px 13px;background:var(--bg3);border:1px solid var(--border);border-radius:20px;
+  font-size:12px;font-weight:500;color:var(--text2);font-family:var(--font-body);
+  cursor:pointer;opacity:0;transition:opacity 0.15s,background 0.15s,color 0.15s,border-color 0.15s;
+  line-height:1;
+}
+.msg-row:hover .msg-copy-pill{opacity:1;}
+.msg-copy-pill:hover{background:var(--border2);color:var(--text);border-color:var(--border2);}
+.msg-copy-pill:active{transform:scale(0.97);}
+.model-search{
+  width:100%;padding:5px 10px 5px 28px;
+  background:var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") no-repeat 8px center;
+  border:1px solid var(--border);border-bottom:1px solid var(--border2);border-radius:var(--radius) var(--radius) 0 0;
+  color:var(--text);font-family:var(--font-body);font-size:12px;
+  outline:none;margin-bottom:0;transition:border-color 0.15s,box-shadow 0.15s;
+}
+.model-search:focus{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-bg);}
+.model-search::placeholder{color:var(--text3);}
+.citation-link{color:var(--accent);font-family:var(--font-mono);font-size:11px;font-weight:600;text-decoration:none;background:var(--accent-bg);border:1px solid var(--accent-border);border-radius:3px;padding:0 3px;white-space:nowrap;}
+.citation-link:hover{text-decoration:underline;}
+
 /* ── Welcome ── */
 #welcome{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:40px 22px;text-align:center;}
 .wlc-icon{width:50px;height:50px;background:var(--accent);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;color:white;margin-bottom:18px;box-shadow:0 4px 20px var(--accent-bg);}
@@ -506,10 +528,13 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
       </select>
       <span class="sel-chev">▾</span>
     </div>
-    <div class="sel-wrap" style="display:flex;align-items:center;">
-      <select class="hdr-select" id="model-sel" style="max-width:300px;"></select>
-      <span class="sel-chev" style="right: 30px;">▾</span>
-      <button class="icon-btn" onclick="onProviderChange(true)" title="Refresh live models" style="width:24px;height:24px;margin-left:4px;background:transparent;border:none;">🔄</button>
+    <div class="sel-wrap" style="display:flex;flex-direction:column;">
+      <input class="model-search" id="model-search" placeholder="Search models…" type="text">
+      <div style="position:relative;display:flex;align-items:center;">
+        <select class="hdr-select" id="model-sel" style="max-width:300px;"></select>
+        <span class="sel-chev" style="right:30px;">▾</span>
+        <button class="icon-btn" onclick="onProviderChange(true)" title="Refresh live models" style="width:24px;height:24px;margin-left:4px;background:transparent;border:none;">🔄</button>
+      </div>
     </div>
 
     <div class="hdr-divider"></div>
@@ -570,8 +595,13 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
     </div>
     <div class="input-footer">
       <span class="input-hint"><kbd>Enter</kbd> new line · tap <strong>↑</strong> to send</span>
-      <span id="search-indicator"></span>
-      <span class="tok-count" id="tok-count">0 tokens</span>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span id="search-indicator"></span>
+        <span class="tok-count" id="query-stats" style="display:none;"></span>
+        <span class="tok-count" id="footer-sep" style="display:none;color:var(--border2);">│</span>
+        <span class="tok-count" id="conv-stats" style="display:none;"></span>
+        <span class="tok-count" id="tok-count">0 tokens</span>
+      </div>
     </div>
   </div>
 </div>
@@ -1129,6 +1159,12 @@ window.onload = async () => {
   if (dsOpt) modelSel.value = dsOpt.value;
   updatePricePill();
   loadTheme();
+  document.getElementById('model-search').addEventListener('input', function() {
+    const q = this.value.toLowerCase();
+    Array.from(modelSel.options).forEach(opt => {
+      opt.style.display = !q || opt.text.toLowerCase().includes(q) || opt.value.toLowerCase().includes(q) ? '' : 'none';
+    });
+  });
 };
 
 // ══════════════════════════════════════════
@@ -1368,6 +1404,9 @@ async function populateModels(p) {
   sel.innerHTML = models.map(m =>
     `<option value="${m.id}" data-price="${m.p||''}" title="${m.id}">${m.name}</option>`
   ).join('');
+
+  const msearch = document.getElementById('model-search');
+  if (msearch) msearch.value = '';
 
   updatePricePill();
   sel.onchange = updatePricePill;
@@ -1660,8 +1699,23 @@ function newChat() {
   showWelcome();
   attachedFiles = [];
   renderAttachedFiles();
+  resetFooterStats();
 }
-function loadChat(id) { currentChatId = id; renderChatList(); renderMessages(); }
+function loadChat(id) {
+  currentChatId = id;
+  renderChatList();
+  renderMessages();
+  const chat = conversations[id];
+  if (chat && chat.totalTokens) {
+    updateFooterStats(0, 0, chat.totalTokens, chat.totalCost || 0);
+    const qs = document.getElementById('query-stats');
+    const sep = document.getElementById('footer-sep');
+    if (qs) qs.style.display = 'none';
+    if (sep) sep.style.display = 'none';
+  } else {
+    resetFooterStats();
+  }
+}
 function saveChats() { try { localStorage.setItem('mc_chats', JSON.stringify(conversations)); } catch(e) {} }
 function loadChats() {
   try { const s = localStorage.getItem('mc_chats'); if(s) conversations = JSON.parse(s); } catch(e) {}
@@ -1808,6 +1862,9 @@ function buildMsgHTML(m, msgIndex) {
   const editBtn = isUser && msgIndex !== undefined
     ? `<button class="msg-edit-btn" onclick="startEditMessage(${msgIndex})" title="Edit and resubmit">✏️</button>`
     : '';
+  const copyPill = !isUser && msgIndex !== undefined
+    ? `<button class="msg-copy-pill" onclick="copyMsg(${msgIndex})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button>`
+    : '';
 
   const name = isUser
     ? `<span class="msg-name">You</span>${editBtn}`
@@ -1816,7 +1873,8 @@ function buildMsgHTML(m, msgIndex) {
   return `<div class="msg-row"><div class="msg-inner">${av}<div class="msg-body">
     <div class="msg-meta">${name}</div>
     ${attachHTML}${searchHTML}${thinkHTML}
-    <div class="msg-text">${fmtText(m.content||'')}</div>
+    <div class="msg-text">${fmtText(m.content||'', m.searchMeta)}</div>
+    ${copyPill}
   </div></div></div>`;
 }
 function toggleThink(hdr) {
@@ -1979,6 +2037,7 @@ async function sendMessage() {
     const reader = resp.body.getReader();
     const dec = new TextDecoder();
     let buf = '';
+    let lastUsage = null;
 
     while(true) {
       const {done, value} = await reader.read();
@@ -1991,6 +2050,7 @@ async function sendMessage() {
         if(data==='[DONE]') continue;
         try {
           const j = JSON.parse(data);
+          if(j.usage) lastUsage = j.usage;
           const d = j.choices?.[0]?.delta;
           if(!d) continue;
           const thDelta = d.reasoning_content || d.thinking || '';
@@ -2006,6 +2066,25 @@ async function sendMessage() {
     aiMsg.thinking = (aiMsg.thinking + extractThink(aiMsg.content)).trim();
     if (lastSearchMeta) aiMsg.searchMeta = lastSearchMeta;
     lastSearchMeta = null;
+
+    if (lastUsage) {
+      const sel = document.getElementById('model-sel');
+      const priceStr = sel.options[sel.selectedIndex]?.dataset?.price || '';
+      const promptTok = lastUsage.prompt_tokens || 0;
+      const compTok = lastUsage.completion_tokens || 0;
+      let queryCost = 0;
+      if (priceStr && priceStr !== 'FREE' && priceStr !== '$0/$0') {
+        const parts = priceStr.replace(/\$/g, '').split('/');
+        const inP = parseFloat(parts[0]) || 0;
+        const outP = parseFloat(parts[1]) || 0;
+        queryCost = (promptTok * inP / 1e6) + (compTok * outP / 1e6);
+      }
+      aiMsg.usage = {prompt_tokens: promptTok, completion_tokens: compTok, cost: queryCost};
+      chat.totalTokens = (chat.totalTokens || 0) + promptTok + compTok;
+      chat.totalCost = (chat.totalCost || 0) + queryCost;
+      updateFooterStats(promptTok + compTok, queryCost, chat.totalTokens, chat.totalCost);
+    }
+
     saveChats();
     renderMessages();
 
@@ -2040,16 +2119,27 @@ function buildApiMessages(chatMessages, snapAttach, systemPrompt, searchContext 
   chatMessages.forEach((m, idx) => {
     const isLast = idx === chatMessages.length - 1;
     let content = m.content || '';
-    // Inject inline attachments for last user message
-    if (m.role === 'user' && isLast && snapAttach.length) {
-      const attachCtx = snapAttach.map(f =>
-        `\n\n### Attached: ${f.name}\n\`\`\`\n${f.content.slice(0,20000)}\n\`\`\``
-      ).join('');
-      content = content + attachCtx;
-    } else if (m.role === 'user' && m.attachments?.length && !isLast) {
-      // for prior messages, include a brief mention
-      const names = m.attachments.map(a=>a.name).join(', ');
-      content = content + (content ? '\n' : '') + `[Attached files: ${names}]`;
+    if (m.role === 'user') {
+      // Re-inject search context from the assistant reply that followed this message
+      if (!isLast) {
+        const nextMsg = chatMessages[idx + 1];
+        if (nextMsg?.role === 'assistant' && nextMsg?.searchMeta?.results?.length) {
+          const sm = nextMsg.searchMeta;
+          const grouped = sm.grouped || sm.results.map(r => ({query: sm.query || '', items: [r]}));
+          const histCtx = formatSearchContext(sm.queries || (sm.query ? [sm.query] : []), grouped);
+          if (histCtx) content = content + '\n\n' + histCtx;
+        }
+      }
+      // Inject inline attachments for last user message
+      if (isLast && snapAttach.length) {
+        const attachCtx = snapAttach.map(f =>
+          `\n\n### Attached: ${f.name}\n\`\`\`\n${f.content.slice(0,20000)}\n\`\`\``
+        ).join('');
+        content = content + attachCtx;
+      } else if (m.attachments?.length && !isLast) {
+        const names = m.attachments.map(a=>a.name).join(', ');
+        content = content + (content ? '\n' : '') + `[Attached files: ${names}]`;
+      }
     }
     apiMsgs.push({role: m.role, content});
   });
@@ -2132,7 +2222,7 @@ function stripThink(t) {
 // ══════════════════════════════════════════
 // TEXT FORMAT (markdown-lite)
 // ══════════════════════════════════════════
-function fmtText(text) {
+function fmtText(text, searchMeta) {
   if (!text) return '';
   text = text.replace(/```(\w*)\n?([\s\S]*?)```/g, (_,l,c) => `<pre><code>${esc(c.trim())}</code></pre>`);
   text = text.replace(/`([^`\n]+)`/g, (_,c) => `<code>${esc(c)}</code>`);
@@ -2151,6 +2241,15 @@ function fmtText(text) {
     const items = m.trim().split('\n').map(l=>`<li>${l.replace(/^\d+\. /,'')}</li>`).join('');
     return `<ol>${items}</ol>`;
   });
+  if (searchMeta?.results?.length) {
+    const results = searchMeta.results;
+    text = text.replace(/\[(\d+)\]/g, (match, n) => {
+      const r = results[parseInt(n) - 1];
+      return r?.url
+        ? `<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer" class="citation-link">[${n}]</a>`
+        : match;
+    });
+  }
   text = text.replace(/\n/g,'<br>');
   return text;
 }
@@ -2244,6 +2343,32 @@ document.addEventListener('touchmove', e => {
   if (msgs && msgs.contains(e.target) && msgs.scrollTop > 0) return;
 }, { passive: false });
 
+function copyMsg(msgIndex) {
+  const chat = currentChatId && conversations[currentChatId];
+  if (!chat) return;
+  const msg = chat.messages[msgIndex];
+  if (!msg) return;
+  navigator.clipboard.writeText(msg.content || '').then(() => showToast('Copied to clipboard'));
+}
+function updateFooterStats(queryTok, queryCost, totalTok, totalCost) {
+  const qs = document.getElementById('query-stats');
+  const cs = document.getElementById('conv-stats');
+  const sep = document.getElementById('footer-sep');
+  if (!qs || !cs || !sep) return;
+  if (queryTok > 0) {
+    qs.textContent = `${queryTok.toLocaleString()} tok · $${queryCost.toFixed(4)}`;
+    qs.style.display = '';
+    sep.style.display = '';
+  }
+  cs.textContent = `Σ ${totalTok.toLocaleString()} tok · $${totalCost.toFixed(4)}`;
+  cs.style.display = '';
+}
+function resetFooterStats() {
+  ['query-stats','footer-sep','conv-stats'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+}
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function wordCount(t) { return (t||'').trim().split(/\s+/).filter(Boolean).length; }
 function fmtSize(b) { return b>1024*1024?(b/1024/1024).toFixed(1)+'MB':b>1024?(b/1024).toFixed(0)+'KB':b+'B'; }
