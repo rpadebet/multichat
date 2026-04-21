@@ -2100,19 +2100,20 @@ async function sendMessage() {
 }
 
 function buildApiMessages(chatMessages, snapAttach, systemPrompt, searchContext = null) {
-  // Build system message combining: user system prompt + RAG files + web search context
   const ragCtx = buildRagContext();
-  let sysContent = '';
-  if (systemPrompt) sysContent += systemPrompt + '\n\n';
-  if (ragCtx) sysContent += `You have been provided the following files as context. Use them to answer questions:\n\n${ragCtx}`;
-  if (searchContext) sysContent += (sysContent ? '\n\n' : '') + searchContext;
-
   const isReasoner = /r1|qwq|think|reason|m2|gpt-oss|qwen3|glm/i.test(document.getElementById('model-sel').value);
   const defaultSys = isReasoner
-    ? `You are a helpful, knowledgeable assistant. Think carefully but output ONLY your clean final answer — no <think> tags, no reasoning prefixes. Use clear markdown formatting.`
-    : `You are a helpful, knowledgeable assistant. Use clear markdown formatting.`;
+    ? `You are a helpful, knowledgeable assistant. Today's date is ${new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})}. Think carefully but output ONLY your clean final answer — no <think> tags, no reasoning prefixes. Use clear markdown formatting.`
+    : `You are a helpful, knowledgeable assistant. Today's date is ${new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})}. Use clear markdown formatting.`;
 
-  const finalSys = sysContent.trim() || defaultSys;
+  // Always start with the role/identity instruction, then append supplementary context.
+  // Using || defaultSys was wrong: when searchContext existed without a user systemPrompt,
+  // sysContent was truthy (just raw results), so defaultSys was silently dropped and the
+  // model received no role identity, causing it to ignore the injected search data.
+  const sysParts = [systemPrompt || defaultSys];
+  if (ragCtx) sysParts.push(`You have been provided the following files as context. Use them to answer questions:\n\n${ragCtx}`);
+  if (searchContext) sysParts.push(searchContext);
+  const finalSys = sysParts.join('\n\n');
 
   const apiMsgs = [{role:'system', content: finalSys}];
 
