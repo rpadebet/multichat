@@ -993,7 +993,7 @@ async function searchTavily(query, apiKey) {
   const resp = await fetch('https://api.tavily.com/search', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ api_key: apiKey, query, search_depth: 'basic', max_results: 5 })
+    body: JSON.stringify({ api_key: apiKey, query, search_depth: 'advanced', max_results: 5 })
   });
   if (!resp.ok) {
     const err = await resp.json().catch(() => ({}));
@@ -1070,7 +1070,7 @@ You MUST output ONLY a raw JSON object. No markdown. No explanation. No code fen
         max_tokens: 200,
         temperature: 0.1,
         stream: false,
-        ...(provider === 'openrouter')
+        ...(provider === 'openrouter' && { transforms: [], provider: { ignore: ['Amazon Bedrock'] } })
       })
     });
     if (!resp.ok) throw new Error(`Planner HTTP ${resp.status}`);
@@ -2024,7 +2024,12 @@ async function sendMessage() {
     temperature: settings.temperature,
     top_p: settings.topP,
   };
-
+  if (provider === 'minimax') payload.extra_body = {reasoning_split: true};
+  // For OpenRouter: prefer direct provider over Bedrock/Vertex to avoid their PII Guardrails
+  if (provider === 'openrouter') {
+    payload.transforms = [];
+    payload.provider = { ignore: ['Amazon Bedrock'] };
+  }
 
   try {
     const resp = await fetch(PROVIDERS[provider].url + '/chat/completions', {

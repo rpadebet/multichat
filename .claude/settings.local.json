@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh pr create --title 'feat: copy button, model search, token/cost tracking, persistent search context & citation links' --body ' *)",
+      "Bash(where gh *)",
+      "Bash(winget list *)",
+      "PowerShell(Get-Command gh -ErrorAction SilentlyContinue)",
+      "PowerShell(Get-ChildItem \"C:\\\\Program Files\\\\GitHub CLI\",\"$env:LOCALAPPDATA\\\\Programs\\\\GitHub CLI\",\"C:\\\\Program Files \\(x86\\)\\\\GitHub CLI\" -Filter gh.exe -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName)",
+      "PowerShell($env:GITHUB_TOKEN; [System.Environment]::GetEnvironmentVariable\\(\"GITHUB_TOKEN\", \"User\"\\); [System.Environment]::GetEnvironmentVariable\\(\"GH_TOKEN\", \"User\"\\))",
+      "PowerShell(Get-Content \"$env:APPDATA\\\\GitHub CLI\\\\hosts.yml\" -ErrorAction SilentlyContinue; Get-Content \"$env:LOCALAPPDATA\\\\GitHub\\\\hosts.yml\" -ErrorAction SilentlyContinue)",
+      "Bash(git -C \"C:\\\\Users\\\\rohit\\\\OneDrive\\\\Documents\\\\Claude Apps\\\\multichat\\\\.claude\\\\worktrees\\\\eloquent-meninsky-820a6f\" config --list)",
+      "Bash(git credential *)"
+    ]
+  }
+}
