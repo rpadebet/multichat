@@ -993,15 +993,18 @@ async function searchTavily(query, apiKey) {
   const resp = await fetch('https://api.tavily.com/search', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ api_key: apiKey, query, search_depth: 'basic', max_results: 5, include_answer: true })
+    body: JSON.stringify({ api_key: apiKey, query, search_depth: 'advanced', max_results: 5 })
   });
   if (!resp.ok) {
     const err = await resp.json().catch(() => ({}));
     throw new Error(err?.detail || err?.message || `Tavily HTTP ${resp.status}`);
   }
   const data = await resp.json();
-  const results = (data.results || []).map(r => ({ title: r.title || '', url: r.url || '', snippet: r.content || '' }));
-  if (data.answer) results.unshift({ title: 'Direct Answer', url: '', snippet: data.answer });
+  const results = (data.results || []).map(r => ({
+    title: r.title || '',
+    url: r.url || '',
+    snippet: (r.content || '').slice(0, 800)
+  }));
   return results;
 }
 
@@ -1066,7 +1069,8 @@ You MUST output ONLY a raw JSON object. No markdown. No explanation. No code fen
         ],
         max_tokens: 200,
         temperature: 0.1,
-        stream: false
+        stream: false,
+        ...(provider === 'openrouter' && { transforms: [], provider: { ignore: ['Amazon Bedrock'] } })
       })
     });
     if (!resp.ok) throw new Error(`Planner HTTP ${resp.status}`);
@@ -1100,7 +1104,15 @@ function formatSearchContext(queries, results) {
       idx++;
     });
   });
-  ctx += `[End of search results. Answer accurately using the above. Cite sources by number, e.g. [1], when referencing specific facts.]`;
+  ctx += `[End of search results.
+INSTRUCTIONS:
+- Summarize the news and information from the titles and snippets above — headlines and titles ARE facts you can report.
+- Cite the source number [N] after each piece of information drawn from that source.
+- You may draw reasonable inferences from a headline (e.g. if the title says "X happened", report that X happened).
+- IMPORTANT: If any snippet contains placeholder text like [PERSON_NAME], [ADDRESS], or [LOCATION], resolve these using the search queries listed above and the article titles — the queries name the specific people and places being discussed. Always use the actual names in your response, never repeat placeholder text.
+- Do NOT invent specific details (exact numbers, direct quotes, casualty figures) that do not appear anywhere in the snippets.
+- If something is not mentioned at all in any snippet or title, say so rather than guessing.
+- Do NOT assign citation numbers randomly — only cite [N] if that source's title or snippet actually mentions the fact.]`;
   return ctx;
 }
 
@@ -2013,6 +2025,11 @@ async function sendMessage() {
     top_p: settings.topP,
   };
   if (provider === 'minimax') payload.extra_body = {reasoning_split: true};
+  // For OpenRouter: prefer direct provider over Bedrock/Vertex to avoid their PII Guardrails
+  if (provider === 'openrouter') {
+    payload.transforms = [];
+    payload.provider = { ignore: ['Amazon Bedrock'] };
+  }
 
   try {
     const resp = await fetch(PROVIDERS[provider].url + '/chat/completions', {
@@ -2102,9 +2119,10 @@ async function sendMessage() {
 function buildApiMessages(chatMessages, snapAttach, systemPrompt, searchContext = null) {
   const ragCtx = buildRagContext();
   const isReasoner = /r1|qwq|think|reason|m2|gpt-oss|qwen3|glm/i.test(document.getElementById('model-sel').value);
+  const noPlaceholders = `Never replace real names, places, or entities with placeholders like [PERSON_NAME], [ADDRESS], [LOCATION], or similar. Always use the actual names as provided in the user message or search context.`;
   const defaultSys = isReasoner
-    ? `You are a helpful, knowledgeable assistant. Today's date is ${new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})}. Think carefully but output ONLY your clean final answer — no <think> tags, no reasoning prefixes. Use clear markdown formatting.`
-    : `You are a helpful, knowledgeable assistant. Today's date is ${new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})}. Use clear markdown formatting.`;
+    ? `You are a helpful, knowledgeable assistant. Today's date is ${new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})}. ${noPlaceholders} Think carefully but output ONLY your clean final answer — no <think> tags, no reasoning prefixes. Use clear markdown formatting.`
+    : `You are a helpful, knowledgeable assistant. Today's date is ${new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})}. ${noPlaceholders} Use clear markdown formatting.`;
 
   // Always start with the role/identity instruction, then append supplementary context.
   // Using || defaultSys was wrong: when searchContext existed without a user systemPrompt,
