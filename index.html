@@ -128,6 +128,40 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 .chat-item:hover{background:var(--bg3);color:var(--text);}
 .chat-item.active{background:var(--surface);color:var(--text);border-color:var(--border);}
 
+/* ── Chat list search ── */
+.chat-search{width:100%;padding:6px 8px 6px 26px;background:var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") no-repeat 8px center;border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:var(--font-body);font-size:13px;outline:none;transition:border-color 0.15s;margin-bottom:6px;}
+.chat-search:focus{border-color:var(--accent);}
+.chat-search::placeholder{color:var(--text3);}
+
+/* ── Chat group headers ── */
+.chat-group-header{padding:5px 8px 3px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.9px;color:var(--text3);}
+
+/* ── Chat item with actions ── */
+.chat-item{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:7px 9px;border-radius:var(--radius);cursor:pointer;font-size:13px;color:var(--text2);transition:all 0.14s;margin-bottom:1px;border:1px solid transparent;}
+.chat-item:hover{background:var(--bg3);color:var(--text);}
+.chat-item.active{background:var(--surface);color:var(--text);border-color:var(--border);}
+.chat-item-info{flex:1;min-width:0;overflow:hidden;}
+.chat-item-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.35;}
+.chat-item-date{font-size:10px;color:var(--text3);line-height:1.3;margin-top:1px;}
+.chat-item-actions{display:flex;align-items:center;gap:3px;flex-shrink:0;opacity:0;transition:opacity 0.15s;}
+.chat-item:hover .chat-item-actions{opacity:1;}
+.chat-action-btn{width:20px;height:20px;border:none;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--text3);border-radius:4px;transition:all 0.12s;padding:0;}
+.chat-action-btn:hover{background:var(--bg2);color:var(--text);}
+.chat-action-btn.pin-btn:hover{color:var(--accent);}
+.chat-action-btn.del-btn:hover{color:var(--red);}
+
+/* ── Delete confirmation strip ── */
+.chat-confirm-strip{padding:6px 9px;border-radius:var(--radius);background:rgba(192,57,43,0.06);border:1px solid rgba(192,57,43,0.2);display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:1px;}
+.chat-confirm-msg{font-size:12px;color:var(--red);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.chat-confirm-actions{display:flex;gap:6px;flex-shrink:0;}
+.chat-confirm-btn{padding:3px 9px;font-size:11px;border-radius:var(--radius);border:1px solid var(--border);cursor:pointer;font-family:var(--font-body);background:var(--surface);color:var(--text2);transition:all 0.12s;}
+.chat-confirm-btn:hover{background:var(--bg3);color:var(--text);}
+.chat-confirm-delete{background:var(--red);color:white;border-color:var(--red);}
+.chat-confirm-delete:hover{background:#a93226;}
+
+/* ── Chat info bar (message area) ── */
+.chat-info-bar{max-width:800px;margin:0 auto;padding:8px 22px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text3);text-align:center;}
+
 /* ── API Keys panel ── */
 .api-panel{border-top:1px solid var(--border);padding:12px 12px 14px;}
 .panel-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.9px;color:var(--text3);margin-bottom:8px;}
@@ -607,6 +641,13 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
   #send-btn,.attach-btn{width:40px;height:40px;}
   #chat-input{font-size:16px;} /* prevents iOS zoom on focus */
   .chat-item{padding:10px 9px;font-size:14px;}
+  .chat-item-actions{opacity:1!important;}
+  .chat-action-btn{width:28px;height:28px;font-size:14px;}
+  .chat-confirm-strip{flex-direction:column;align-items:flex-start;padding:8px;gap:6px;}
+  .chat-confirm-msg{white-space:normal;font-size:13px;}
+  .chat-confirm-actions{width:100%;justify-content:stretch;}
+  .chat-confirm-btn{flex:1;padding:8px;font-size:13px;}
+  .chat-search{font-size:16px;padding:8px 10px 8px 28px;}
   .sug-card{padding:14px;}
 
   /* Header wrapping */
@@ -673,7 +714,8 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
   <!-- Scrollable conversation list — populated by renderChatList() on every
        chat create/load/save operation. -->
   <div class="chat-list-wrap">
-    <div class="sec-label">Recent</div>
+    <div class="sec-label">Chats</div>
+    <input type="text" class="chat-search" id="chat-search" placeholder="Search chats…" oninput="filterChatList(this.value)"/>
     <div id="chat-list"></div>
   </div>
 
@@ -2480,7 +2522,7 @@ function updateThinkLabel() {
 // ══════════════════════════════════════════
 function newChat() {
   const id = 'c' + Date.now();
-  conversations[id] = {title:'New conversation', messages:[], updatedAt: Date.now()};
+  conversations[id] = {title:'New conversation', messages:[], createdAt: Date.now(), updatedAt: Date.now(), pinned: false};
   currentChatId = id;
   saveChats();
   renderChatList();
@@ -2493,6 +2535,7 @@ function loadChat(id) {
   currentChatId = id;
   renderChatList();
   renderMessages();
+  renderChatInfoBar(id);
   const chat = conversations[id];
   if (chat && chat.totalTokens) {
     updateFooterStats(0, 0, chat.totalTokens, chat.totalCost || 0);
@@ -2506,14 +2549,228 @@ function loadChat(id) {
 }
 function saveChats() { try { localStorage.setItem('mc_chats', JSON.stringify(conversations)); } catch(e) {} debouncedPushSync(); }
 function loadChats() {
-  try { const s = localStorage.getItem('mc_chats'); if(s) conversations = JSON.parse(s); } catch(e) {}
+  try {
+    const s = localStorage.getItem('mc_chats');
+    if (s) {
+      conversations = JSON.parse(s);
+      // Migration: ensure createdAt and pinned exist on legacy chats
+      let migrated = false;
+      for (const [id, chat] of Object.entries(conversations)) {
+        if (!chat.createdAt) {
+          // Derive from chat ID ('c' + timestamp) or fall back to updatedAt
+          const derived = id.startsWith('c') ? parseInt(id.slice(1)) : (chat.updatedAt || Date.now());
+          chat.createdAt = derived;
+          migrated = true;
+        }
+        if (typeof chat.pinned !== 'boolean') {
+          chat.pinned = false;
+          migrated = true;
+        }
+      }
+      if (migrated) saveChats();
+    }
+  } catch(e) {}
   renderChatList();
 }
+let _chatFilterQuery = '';
+let _confirmDeleteId = null;
+
 function renderChatList() {
-  document.getElementById('chat-list').innerHTML =
-    Object.keys(conversations).reverse().map(id =>
-      `<div class="chat-item ${id===currentChatId?'active':''}" onclick="loadChat('${id}')">${esc(conversations[id].title)}</div>`
-    ).join('');
+  const list = document.getElementById('chat-list');
+  const groups = getChatGroups(conversations, _chatFilterQuery);
+
+  let html = '';
+  groups.forEach(g => {
+    html += `<div class="chat-group-header">${esc(g.label)}</div>`;
+    g.items.forEach(id => {
+      const chat = conversations[id];
+      const isActive = id === currentChatId;
+      const isConfirming = _confirmDeleteId === id;
+      const ts = chat.updatedAt || chat.createdAt || Date.now();
+      const dateText = fmtRelativeDate(ts) + ' · ' + fmtTime(ts);
+
+      if (isConfirming) {
+        html += `<div class="chat-confirm-strip">
+          <span class="chat-confirm-msg">Delete "${esc(chat.title)}" from all devices?</span>
+          <div class="chat-confirm-actions">
+            <button class="chat-confirm-btn" onclick="event.stopPropagation();confirmDelete('${id}',false)">Cancel</button>
+            <button class="chat-confirm-btn chat-confirm-delete" onclick="event.stopPropagation();confirmDelete('${id}',true)">Delete</button>
+          </div>
+        </div>`;
+      } else {
+        html += `<div class="chat-item ${isActive?'active':''}" onclick="loadChat('${id}')">
+          <div class="chat-item-info">
+            <div class="chat-item-title">${esc(chat.title)}</div>
+            <div class="chat-item-date">${esc(dateText)}</div>
+          </div>
+          <div class="chat-item-actions">
+            <button class="chat-action-btn pin-btn" onclick="event.stopPropagation();togglePin('${id}')" title="${chat.pinned?'Unpin':'Pin'}">${chat.pinned?'★':'☆'}</button>
+            <button class="chat-action-btn del-btn" onclick="event.stopPropagation();confirmDelete('${id}',true)" title="Delete">🗑</button>
+          </div>
+        </div>`;
+      }
+    });
+  });
+
+  if (!groups.length) {
+    html = `<div style="padding:12px 8px;font-size:12px;color:var(--text3);text-align:center;">No chats found</div>`;
+  }
+
+  list.innerHTML = html;
+}
+
+function togglePin(id) {
+  const chat = conversations[id];
+  if (!chat) return;
+  chat.pinned = !chat.pinned;
+  saveChats();
+  renderChatList();
+  showToast(chat.pinned ? '★ Pinned' : '☆ Unpinned');
+}
+
+function confirmDelete(id, show) {
+  if (show && _confirmDeleteId === id) {
+    _confirmDeleteId = null;
+    deleteChat(id);
+    return;
+  }
+  _confirmDeleteId = show ? id : null;
+  renderChatList();
+}
+
+function deleteChat(id) {
+  const chat = conversations[id];
+  const title = chat?.title || 'Chat';
+  delete conversations[id];
+  if (currentChatId === id) {
+    const remaining = Object.keys(conversations).sort((a, b) => (conversations[b].updatedAt || 0) - (conversations[a].updatedAt || 0));
+    if (remaining.length > 0) {
+      loadChat(remaining[0]);
+    } else {
+      currentChatId = null;
+      showWelcome();
+      resetFooterStats();
+      renderChatList();
+    }
+  } else {
+    renderChatList();
+  }
+  saveChats();
+  showToast(`Deleted "${esc(title)}" from all devices`);
+}
+
+function filterChatList(query) {
+  _chatFilterQuery = query.trim().toLowerCase();
+  renderChatList();
+}
+
+function getChatGroups(allChats, query) {
+  let ids = Object.keys(allChats);
+
+  // Filter
+  if (query) {
+    ids = ids.filter(id => {
+      const chat = allChats[id];
+      const inTitle = (chat.title || '').toLowerCase().includes(query);
+      if (inTitle) return true;
+      if (query.length >= 3) {
+        const inContent = (chat.messages || []).some(m => (m.content || '').toLowerCase().includes(query));
+        if (inContent) return true;
+      }
+      return false;
+    });
+  }
+
+  // Sort: pinned first, then by updatedAt desc
+  ids.sort((a, b) => {
+    const pa = allChats[a].pinned ? 1 : 0;
+    const pb = allChats[b].pinned ? 1 : 0;
+    if (pa !== pb) return pb - pa;
+    return (allChats[b].updatedAt || 0) - (allChats[a].updatedAt || 0);
+  });
+
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const yesterdayStart = todayStart - 86400000;
+  const weekStart = todayStart - 7 * 86400000;
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+
+  const groups = [];
+  const pinned = ids.filter(id => allChats[id].pinned);
+  const unpinned = ids.filter(id => !allChats[id].pinned);
+
+  if (pinned.length) {
+    groups.push({ label: '★ Pinned', items: pinned });
+  }
+
+  const buckets = [
+    { label: 'Today', test: ts => ts >= todayStart },
+    { label: 'Yesterday', test: ts => ts >= yesterdayStart && ts < todayStart },
+    { label: 'Last 7 Days', test: ts => ts >= weekStart && ts < yesterdayStart },
+    { label: 'This Month', test: ts => ts >= monthStart && ts < weekStart },
+    { label: 'Older', test: ts => ts < monthStart },
+  ];
+
+  buckets.forEach(b => {
+    const items = unpinned.filter(id => b.test(allChats[id].updatedAt || 0));
+    if (items.length) groups.push({ label: b.label, items });
+  });
+
+  return groups;
+}
+
+function fmtRelativeDate(ts) {
+  const now = new Date();
+  const d = new Date(ts);
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const yesterdayStart = todayStart - 86400000;
+  const weekStart = todayStart - 7 * 86400000;
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+
+  if (ts >= todayStart) return 'Today';
+  if (ts >= yesterdayStart) return 'Yesterday';
+  if (ts >= weekStart) return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()];
+  if (ts >= monthStart) return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function fmtTime(ts) {
+  return new Date(ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
+function timeAgo(ts) {
+  const diff = Date.now() - ts;
+  const sec = Math.floor(diff / 1000);
+  if (sec < 60) return 'just now';
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min} min${min===1?'':'s'} ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr} hr${hr===1?'':'s'} ago`;
+  const day = Math.floor(hr / 24);
+  if (day < 30) return `${day} day${day===1?'':'s'} ago`;
+  const mo = Math.floor(day / 30);
+  if (mo < 12) return `${mo} mo${mo===1?'':'s'} ago`;
+  const yr = Math.floor(mo / 12);
+  return `${yr} yr${yr===1?'':'s'} ago`;
+}
+
+function renderChatInfoBar(chatId) {
+  const chat = conversations[chatId];
+  if (!chat || !chat.messages.length) return;
+  const msgs = document.getElementById('messages');
+  const msgCount = chat.messages.length;
+  const lastMsg = chat.messages[chat.messages.length - 1];
+  const lastTime = lastMsg?.timestamp || chat.updatedAt || chat.createdAt || Date.now();
+  const infoText = `Started ${fmtRelativeDate(chat.createdAt)} ${fmtTime(chat.createdAt)} · Last message ${timeAgo(lastTime)} · ${msgCount} message${msgCount===1?'':'s'}`;
+  const bar = document.createElement('div');
+  bar.className = 'chat-info-bar';
+  bar.textContent = infoText;
+  // Insert as first child if not already present
+  if (msgs.firstChild && !msgs.firstChild.classList?.contains('chat-info-bar')) {
+    msgs.insertBefore(bar, msgs.firstChild);
+  } else if (!msgs.firstChild) {
+    msgs.appendChild(bar);
+  }
 }
 
 // ══════════════════════════════════════════
@@ -2593,6 +2850,7 @@ function renderMessages() {
     if (i < arr.length - 1) html += '<div class="msg-sep"></div>';
   });
   msgs.innerHTML = html;
+  renderChatInfoBar(currentChatId);
   msgs.scrollTop = msgs.scrollHeight;
 }
 function renderMsgsFromArr(messages) {
@@ -2612,6 +2870,7 @@ function renderMsgsFromArr(messages) {
     if (i < arr.length - 1) html += '<div class="msg-sep"></div>';
   });
   msgs.innerHTML = html;
+  renderChatInfoBar(currentChatId);
   msgs.scrollTop = msgs.scrollHeight;
 }
 function buildMsgHTML(m, msgIndex) {
