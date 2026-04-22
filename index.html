@@ -1416,8 +1416,26 @@ async function pullSync() {
     if (remoteTime > localTime) {
       const decrypted = await decryptSync(data.encrypted_payload, passphrase);
       const remoteConversations = JSON.parse(decrypted);
-      conversations = remoteConversations;
-      localStorage.setItem('mc_chats', decrypted);
+
+      // Merge strategy: union of local and remote chats.
+      // - Keep all local chats that don't exist remotely
+      // - Add all remote chats that don't exist locally
+      // - For chats present on both, keep the one with the more recent updatedAt
+      const merged = { ...conversations };
+      for (const [id, remoteChat] of Object.entries(remoteConversations)) {
+        const localChat = merged[id];
+        if (!localChat) {
+          merged[id] = remoteChat;
+        } else {
+          const localChatTime = localChat.updatedAt || 0;
+          const remoteChatTime = remoteChat.updatedAt || 0;
+          if (remoteChatTime > localChatTime) {
+            merged[id] = remoteChat;
+          }
+        }
+      }
+      conversations = merged;
+      localStorage.setItem('mc_chats', JSON.stringify(conversations));
       localStorage.setItem('mc_synced_at', remoteTime.toString());
       renderChatList();
       if (currentChatId && conversations[currentChatId]) {
@@ -2462,7 +2480,7 @@ function updateThinkLabel() {
 // ══════════════════════════════════════════
 function newChat() {
   const id = 'c' + Date.now();
-  conversations[id] = {title:'New conversation', messages:[]};
+  conversations[id] = {title:'New conversation', messages:[], updatedAt: Date.now()};
   currentChatId = id;
   saveChats();
   renderChatList();
@@ -2671,6 +2689,7 @@ function startEditMessage(msgIndex) {
 
   // Truncate the conversation: remove this message and everything after it
   chat.messages.splice(msgIndex);
+  chat.updatedAt = Date.now();
   saveChats();
   renderMessages();
 
@@ -2693,7 +2712,7 @@ async function sendMessage() {
 
   if (!currentChatId) {
     const id = 'c' + Date.now();
-    conversations[id] = {title: (text||attachedFiles[0]?.name||'Chat').slice(0,42), messages:[]};
+    conversations[id] = {title: (text||attachedFiles[0]?.name||'Chat').slice(0,42), messages:[], updatedAt: Date.now()};
     currentChatId = id;
   }
   const chat = conversations[currentChatId];
@@ -2702,6 +2721,7 @@ async function sendMessage() {
   // Build user message including any inline attachments
   const userMsg = {role:'user', content: text, attachments: attachedFiles.length ? [...attachedFiles] : undefined};
   chat.messages.push(userMsg);
+  chat.updatedAt = Date.now();
 
   const snapAttach = [...attachedFiles];
   attachedFiles = [];
@@ -2803,6 +2823,7 @@ async function sendMessage() {
     removeTypingIndicator();
     const aiMsg = {role:'assistant', content:'', thinking:'', model, provider};
     chat.messages.push(aiMsg);
+    chat.updatedAt = Date.now();
     appendStreamRow(aiMsg);
 
     const reader = resp.body.getReader();
