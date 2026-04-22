@@ -509,6 +509,20 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 .sug-title{font-weight:600;font-size:13px;color:var(--text);margin-bottom:3px;}
 .sug-desc{font-size:11px;color:var(--text3);line-height:1.4;}
 
+/* ── Model info card (replaces suggestion grid on welcome screen) ── */
+.model-info-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:22px 28px;max-width:420px;width:100%;display:flex;flex-direction:column;align-items:center;gap:14px;margin-top:4px;}
+.mic-empty-state{font-size:13px;color:var(--text3);padding:6px 0;}
+.mic-content-inner{display:none;flex-direction:column;align-items:center;gap:14px;width:100%;}
+.mic-content-inner.visible{display:flex;}
+.mic-header{display:flex;align-items:center;gap:8px;justify-content:center;flex-wrap:wrap;}
+.mic-model-name{font-size:16px;font-weight:600;color:var(--text);text-align:center;line-height:1.4;}
+.mic-model-id{font-size:10px;color:var(--text3);font-family:var(--font-mono);text-align:center;word-break:break-all;max-width:340px;}
+.mic-divider{width:48px;height:1px;background:var(--border);}
+.mic-cost-row{display:flex;gap:28px;align-items:flex-start;}
+.mic-cost-item{display:flex;flex-direction:column;align-items:center;gap:4px;}
+.mic-cost-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text3);}
+.mic-cost-value{font-size:17px;font-weight:600;color:var(--text);font-family:var(--font-mono);}
+
 /* ── Input area ── */
 #input-area{padding:12px 22px 16px;border-top:1px solid var(--border);background:var(--surface);}
 .input-wrap{max-width:800px;margin:0 auto;position:relative;}
@@ -609,8 +623,9 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
   /* Show hamburger */
   #mob-menu-btn{display:flex;}
 
-  /* Keep only provider badge hidden to save space; price-pill stays visible */
+  /* Hide cost/status items from header — surfaced in model info card instead */
   .prov-badge{display:none;}
+  .price-pill{display:none;}
   .hdr-divider{display:none;}
   .think-wrap .think-lbl{display:none;}
 
@@ -651,9 +666,12 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
   .chat-search{font-size:16px;padding:8px 10px 8px 28px;}
   .sug-card{padding:14px;}
 
-  /* Header wrapping */
-  #header{padding:8px 12px;gap:6px;}
+  /* Header wrapping + safe-area-inset-top so content clears the browser chrome */
+  #header{padding:calc(8px + env(safe-area-inset-top)) 12px 8px;gap:6px;}
   .sel-wrap .hdr-select{max-width:calc(50vw - 60px);}
+  /* 44×44 minimum touch targets for hamburger and provider select */
+  #mob-menu-btn{width:44px;height:44px;}
+  .sel-wrap{min-height:44px;display:flex;align-items:center;}
 }
 
 /* ── Tiny screens (≤420px) ──
@@ -799,18 +817,25 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
       <div class="wlc-icon">◆</div>
       <div class="wlc-title">MultiChat</div>
       <div class="wlc-sub">Chat with frontier models via Groq, MiniMax, DeepInfra & OpenRouter. Upload files, set system prompts, tune temperature.</div>
-      <div class="suggs">
-        <div class="sug-card" onclick="useSug('Explain MoE vs dense LLM architectures and their cost/quality trade-offs')">
-          <div class="sug-icon">🧠</div><div class="sug-title">MoE vs Dense</div><div class="sug-desc">Architecture trade-offs</div>
-        </div>
-        <div class="sug-card" onclick="useSug('Write a PySpark function to calculate bond total return index from a Delta table')">
-          <div class="sug-icon">⚡</div><div class="sug-title">PySpark / Databricks</div><div class="sug-desc">Bond index calculation</div>
-        </div>
-        <div class="sug-card" onclick="useSug('Compare DeepSeek V3.2, Kimi K2, and MiniMax M2.5 for financial data analysis')">
-          <div class="sug-icon">📊</div><div class="sug-title">Model Comparison</div><div class="sug-desc">Chinese LLMs for finance</div>
-        </div>
-        <div class="sug-card" onclick="useSug('Explain the S&amp;P GSCI commodity index roll return methodology')">
-          <div class="sug-icon">🏦</div><div class="sug-title">GSCI Methodology</div><div class="sug-desc">Roll return calculation</div>
+      <div class="model-info-card">
+        <div class="mic-empty-state" id="mic-empty">Select a model above to begin</div>
+        <div class="mic-content-inner" id="mic-content">
+          <div class="mic-header">
+            <span class="prov-badge" id="mic-badge"></span>
+          </div>
+          <div class="mic-model-name" id="mic-name"></div>
+          <div class="mic-model-id" id="mic-id"></div>
+          <div class="mic-divider"></div>
+          <div class="mic-cost-row">
+            <div class="mic-cost-item">
+              <span class="mic-cost-label">Input / 1M</span>
+              <span class="mic-cost-value" id="mic-in">—</span>
+            </div>
+            <div class="mic-cost-item">
+              <span class="mic-cost-label">Output / 1M</span>
+              <span class="mic-cost-value" id="mic-out">—</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -2504,6 +2529,9 @@ function updateProviderBadge(p) {
   const info = PROVIDERS[p];
   b.textContent = info.label;
   b.className = 'prov-badge ' + info.badge;
+  // Mirror in model info card
+  const mb = document.getElementById('mic-badge');
+  if (mb) { mb.textContent = info.label; mb.className = 'prov-badge ' + info.badge; }
 }
 function updatePricePill() {
   const sel = document.getElementById('model-sel');
@@ -2511,6 +2539,26 @@ function updatePricePill() {
   const pr = opt?.dataset?.price || '';
   const pill = document.getElementById('price-pill');
   if (pill) pill.textContent = pr ? `in:${pr.split('/')[0]}  out:${pr.split('/')[1]}/M` : '';
+  // Sync model info card
+  const micEmpty = document.getElementById('mic-empty');
+  const micContent = document.getElementById('mic-content');
+  if (!micEmpty || !micContent) return;
+  if (opt && opt.value) {
+    micEmpty.style.display = 'none';
+    micContent.classList.add('visible');
+    const micName = document.getElementById('mic-name');
+    const micId = document.getElementById('mic-id');
+    const micIn = document.getElementById('mic-in');
+    const micOut = document.getElementById('mic-out');
+    if (micName) micName.textContent = opt.text || opt.value;
+    if (micId) micId.textContent = opt.value;
+    const parts = pr ? pr.split('/') : [];
+    if (micIn) micIn.textContent = parts[0] || 'FREE';
+    if (micOut) micOut.textContent = parts[1] || 'FREE';
+  } else {
+    micEmpty.style.display = '';
+    micContent.classList.remove('visible');
+  }
 }
 function updateThinkLabel() {
   const show = document.getElementById('show-think').checked;
@@ -2783,21 +2831,32 @@ function showWelcome() {
       <div class="wlc-icon">◆</div>
       <div class="wlc-title">MultiChat</div>
       <div class="wlc-sub">Chat with frontier models via Groq, MiniMax, DeepInfra & OpenRouter. Upload files, set system prompts, tune temperature.</div>
-      <div class="suggs">
-        <div class="sug-card" onclick="useSug('Explain MoE vs dense LLM architectures and their cost/quality trade-offs')">
-          <div class="sug-icon">🧠</div><div class="sug-title">MoE vs Dense</div><div class="sug-desc">Architecture trade-offs</div>
-        </div>
-        <div class="sug-card" onclick="useSug('Write a PySpark function to calculate bond total return index from a Delta table')">
-          <div class="sug-icon">⚡</div><div class="sug-title">PySpark / Databricks</div><div class="sug-desc">Bond index calculation</div>
-        </div>
-        <div class="sug-card" onclick="useSug('Compare DeepSeek V3.2, Kimi K2, and MiniMax M2.5 for financial data analysis')">
-          <div class="sug-icon">📊</div><div class="sug-title">Model Comparison</div><div class="sug-desc">Chinese LLMs for finance</div>
-        </div>
-        <div class="sug-card" onclick="useSug('Explain the S&amp;P GSCI commodity index roll return methodology')">
-          <div class="sug-icon">🏦</div><div class="sug-title">GSCI Methodology</div><div class="sug-desc">Roll return calculation</div>
+      <div class="model-info-card">
+        <div class="mic-empty-state" id="mic-empty">Select a model above to begin</div>
+        <div class="mic-content-inner" id="mic-content">
+          <div class="mic-header">
+            <span class="prov-badge" id="mic-badge"></span>
+          </div>
+          <div class="mic-model-name" id="mic-name"></div>
+          <div class="mic-model-id" id="mic-id"></div>
+          <div class="mic-divider"></div>
+          <div class="mic-cost-row">
+            <div class="mic-cost-item">
+              <span class="mic-cost-label">Input / 1M</span>
+              <span class="mic-cost-value" id="mic-in">—</span>
+            </div>
+            <div class="mic-cost-item">
+              <span class="mic-cost-label">Output / 1M</span>
+              <span class="mic-cost-value" id="mic-out">—</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>`;
+  // Repopulate the freshly rendered card with current model/provider state
+  updatePricePill();
+  const p = document.getElementById('prov-sel')?.value;
+  if (p) updateProviderBadge(p);
 }
 function providerFromModel(modelId) {
   if (!modelId) return 'groq';
