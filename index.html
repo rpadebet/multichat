@@ -9,8 +9,9 @@
 <meta name="apple-mobile-web-app-title" content="MultiChat">
 <meta name="theme-color" content="#c96b2f" id="theme-meta">
 <meta name="description" content="Chat with frontier AI models — Groq, MiniMax, DeepInfra, OpenRouter">
-<link rel="manifest" href="manifest.json">
+<link rel="manifest" href="manifest.json" id="manifest-link">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
+<script>document.getElementById('manifest-link').href += '?v=' + Date.now();</script>
 <title>MultiChat</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
@@ -3316,7 +3317,10 @@ function fmtText(text, searchMeta) {
 // Service Worker registration
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js')
+    // Cache-bust the SW so the browser fetches the latest sw.js after every deploy.
+    // Without this, the browser may serve a stale sw.js from HTTP cache, which then
+    // serves the old index.html shell from the Cache API.
+    navigator.serviceWorker.register('./sw.js?v=' + Date.now())
       .then(r => console.log('SW registered:', r.scope))
       .catch(e => console.warn('SW failed:', e));
   });
