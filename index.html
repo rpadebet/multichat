@@ -12,6 +12,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <title>MultiChat</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&family=Inter:wght@300;400;500;600&family=Google+Sans:wght@400;500;600&display=swap');
 
@@ -143,6 +144,14 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 .theme-btn{padding:4px 8px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--text3);font-size:11px;cursor:pointer;transition:all 0.15s;}
 .theme-btn:hover{color:var(--text);border-color:var(--border2);}
 .theme-btn.active{background:var(--accent);color:white;border-color:var(--accent);}
+
+/* ── Cloud Sync panel ── */
+.sync-panel{border-top:1px solid var(--border);padding:10px 12px;}
+.sync-status-row{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2);}
+.sync-status-icon{font-size:13px;line-height:1;}
+.sync-status-text{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sync-btn{width:100%;padding:5px 8px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);color:var(--text2);font-size:11px;cursor:pointer;margin-top:6px;font-family:var(--font-body);transition:all 0.15s;}
+.sync-btn:hover{background:var(--bg3);color:var(--text);}
 
 /* ── Sidebar collapse toggle ──
    Small icon-only button at the right of the logo row. margin-left:auto pushes
@@ -668,6 +677,15 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
     <div id="chat-list"></div>
   </div>
 
+  <div class="sync-panel">
+    <div class="panel-title">☁ Cloud Sync</div>
+    <div class="sync-status-row">
+      <span class="sync-status-icon" id="sync-status-icon">⚪</span>
+      <span class="sync-status-text" id="sync-status-text">Cloud sync off</span>
+    </div>
+    <button class="sync-btn" id="sync-now-btn" onclick="syncNow()" style="display:none;">↻ Sync now</button>
+  </div>
+
 </div>
 
 <!-- ════════════ MAIN ════════════
@@ -925,6 +943,49 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
           </select>
         </div>
         <div id="ws-cost-note" style="font-size:11px;color:var(--text3);line-height:1.55;padding:7px 9px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);"></div>
+      </div>
+    </div>
+
+    <!-- Cloud Sync -->
+    <div>
+      <div class="sp-section-title">☁ Cloud Sync</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div class="sp-label" style="margin:0;">Enable cloud sync</div>
+        <label class="tog"><input type="checkbox" id="cs-enabled" onchange="onCloudToggle()"><div class="tog-track"></div><div class="tog-thumb"></div></label>
+      </div>
+      <div id="cs-config" style="display:none;flex-direction:column;gap:8px;">
+        <div>
+          <div class="sp-label">Provider</div>
+          <select class="sp-select" id="cs-provider" onchange="onCloudProviderChange()">
+            <option value="supabase">Supabase (free PostgreSQL)</option>
+          </select>
+        </div>
+        <div>
+          <div class="sp-label">Supabase Project URL</div>
+          <input class="key-input" id="cs-url" type="password" placeholder="https://xxxx.supabase.co" oninput="saveCloudSettings()"/>
+        </div>
+        <div>
+          <div class="sp-label">Supabase Anon Key</div>
+          <input class="key-input" id="cs-key" type="password" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." oninput="saveCloudSettings()"/>
+        </div>
+        <div>
+          <div class="sp-label">Sync Passphrase <span style="font-size:10px;color:var(--text3);">(same on all devices)</span></div>
+          <input class="key-input" id="cs-passphrase" type="password" placeholder="Your secret passphrase…" oninput="saveCloudSettings()"/>
+        </div>
+        <div>
+          <div class="sp-label">Sync mode</div>
+          <select class="sp-select" id="cs-mode" onchange="saveCloudSettings()">
+            <option value="auto">Auto-sync (recommended)</option>
+            <option value="manual">Manual only</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:6px;">
+          <button onclick="syncNow()" style="flex:1;padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);color:var(--text2);font-size:12px;cursor:pointer;font-family:var(--font-body);">↻ Sync now</button>
+          <button onclick="pullSync()" style="flex:1;padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);color:var(--text2);font-size:12px;cursor:pointer;font-family:var(--font-body);">⬇ Pull from cloud</button>
+        </div>
+        <div style="font-size:11px;color:var(--text3);line-height:1.55;padding:7px 9px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);">
+          Chats are encrypted with AES-GCM in your browser before upload. Only you can decrypt them with your passphrase.
+        </div>
       </div>
     </div>
 
@@ -1202,6 +1263,280 @@ function updateSearchIndicator() {
 // Mutates the typing indicator row to show a live search status message while
 // queries are in flight, then reverts to the standard three-dot animation when
 // called with null (i.e. search phase is complete and streaming begins).
+// ══════════════════════════════════════════
+// CLOUD SYNC (Supabase + AES-GCM encryption)
+// ══════════════════════════════════════════
+
+async function hashPassphrase(passphrase) {
+  const enc = new TextEncoder();
+  const buf = await crypto.subtle.digest('SHA-256', enc.encode(passphrase));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function deriveKey(passphrase) {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(passphrase), 'PBKDF2', false, ['deriveKey']);
+  const salt = enc.encode('multichat-sync-salt-v1');
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+function base64ToArrayBuffer(base64) {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+async function encryptSync(plaintext, passphrase) {
+  const key = await deriveKey(passphrase);
+  const enc = new TextEncoder();
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(plaintext));
+  const ivB64 = arrayBufferToBase64(iv);
+  const cipherB64 = arrayBufferToBase64(ciphertext);
+  return `${ivB64}:${cipherB64}`;
+}
+
+async function decryptSync(ciphertext, passphrase) {
+  const key = await deriveKey(passphrase);
+  const [ivB64, cipherB64] = ciphertext.split(':');
+  if (!ivB64 || !cipherB64) throw new Error('Invalid encrypted payload format');
+  const iv = base64ToArrayBuffer(ivB64);
+  const cipher = base64ToArrayBuffer(cipherB64);
+  const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, cipher);
+  return new TextDecoder().decode(decrypted);
+}
+
+function getCloudSettings() {
+  try {
+    return JSON.parse(localStorage.getItem('mc_cloud_settings') || '{}');
+  } catch(e) { return {}; }
+}
+
+function isCloudSyncEnabled() {
+  const s = getCloudSettings();
+  return !!s.enabled && !!s.url && !!s.key && !!s.passphrase;
+}
+
+function getSupabaseClient() {
+  const settings = getCloudSettings();
+  if (!settings.url || !settings.key) return null;
+  if (typeof supabase === 'undefined' || !supabase.createClient) return null;
+  // Normalize URL: strip trailing slashes and whitespace to avoid double-slash URLs
+  const url = settings.url.trim().replace(/\/+$/g, '');
+  return supabase.createClient(url, settings.key.trim());
+}
+
+let _pushDebounceTimer = null;
+function debouncedPushSync() {
+  if (!isCloudSyncEnabled()) return;
+  const s = getCloudSettings();
+  if (s.mode === 'manual') return;
+  if (_pushDebounceTimer) clearTimeout(_pushDebounceTimer);
+  _pushDebounceTimer = setTimeout(() => pushSync(), 3000);
+}
+
+async function pushSync() {
+  if (!isCloudSyncEnabled()) return;
+  const settings = getCloudSettings();
+  const passphrase = settings.passphrase;
+  const userHash = await hashPassphrase(passphrase);
+
+  updateSyncStatus('syncing', 'Syncing…');
+
+  try {
+    const payload = JSON.stringify(conversations);
+    const encrypted = await encryptSync(payload, passphrase);
+    const client = getSupabaseClient();
+    if (!client) throw new Error('Supabase client not available');
+
+    const { error } = await client
+      .from('sync_data')
+      .upsert({ user_hash: userHash, encrypted_payload: encrypted, updated_at: new Date().toISOString() });
+
+    if (error) throw error;
+
+    localStorage.setItem('mc_synced_at', Date.now().toString());
+    updateSyncStatus('synced', 'Synced just now');
+  } catch (e) {
+    console.error('Cloud sync push failed:', e);
+    let msg = e.message || String(e);
+    if (msg.includes('invalid path')) msg = 'Invalid Supabase URL. Remove trailing slashes (e.g., use https://xxx.supabase.co not https://xxx.supabase.co/)';
+    updateSyncStatus('error', 'Sync failed: ' + msg);
+  }
+}
+
+async function pullSync() {
+  if (!isCloudSyncEnabled()) return;
+  const settings = getCloudSettings();
+  const passphrase = settings.passphrase;
+  const userHash = await hashPassphrase(passphrase);
+
+  updateSyncStatus('syncing', 'Pulling…');
+
+  try {
+    const client = getSupabaseClient();
+    if (!client) throw new Error('Supabase client not available');
+
+    const { data, error } = await client
+      .from('sync_data')
+      .select('encrypted_payload, updated_at')
+      .eq('user_hash', userHash)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        updateSyncStatus('synced', 'No remote data');
+        await pushSync();
+        return;
+      }
+      throw error;
+    }
+
+    const remoteTime = new Date(data.updated_at).getTime();
+    const localTime = parseInt(localStorage.getItem('mc_synced_at') || '0');
+
+    if (remoteTime > localTime) {
+      const decrypted = await decryptSync(data.encrypted_payload, passphrase);
+      const remoteConversations = JSON.parse(decrypted);
+      conversations = remoteConversations;
+      localStorage.setItem('mc_chats', decrypted);
+      localStorage.setItem('mc_synced_at', remoteTime.toString());
+      renderChatList();
+      if (currentChatId && conversations[currentChatId]) {
+        renderMessages();
+      } else if (Object.keys(conversations).length > 0) {
+        loadChat(Object.keys(conversations).reverse()[0]);
+      }
+      updateSyncStatus('synced', 'Pulled from cloud');
+    } else {
+      updateSyncStatus('synced', 'Up to date');
+    }
+  } catch (e) {
+    console.error('Cloud sync pull failed:', e);
+    updateSyncStatus('error', 'Pull failed: ' + e.message);
+  }
+}
+
+function updateSyncStatus(status, message) {
+  const el = document.getElementById('sync-status-text');
+  const iconEl = document.getElementById('sync-status-icon');
+  const btn = document.getElementById('sync-now-btn');
+  if (!el || !iconEl) return;
+
+  const icons = {
+    disabled: '⚪',
+    syncing: '🟡',
+    synced: '🟢',
+    error: '🔴'
+  };
+
+  iconEl.textContent = icons[status] || '⚪';
+  el.textContent = message;
+  el.title = message;
+
+  if (btn) {
+    const s = getCloudSettings();
+    btn.style.display = (s.enabled && s.mode === 'manual') ? 'block' : 'none';
+  }
+}
+
+function saveCloudSettings() {
+  const s = {
+    enabled: document.getElementById('cs-enabled')?.checked || false,
+    provider: document.getElementById('cs-provider')?.value || 'supabase',
+    url: document.getElementById('cs-url')?.value?.trim() || '',
+    key: document.getElementById('cs-key')?.value?.trim() || '',
+    passphrase: document.getElementById('cs-passphrase')?.value?.trim() || '',
+    mode: document.getElementById('cs-mode')?.value || 'auto',
+  };
+  localStorage.setItem('mc_cloud_settings', JSON.stringify(s));
+  updateSyncStatus(s.enabled ? 'synced' : 'disabled', s.enabled ? 'Cloud sync on' : 'Cloud sync off');
+}
+
+function loadCloudSettings() {
+  try {
+    const s = JSON.parse(localStorage.getItem('mc_cloud_settings') || '{}');
+    const elEnabled = document.getElementById('cs-enabled');
+    if (elEnabled) elEnabled.checked = s.enabled || false;
+
+    const elProvider = document.getElementById('cs-provider');
+    if (elProvider) elProvider.value = s.provider || 'supabase';
+
+    const elUrl = document.getElementById('cs-url');
+    if (elUrl) elUrl.value = s.url || '';
+
+    const elKey = document.getElementById('cs-key');
+    if (elKey) elKey.value = s.key || '';
+
+    const elPass = document.getElementById('cs-passphrase');
+    if (elPass) elPass.value = s.passphrase || '';
+
+    const elMode = document.getElementById('cs-mode');
+    if (elMode) elMode.value = s.mode || 'auto';
+
+    const cfg = document.getElementById('cs-config');
+    if (cfg) cfg.style.display = s.enabled ? 'flex' : 'none';
+
+    updateSyncStatus(s.enabled ? 'synced' : 'disabled', s.enabled ? 'Cloud sync on' : 'Cloud sync off');
+  } catch(e) {}
+}
+
+function onCloudToggle() {
+  const enabled = document.getElementById('cs-enabled').checked;
+  const cfg = document.getElementById('cs-config');
+  if (cfg) cfg.style.display = enabled ? 'flex' : 'none';
+  saveCloudSettings();
+  if (enabled) {
+    pullSync().then(() => debouncedPushSync());
+  } else {
+    updateSyncStatus('disabled', 'Cloud sync off');
+  }
+}
+
+function onCloudProviderChange() {
+  saveCloudSettings();
+}
+
+function syncNow() {
+  pushSync();
+}
+
+function resetCloudSettings() {
+  const elEnabled = document.getElementById('cs-enabled');
+  if (elEnabled) elEnabled.checked = false;
+  const cfg = document.getElementById('cs-config');
+  if (cfg) cfg.style.display = 'none';
+  const elUrl = document.getElementById('cs-url');
+  if (elUrl) elUrl.value = '';
+  const elKey = document.getElementById('cs-key');
+  if (elKey) elKey.value = '';
+  const elPass = document.getElementById('cs-passphrase');
+  if (elPass) elPass.value = '';
+  const elMode = document.getElementById('cs-mode');
+  if (elMode) elMode.value = 'auto';
+  localStorage.removeItem('mc_cloud_settings');
+  localStorage.removeItem('mc_synced_at');
+  updateSyncStatus('disabled', 'Cloud sync off');
+}
+
 function setTypingSearchStatus(query) {
   const row = document.getElementById('typing-row');
   if (!row) return;
@@ -1462,8 +1797,12 @@ function toggleSearch(hdr) {
 // ══════════════════════════════════════════
 window.onload = async () => {
   loadKeys();
+  loadCloudSettings();
   loadChats();
   loadSettings();
+  if (isCloudSyncEnabled()) {
+    await pullSync();
+  }
   await populateModels('openrouter');
   updateProviderBadge('openrouter');
   updatePricePill();
@@ -1606,6 +1945,7 @@ function resetSettings() {
   updateSearchCostNote('tavily');
   localStorage.removeItem('mc_settings');
   updateSearchIndicator();
+  resetCloudSettings();
   showToast('Settings reset to defaults');
 }
 // Returns a plain object snapshot of the current settings values, used by
@@ -2146,7 +2486,7 @@ function loadChat(id) {
     resetFooterStats();
   }
 }
-function saveChats() { try { localStorage.setItem('mc_chats', JSON.stringify(conversations)); } catch(e) {} }
+function saveChats() { try { localStorage.setItem('mc_chats', JSON.stringify(conversations)); } catch(e) {} debouncedPushSync(); }
 function loadChats() {
   try { const s = localStorage.getItem('mc_chats'); if(s) conversations = JSON.parse(s); } catch(e) {}
   renderChatList();
