@@ -637,10 +637,6 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
   /* Input area safe area */
   #input-area{padding-bottom:calc(14px + env(safe-area-inset-bottom));}
 
-  /* Cleaner wrapped header on mobile */
-  #header{padding:8px 12px;gap:6px;}
-  .hdr-divider{display:none;}
-
   /* Bigger touch targets */
   .hdr-select{font-size:14px;padding:8px 28px 8px 11px;}
   #send-btn,.attach-btn{width:40px;height:40px;}
@@ -655,6 +651,8 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
   .chat-search{font-size:16px;padding:8px 10px 8px 28px;}
   .sug-card{padding:14px;}
 
+  /* Header wrapping */
+  #header{padding:8px 12px;gap:6px;}
   .sel-wrap .hdr-select{max-width:calc(50vw - 60px);}
 }
 
@@ -666,8 +664,6 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
   #header{flex-wrap:wrap;}
   .sel-wrap{flex:1;min-width:0;}
   .sel-wrap .hdr-select{width:100%;max-width:100%;}
-  .model-dd-wrap{flex:1;min-width:0;}
-  .model-dd-trigger{max-width:100%;}
   .msg-row{padding-left:12px;padding-right:12px;}
 }
 
@@ -760,37 +756,6 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
       </select>
       <span class="sel-chev">▾</span>
     </div>
-    <!-- Custom model dropdown: single trigger opens a panel with integrated search + list.
-         Hidden <select id="model-sel"> preserves the selected value for all JS reads. -->
-    <div class="model-dd-wrap" id="model-dd-wrap">
-      <div class="model-dd-trigger" id="model-dd-trigger" onclick="toggleModelDropdown()" role="combobox" aria-haspopup="listbox" aria-expanded="false">
-        <span class="model-dd-label" id="model-dd-label">Select model…</span>
-        <span class="model-dd-chev">▾</span>
-      </div>
-      <button class="model-dd-refresh icon-btn" onclick="onProviderChange(true)" title="Refresh live model list">🔄</button>
-      <div class="model-dd-panel" id="model-dd-panel" role="listbox">
-        <input class="model-search" id="model-search" placeholder="Search models…" type="text"
-               oninput="filterModelList(this.value)" onclick="event.stopPropagation()">
-        <div class="model-dd-list" id="model-dd-list"></div>
-      </div>
-      <!-- Hidden native select keeps the selected model ID; consumed by sendMessage(), updatePricePill(), etc. -->
-      <select id="model-sel" style="display:none;" aria-hidden="true"></select>
-    </div>
-
-    <div class="hdr-divider"></div>
-    <div class="think-wrap">
-      <label class="tog"><input type="checkbox" id="show-think" onchange="updateThinkLabel()"><div class="tog-track"></div><div class="tog-thumb"></div></label>
-      <span class="think-lbl" id="think-lbl">Hide thinking</span>
-    </div>
-
-    <div class="hdr-right">
-      <span class="price-pill" id="price-pill"></span>
-      <span class="prov-badge badge-groq" id="prov-badge">Groq LPU</span>
-      <button class="icon-btn" id="settings-toggle" onclick="toggleSettings()" title="Model settings">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l-.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06-.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06-.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      </button>
-    </div>
-  </div>
     <!-- Custom model dropdown: single trigger opens a panel with integrated search + list.
          Hidden <select id="model-sel"> preserves the selected value for all JS reads. -->
     <div class="model-dd-wrap" id="model-dd-wrap">
