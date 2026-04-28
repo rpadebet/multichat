@@ -3252,49 +3252,76 @@ async function sendMessage() {
   const wss = JSON.parse(localStorage.getItem('mc_settings') || '{}');
   if (wss.webSearchEnabled) {
     const searchProvider = wss.webSearchProvider || 'tavily';
+    removeTypingIndicator();
+
+    // Phase 1: Stream planner thinking into Planning block
+    const planBlock = appendPlanningBlock();
+    let plan = { needs_search: false, search_queries: [] };
     try {
-      // Phase 1: LLM plans search queries
-      setTypingSearchStatus('Planning search…');
       const currentModel = document.getElementById('model-sel').value;
-      const plan = await planSearchQueries(text, provider, currentModel, apiKey);
-
-      let queriesToRun = plan.search_queries;
-      const shouldSearch = wss.webSearchMode === 'always'
-        ? (queriesToRun.length > 0 || (queriesToRun = [detectSearchNeeded(text).query || text.slice(0,80)], true))
-        : (wss.webSearchMode === 'auto' && plan.needs_search && queriesToRun.length > 0);
-
-      if (shouldSearch) {
-        // Phase 2: Execute all queries in parallel
-        const queryLabel = queriesToRun.length > 1
-          ? queriesToRun.map(q => q.slice(0,30)).join(' · ')
-          : queriesToRun[0];
-        setTypingSearchStatus(queryLabel);
-
-        const searchResults = await Promise.all(
-          queriesToRun.map(q => executeSearch(q, searchProvider).then(items => ({ query: q, items })).catch(e => ({ query: q, items: [], error: e.message })))
-        );
-
-        const succeeded = searchResults.filter(r => r.items?.length > 0);
-        const failed    = searchResults.filter(r => r.error);
-
-        if (succeeded.length > 0) {
-          // Flatten all items for the panel, preserve query grouping for context
-          const allItems = succeeded.flatMap(r => r.items);
-          lastSearchMeta = { queries: queriesToRun, provider: searchProvider, results: allItems, grouped: succeeded };
-          const totalSrc = allItems.length;
-          const provLabel = SEARCH_PROVIDERS[searchProvider]?.label || searchProvider;
-          showToast(`🔍 ${totalSrc} source${totalSrc===1?'':'s'} via ${provLabel} (${queriesToRun.length} quer${queriesToRun.length===1?'y':'ies'})`);
-        } else {
-          showToast('🔍 Search returned no results — model will answer from training data');
-        }
-        if (failed.length > 0) {
-          showToast(`🔍 ${failed.length} quer${failed.length===1?'y':'ies'} failed: ${failed[0].error}`, 'err');
-        }
-      }
-    } catch(searchErr) {
-      showToast(`🔍 Search error: ${searchErr.message}`, 'err');
+      plan = await planSearchQueries(text, provider, currentModel, apiKey, (token) => {
+        updatePlanningBlock(planBlock, token);
+      });
+      collapsePlanningBlock(plan.search_queries, planBlock);
+    } catch (searchErr) {
+      showToast(`🔍 Planner error: ${searchErr.message}`, 'err');
+      planBlock.row.remove();
+      pipelineBlocks = pipelineBlocks.filter(b => b !== planBlock.row);
     }
-    setTypingSearchStatus(null);
+
+    let queriesToRun = plan.search_queries;
+    const shouldSearch = wss.webSearchMode === 'always'
+      ? (queriesToRun.length > 0 || (queriesToRun = [detectSearchNeeded(text).query || text.slice(0,80)], true))
+      : (wss.webSearchMode === 'auto' && plan.needs_search && queriesToRun.length > 0);
+
+    if (shouldSearch && queriesToRun.length > 0) {
+      // Phase 2: Execute queries, appending results to Search block as they resolve
+      const searchBlock = appendSearchBlock(queriesToRun.length);
+
+      const results = await Promise.allSettled(
+        queriesToRun.map(q =>
+          executeSearch(q, searchProvider)
+            .then(items => {
+              (items || []).forEach(item => appendSearchResult(searchBlock, item));
+              return { query: q, items };
+            })
+            .catch(e => {
+              appendSearchResult(searchBlock, { title: '✗ Error', snippet: e.message });
+              return { query: q, items: [], error: e.message };
+            })
+        )
+      );
+
+      const succeeded = results.filter(r => r.status === 'fulfilled' && r.value.items?.length > 0).map(r => r.value);
+      const allItems = succeeded.flatMap(r => r.items);
+
+      if (allItems.length > 0) {
+        lastSearchMeta = { queries: queriesToRun, provider: searchProvider, results: allItems, grouped: succeeded };
+        collapseSearchBlock(searchBlock, allItems.length, searchProvider);
+        const provLabel = SEARCH_PROVIDERS[searchProvider]?.label || searchProvider;
+        showToast(`🔍 ${allItems.length} source${allItems.length===1?'':'s'} via ${provLabel} (${queriesToRun.length} quer${queriesToRun.length===1?'y':'ies'})`);
+      } else {
+        collapseSearchBlock(searchBlock, 0, searchProvider);
+        showToast('🔍 Search returned no results — model will answer from training data');
+      }
+
+      const failed = results.filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && r.value.error));
+      if (failed.length > 0) {
+        const errMsg = failed[0].status === 'rejected' ? failed[0].reason?.message : failed[0].value.error;
+        showToast(`🔍 ${failed.length} quer${failed.length===1?'y':'ies'} failed: ${errMsg}`, 'err');
+      }
+
+    } else {
+      // No search needed — clean up planning block
+      const planRow = document.getElementById('pipeline-plan');
+      if (planRow) { planRow.remove(); pipelineBlocks = pipelineBlocks.filter(b => b !== planRow); }
+    }
+
+    // Finalize pipeline: collapse blocks, add breadcrumb
+    finalizePipeline(queriesToRun, lastSearchMeta?.results?.length || 0, searchProvider);
+
+    // Re-show typing indicator while main model call starts
+    appendTypingIndicator();
   }
 
   // Build API messages (with search context injected if available)
@@ -3390,6 +3417,7 @@ async function sendMessage() {
 
   } catch(err) {
     removeTypingIndicator();
+    removePipelineBlocks();
     showToast('❌ ' + (err.message||'Request failed'),'err');
     chat.messages.pop();
     renderMessages();
