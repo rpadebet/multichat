@@ -574,6 +574,41 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
    display:none when search is disabled; JS sets display:inline-flex when on. */
 #search-indicator{font-size:11px;color:var(--accent);font-family:var(--font-mono);display:none;align-items:center;gap:3px;}
 
+/* ── Pipeline progress blocks ──
+   Inline chat blocks showing Planning → Searching phases before the final
+   AI response. Each block uses .msg-row styling with a phase badge pill.
+   All blocks auto-collapse to a breadcrumb when their phase completes. */
+.phase-badge{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:2px 8px;border-radius:12px;
+  font-size:11px;font-family:var(--font-mono);
+  background:var(--accent-bg);color:var(--accent);
+  border:1px solid var(--accent-border);
+  animation:badgePulse 1.8s ease-in-out infinite;
+}
+@keyframes badgePulse{0%,100%{opacity:1;}50%{opacity:0.55;}}
+.phase-badge.done{animation:none;background:var(--bg3);color:var(--text3);border-color:var(--border);}
+
+/* Search bullet list — minimal inline results appearing as queries resolve */
+.search-bullet-list{list-style:none;margin:8px 0 0;padding:0;}
+.search-bullet-result{
+  padding:5px 0;border-bottom:1px solid var(--border);
+  animation:msgIn 0.25s ease forwards;
+  cursor:pointer;
+}
+.search-bullet-result:last-child{border-bottom:none;padding-bottom:0;}
+.sb-title{font-size:12px;font-weight:500;color:var(--text);display:block;line-height:1.4;margin-bottom:1px;}
+.sb-url{font-size:10px;font-family:var(--font-mono);color:var(--accent);text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sb-snippet{font-size:11px;color:var(--text3);line-height:1.45;display:block;margin-top:2px;}
+
+/* Pipeline breadcrumb — compact one-liner after phases collapse */
+.pipeline-breadcrumb{cursor:pointer;transition:background 0.15s;border-radius:var(--radius);}
+.pipeline-breadcrumb:hover{background:var(--bg3);}
+.pipeline-breadcrumb .crumb-label{font-size:12px;color:var(--text2);}
+.pipeline-breadcrumb:hover .crumb-label{color:var(--text);}
+.pipeline-breadcrumb .crumb-chev{font-size:8px;transition:transform 0.18s;margin-left:4px;color:var(--text3);}
+.pipeline-breadcrumb.expanded .crumb-chev{transform:rotate(90deg);}
+
 /* ── Typing indicator ──
    Three dots that bounce sequentially via staggered animation-delay, giving a
    natural "someone is typing" feel. Replaced by the actual stream row as soon
