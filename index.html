@@ -1675,6 +1675,138 @@ function setTypingSearchStatus(query) {
   }
 }
 
+// ══════════════════════════════════════════
+// PIPELINE PROGRESS BLOCKS
+// ══════════════════════════════════════════
+
+let pipelineBlocks = [];
+
+function appendPlanningBlock() {
+  const msgs = document.getElementById('messages');
+  const row = document.createElement('div');
+  row.id = 'pipeline-plan'; row.className = 'msg-row pipeline-block';
+  row.innerHTML = `<div class="msg-inner"><div class="avatar av-ai" style="font-size:11px;">🔍</div><div class="msg-body">
+    <div class="msg-meta">
+      <span class="msg-name">MultiChat</span>
+      <span class="phase-badge" id="plan-badge">Planning</span>
+    </div>
+    <div class="think-block" style="display:block;margin-top:6px;">
+      <div class="think-body vis" id="plan-think-body" style="font-size:12px;color:var(--text3);">Analyzing query…</div>
+    </div>
+  </div></div>`;
+  msgs.appendChild(row);
+  pipelineBlocks.push(row);
+  msgs.scrollTop = msgs.scrollHeight;
+  return { row, thinkEl: document.getElementById('plan-think-body'), badgeEl: document.getElementById('plan-badge') };
+}
+
+function updatePlanningBlock(block, text) {
+  if (!block?.thinkEl) return;
+  block.thinkEl.textContent += text;
+  document.getElementById('messages').scrollTop = 99999;
+}
+
+function collapsePlanningBlock(queries, block) {
+  if (!queries || !queries.length) {
+    block.row.remove();
+    pipelineBlocks = pipelineBlocks.filter(b => b !== block.row);
+    return;
+  }
+  const badge = block.badgeEl;
+  if (badge) { badge.textContent = `Planned ${queries.length} quer${queries.length===1?'y':'ies'}`; badge.classList.add('done'); }
+  block.thinkEl.style.display = 'none';
+}
+
+function appendSearchBlock(n) {
+  const msgs = document.getElementById('messages');
+  const row = document.createElement('div');
+  row.id = 'pipeline-search'; row.className = 'msg-row pipeline-block';
+  row.innerHTML = `<div class="msg-inner"><div class="avatar av-ai" style="font-size:11px;">🔍</div><div class="msg-body">
+    <div class="msg-meta">
+      <span class="msg-name">MultiChat</span>
+      <span class="phase-badge" id="search-badge">Searching · 0 of ${n}</span>
+    </div>
+    <ul class="search-bullet-list" id="search-bullets"></ul>
+  </div></div>`;
+  msgs.appendChild(row);
+  pipelineBlocks.push(row);
+  msgs.scrollTop = msgs.scrollHeight;
+  return { row, listEl: document.getElementById('search-bullets'), badgeEl: document.getElementById('search-badge'), total: n, count: 0 };
+}
+
+function appendSearchResult(block, result) {
+  if (!block?.listEl) return false;
+  const { title, url, snippet } = result || {};
+  if (!title && !url && !snippet) return false;
+  const li = document.createElement('li');
+  li.className = 'search-bullet-result';
+  li.title = 'Click to open source';
+  li.onclick = function(){ if(url) window.open(url, '_blank', 'noopener,noreferrer'); };
+  const shortUrl = (url || '').replace(/^https?:\/\//, '').slice(0, 70);
+  li.innerHTML = `<span class="sb-title">${esc(title || 'Source')}</span>
+    ${url ? `<a class="sb-url" href="${esc(url)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">${esc(shortUrl)}</a>` : ''}
+    ${snippet ? `<span class="sb-snippet">${esc(snippet.slice(0,250))}${snippet.length>250?'…':''}</span>` : ''}`;
+  block.listEl.appendChild(li);
+  block.count++;
+  block.badgeEl.textContent = `Searching · ${block.count} of ${block.total}`;
+  document.getElementById('messages').scrollTop = 99999;
+  return true;
+}
+
+function collapseSearchBlock(block, total, provider) {
+  if (!block?.row) return;
+  const badge = block.badgeEl;
+  const provLabel = SEARCH_PROVIDERS[provider]?.label || provider;
+  if (total > 0) {
+    if (badge) { badge.textContent = `${total} source${total===1?'':'s'} via ${provLabel}`; badge.classList.add('done'); }
+  } else {
+    if (badge) { badge.textContent = 'No results'; badge.classList.add('done'); badge.style.color = 'var(--red)'; }
+  }
+}
+
+function removePipelineBlocks() {
+  pipelineBlocks.forEach(b => b.remove());
+  pipelineBlocks = [];
+  const crumb = document.getElementById('pipeline-crumb');
+  if (crumb) crumb.remove();
+}
+
+function finalizePipeline(queries, total, provider) {
+  // Determine breadcrumb text from already-collapsed blocks
+  const crumbs = [];
+  if (queries?.length) crumbs.push(`Planned ${queries.length} quer${queries.length===1?'y':'ies'}`);
+  if (total > 0) crumbs.push(`${total} source${total===1?'':'s'} via ${SEARCH_PROVIDERS[provider]?.label || provider}`);
+  if (!crumbs.length) return;
+
+  const msgs = document.getElementById('messages');
+  const crumb = document.createElement('div');
+  crumb.id = 'pipeline-crumb'; crumb.className = 'msg-row pipeline-breadcrumb collapsed';
+  crumb.onclick = function(){ this.classList.toggle('expanded'); togglePipelineDetail(); };
+  crumb.innerHTML = `<div class="msg-inner">
+    <div class="avatar av-ai" style="font-size:10px;">🔍</div>
+    <div class="msg-body"><span class="crumb-label">${crumbs.join(' · ')}</span><span class="crumb-chev">▸</span></div>
+  </div>`;
+  msgs.appendChild(crumb);
+  msgs.scrollTop = msgs.scrollHeight;
+  crumb._planRow = document.getElementById('pipeline-plan');
+  crumb._searchRow = document.getElementById('pipeline-search');
+}
+
+function togglePipelineDetail() {
+  const crumb = document.getElementById('pipeline-crumb');
+  if (!crumb) return;
+  const expanded = crumb.classList.contains('expanded');
+  const planRow = crumb._planRow;
+  const searchRow = crumb._searchRow;
+  if (expanded) {
+    if (planRow) planRow.style.display = '';
+    if (searchRow) searchRow.style.display = '';
+  } else {
+    if (planRow) planRow.style.display = 'none';
+    if (searchRow) searchRow.style.display = 'none';
+  }
+}
+
 // ── Heuristic search detection (regex fallback) ──
 // SEARCH_PATTERNS is an array of regexes covering the most common categories
 // of time-sensitive or live-data queries (prices, news, current events, recent
