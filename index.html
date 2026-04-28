@@ -1776,6 +1776,14 @@ function finalizePipeline(queries, total, provider) {
   const crumbs = [];
   if (queries?.length) crumbs.push(`Planned ${queries.length} quer${queries.length===1?'y':'ies'}`);
   if (total > 0) crumbs.push(`${total} source${total===1?'':'s'} via ${SEARCH_PROVIDERS[provider]?.label || provider}`);
+
+  const planRow = document.getElementById('pipeline-plan');
+  const searchRow = document.getElementById('pipeline-search');
+
+  // Always hide pipeline blocks once pipeline completes
+  if (planRow) planRow.style.display = 'none';
+  if (searchRow) searchRow.style.display = 'none';
+
   if (!crumbs.length) return;
 
   const msgs = document.getElementById('messages');
@@ -1788,8 +1796,8 @@ function finalizePipeline(queries, total, provider) {
   </div>`;
   msgs.appendChild(crumb);
   msgs.scrollTop = msgs.scrollHeight;
-  crumb._planRow = document.getElementById('pipeline-plan');
-  crumb._searchRow = document.getElementById('pipeline-search');
+  crumb._planRow = planRow;
+  crumb._searchRow = searchRow;
 }
 
 function togglePipelineDetail() {
