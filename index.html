@@ -1905,13 +1905,11 @@ async function executeSearch(query, provider) {
 }
 
 // ── Two-phase LLM search planner ──
-// Phase 1: sends a lightweight non-streaming request to the active model asking
-// it to decide whether web search is needed and what queries to run. This gives
-// much better query decomposition than pure regex (e.g. splitting "BTC price and
-// AAPL earnings" into two separate queries). Returns { needs_search, search_queries }.
-// Falls back silently to the regex heuristic (detectSearchNeeded) if the LLM
-// call fails for any reason (CORS, rate limit, bad JSON, etc.).
-async function planSearchQueries(userMessage, provider, model, apiKey) {
+// Phase 1: sends a streaming request to the active model asking it to decide
+// whether web search is needed and what queries to run. Streams planner tokens
+// via onToken callback so the Planning block shows live progress. Falls back
+// silently to the regex heuristic (detectSearchNeeded) if the LLM call fails.
+async function planSearchQueries(userMessage, provider, model, apiKey, onToken) {
   const yr = new Date().getFullYear();
   const systemPrompt = `You are a web search query planner. Today: ${new Date().toLocaleDateString('en-US', {year:'numeric',month:'long',day:'numeric'})}.
 
@@ -1943,13 +1941,37 @@ You MUST output ONLY a raw JSON object. No markdown. No explanation. No code fen
         ],
         max_tokens: 200,
         temperature: 0.1,
-        stream: false,
-        ...(provider === 'openrouter')
+        stream: true,
+        ...(provider === 'openrouter' ? {} : {})
       })
     });
     if (!resp.ok) throw new Error(`Planner HTTP ${resp.status}`);
-    const data = await resp.json();
-    let raw = data.choices?.[0]?.message?.content || '';
+
+    const reader = resp.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    let fullContent = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split('\n'); buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const data = line.slice(6).trim();
+        if (data === '[DONE]') continue;
+        try {
+          const j = JSON.parse(data);
+          const d = j.choices?.[0]?.delta;
+          if (!d) continue;
+          const txtDelta = d.content || '';
+          if (txtDelta) { fullContent += txtDelta; if (onToken) onToken(txtDelta); }
+        } catch (e) {}
+      }
+    }
+
+    let raw = fullContent;
     // Strip markdown code fences if present
     raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
     const plan = JSON.parse(raw);
