@@ -1041,11 +1041,16 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
           <select class="sp-select" id="ws-provider" onchange="onWebSearchProviderChange()">
             <option value="tavily">Tavily · 1,000 free/month (recommended)</option>
             <option value="serper">Serper · 2,500 free on signup</option>
+            <option value="searxng">SearXNG · self-hosted (free)</option>
           </select>
         </div>
         <div id="ws-key-row" style="display:none;">
           <div class="sp-label">API key</div>
           <input class="key-input" id="ws-key-input" type="password" placeholder="Paste API key…" oninput="saveSearchKey(this.value)"/>
+        </div>
+        <div id="ws-url-row" style="display:none;">
+          <div class="sp-label">Instance URL</div>
+          <input class="key-input" id="ws-url-input" type="text" placeholder="https://searx.example.com/search?q=" oninput="saveSearchUrl(this.value)"/>
         </div>
         <div>
           <div class="sp-label">When to search</div>
@@ -1242,6 +1247,12 @@ const SEARCH_PROVIDERS = {
     label: 'Serper (Google results)',
     keyName: 'key_search_serper',
     costNote: '2,500 free on account creation · ~$0.001/search after · Google-quality results · Free key at serper.dev'
+  },
+  searxng: {
+    label: 'SearXNG (self-hosted)',
+    keyName: null,
+    urlKey: 'mc_search_url',
+    costNote: 'Self-hosted metasearch engine. Enter your SearXNG instance URL below. Uses JSON API (format=json).'
   }
 };
 
@@ -1305,6 +1316,11 @@ function loadWebSearchSettings() {
       if (kInput && k) kInput.value = k;
     }
 
+    // Restore saved SearXNG URL
+    const url = localStorage.getItem('mc_search_url');
+    const urlInput = document.getElementById('ws-url-input');
+    if (urlInput && url) urlInput.value = url;
+
     updateSearchIndicator();
   } catch(e) {}
 }
@@ -1318,8 +1334,8 @@ function onWebSearchToggle() {
   saveWebSearchSettings();
 }
 
-// Handles switching between Tavily and Serper: updates the key row visibility,
-// cost note text, and loads the saved key for the newly selected provider.
+// Handles switching between search providers: updates the key row + URL row visibility,
+// cost note text, and loads the saved key/URL for the newly selected provider.
 function onWebSearchProviderChange() {
   const provider = document.getElementById('ws-provider').value;
   updateSearchKeyRow(provider);
@@ -1328,14 +1344,18 @@ function onWebSearchProviderChange() {
   const keyName = SEARCH_PROVIDERS[provider]?.keyName;
   const kInput = document.getElementById('ws-key-input');
   if (kInput) kInput.value = keyName ? (localStorage.getItem(keyName) || '') : '';
+  // Load saved URL for SearXNG
+  const urlInput = document.getElementById('ws-url-input');
+  if (urlInput) urlInput.value = provider === 'searxng' ? (localStorage.getItem('mc_search_url') || '') : '';
   saveWebSearchSettings();
 }
 
-// Shows the API key input row only for providers that require a key.
+// Shows the API key row for key-based providers, URL row for SearXNG.
 function updateSearchKeyRow(provider) {
-  const row = document.getElementById('ws-key-row');
-  if (!row) return;
-  row.style.display = SEARCH_PROVIDERS[provider]?.keyName ? 'block' : 'none';
+  const keyRow = document.getElementById('ws-key-row');
+  const urlRow = document.getElementById('ws-url-row');
+  if (keyRow) keyRow.style.display = SEARCH_PROVIDERS[provider]?.keyName ? 'block' : 'none';
+  if (urlRow) urlRow.style.display = provider === 'searxng' ? 'block' : 'none';
 }
 
 // Updates the cost/signup info note below the provider selector with the
@@ -1900,10 +1920,31 @@ async function searchSerper(query, apiKey) {
   return results;
 }
 
+async function searchSearXNG(query, baseUrl) {
+  const url = baseUrl + encodeURIComponent(query) + '&format=json';
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error(`SearXNG HTTP ${resp.status}`);
+  const data = await resp.json();
+  return (data.results || []).map(r => ({
+    title: r.title || '', url: r.url || '', snippet: (r.content || r.snippet || '').slice(0, 800)
+  }));
+}
+
+function getSearchUrl() { return localStorage.getItem('mc_search_url') || ''; }
+function saveSearchUrl(value) {
+  if (value.trim()) localStorage.setItem('mc_search_url', value.trim());
+  else localStorage.removeItem('mc_search_url');
+}
+
 // Dispatcher that routes a query to the correct search implementation based on
 // the selected provider. Throws a user-friendly error if no API key is stored.
 async function executeSearch(query, provider) {
   provider = provider || 'tavily';
+  if (provider === 'searxng') {
+    const url = getSearchUrl();
+    if (!url) throw new Error('No SearXNG URL configured. Add it in Settings → Web Search.');
+    return searchSearXNG(query, url);
+  }
   const apiKey = getSearchKey(provider);
   if (!apiKey) throw new Error(`No API key for ${SEARCH_PROVIDERS[provider]?.label || provider}. Add it in Settings → Web Search.`);
   if (provider === 'tavily') return searchTavily(query, apiKey);
