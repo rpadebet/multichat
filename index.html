@@ -1933,8 +1933,10 @@ async function searchSerper(query, apiKey) {
 async function searchSearXNG(query, baseUrl) {
   // Ensure the base URL has a proper query separator
   let url = baseUrl.trim();
+  // Strip any literal placeholder the user may have entered (e.g. '?q=<query>')
+  url = url.replace(/[?&]q=<query>/i, '');
   if (!url.includes('?')) url += '?q=';
-  else if (!url.endsWith('?') && !url.endsWith('?q=') && !url.endsWith('&') && !url.endsWith('&q=')) url += '&q=';
+  else if (!/[?&]q=$/.test(url)) url += '&q=';
   url += encodeURIComponent(query) + '&format=json';
   const resp = await fetch(url);
   if (!resp.ok) throw new Error(`SearXNG HTTP ${resp.status}`);

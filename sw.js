@@ -1,4 +1,4 @@
-const CACHE = 'multichat-v10';
+const CACHE = 'multichat-v11';
 const SHELL = [
   './',
   './index.html',
@@ -6,20 +6,40 @@ const SHELL = [
 ];
 
 // Hosts that need CORS proxying (these APIs don't return CORS headers)
-const PROXY_HOSTS = ['opencode.ai'];
+const PROXY_HOSTS = ['opencode.ai', '127.0.0.1', '[::1]'];
 
 // Proxy a request through the SW to bypass CORS.
 // Fetches from the SW context (no CORS restrictions), then wraps the response
 // with CORS headers so the page can read it.
 async function proxyWithCors(request) {
+  const url = new URL(request.url);
+
+  // ── Handle CORS preflight (OPTIONS) directly — no need to forward ──
+  if (request.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+        'Access-Control-Allow-Headers': '*',
+        'Access-Control-Allow-Private-Network': 'true',
+        'Access-Control-Max-Age': '86400',
+      }
+    });
+  }
+
+  // ── Copy headers, filtering out preflight-only headers ──
   const headers = {};
   for (const [k, v] of request.headers.entries()) {
+    if (k.startsWith('access-control-request-')) continue;
     headers[k] = v;
   }
+
   let body = undefined;
   if (!['GET', 'HEAD'].includes(request.method)) {
     try { body = await request.clone().text(); } catch(e) {}
   }
+
   const resp = await fetch(request.url, { method: request.method, headers, body });
 
   if (resp.type === 'opaqueredirect') return resp;
@@ -27,6 +47,7 @@ async function proxyWithCors(request) {
   const corsHeaders = new Headers(resp.headers);
   corsHeaders.set('Access-Control-Allow-Origin', '*');
   corsHeaders.set('Access-Control-Expose-Headers', '*');
+  corsHeaders.set('Access-Control-Allow-Private-Network', 'true');
 
   return new Response(resp.body, {
     status: resp.status,
