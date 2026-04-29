@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="MultiChat">
 <meta name="theme-color" content="#c96b2f" id="theme-meta">
-<meta name="description" content="Chat with frontier AI models — Groq, MiniMax, DeepInfra, OpenRouter">
+<meta name="description" content="Chat with frontier AI models — Groq, OpenCode Go, OpenRouter">
 <link rel="manifest" href="manifest.json" id="manifest-link">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <script>document.getElementById('manifest-link').href += '?v=' + Date.now();</script>
@@ -863,7 +863,7 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
     <div id="welcome">
       <div class="wlc-icon">◆</div>
       <div class="wlc-title">MultiChat</div>
-      <div class="wlc-sub">Chat with frontier models via Groq, MiniMax, DeepInfra & OpenRouter. Upload files, set system prompts, tune temperature.</div>
+      <div class="wlc-sub">Chat with frontier models via Groq, OpenCode Go & OpenRouter. Upload files, set system prompts, tune temperature.</div>
       <div class="model-info-card">
         <div class="mic-empty-state" id="mic-empty">Select a model above to begin</div>
         <div class="mic-content-inner" id="mic-content">
@@ -1125,7 +1125,7 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 // ══════════════════════════════════════════
 // PROVIDERS
 // Static model registry used as the fallback when live /models fetches fail or
-// when a provider (MiniMax) has no public listing endpoint. Each entry includes
+// when a provider has no public listing endpoint. Each entry includes
 // a human-readable name, per-1M-token price string, and provider metadata used
 // for badge styling. Models are ordered by recommended usage (best first).
 // ══════════════════════════════════════════
@@ -2401,7 +2401,7 @@ function renderAttachedFiles() {
 // ══════════════════════════════════════════
 // PROVIDER / MODEL — live fetch where supported
 // LIVE_PROVIDERS lists the three providers whose /models endpoints are
-// accessible from the browser (OpenRouter and DeepInfra have open CORS;
+// accessible from the browser (OpenRouter has open CORS;
 // Groq requires a key but has a fallback via OpenRouter's provider filter).
 // modelCache stores fetched lists keyed by provider for the session lifetime
 // so switching back to a provider doesn't re-fetch unnecessarily.
@@ -2534,7 +2534,7 @@ async function populateModels(p) {
 // Returns null on total failure so populateModels() falls back to the static list.
 async function fetchLiveModels(provider) {
   const key = getKey(provider);
-  // OpenRouter and DeepInfra endpoints are public, no key required to list models
+  // OpenRouter endpoints are public, no key required to list models
   if (!key && provider !== 'openrouter') return null;
 
   // ── Primary: direct provider API ──
@@ -3095,7 +3095,7 @@ function showWelcome() {
     <div id="welcome">
       <div class="wlc-icon">◆</div>
       <div class="wlc-title">MultiChat</div>
-      <div class="wlc-sub">Chat with frontier models via Groq, MiniMax, DeepInfra & OpenRouter. Upload files, set system prompts, tune temperature.</div>
+      <div class="wlc-sub">Chat with frontier models via Groq, OpenCode Go & OpenRouter. Upload files, set system prompts, tune temperature.</div>
       <div class="model-info-card">
         <div class="mic-empty-state" id="mic-empty">Select a model above to begin</div>
         <div class="mic-content-inner" id="mic-content">
@@ -3137,7 +3137,7 @@ function providerFromModel(modelId) {
     if (pdata.models.some(m => m.id === modelId)) return pid;
   }
   // fallback heuristic
-  if (modelId.includes('minimax') || modelId.includes('MiniMax')) return 'minimax';
+  if (modelId.includes('minimax') || modelId.includes('MiniMax')) return 'opencode';
   return 'groq';
 }
 
