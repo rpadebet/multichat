@@ -803,8 +803,6 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
     <div class="sel-wrap">
       <select class="hdr-select" id="prov-sel" onchange="onProviderChange()">
         <option value="groq">⚡ Groq</option>
-        <option value="minimax">🔷 MiniMax</option>
-        <option value="deepinfra">🔵 DeepInfra</option>
         <option value="openrouter" selected>🔀 OpenRouter</option>
       </select>
       <span class="sel-chev">▾</span>
@@ -935,14 +933,6 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
       <div class="key-row">
         <div class="key-label"><span class="key-dot" id="dot-groq"></span>Groq</div>
         <input class="key-input" id="key-groq" type="password" placeholder="gsk_••••" oninput="saveKey('groq',this.value)"/>
-      </div>
-      <div class="key-row">
-        <div class="key-label"><span class="key-dot" id="dot-minimax"></span>MiniMax</div>
-        <input class="key-input" id="key-minimax" type="password" placeholder="sk-••••" oninput="saveKey('minimax',this.value)"/>
-      </div>
-      <div class="key-row">
-        <div class="key-label"><span class="key-dot" id="dot-deepinfra"></span>DeepInfra</div>
-        <input class="key-input" id="key-deepinfra" type="password" placeholder="••••" oninput="saveKey('deepinfra',this.value)"/>
       </div>
       <div class="key-row">
         <div class="key-label"><span class="key-dot" id="dot-openrouter"></span>OpenRouter</div>
@@ -1124,32 +1114,6 @@ const PROVIDERS = {
     {id:'meta-llama/llama-4-scout-17b-16e-instruct',name:'Llama 4 Scout 17B (Vision)',p:'$0.11/$0.34'},
     {id:'llama-3.3-70b-versatile',       name:'Llama 3.3 70B Versatile',            p:'$0.59/$0.79'},
     {id:'llama-3.1-8b-instant',          name:'Llama 3.1 8B Instant (cheapest)',    p:'$0.05/$0.08'},
-  ]},
-  minimax:{label:'MiniMax',badge:'badge-minimax',url:'https://api.minimax.io/v1',models:[
-    {id:'MiniMax-M2.7',           name:'MiniMax M2.7 ★ latest (Mar 2026)',  p:'$0.30/$1.20'},
-    {id:'MiniMax-M2.7-highspeed', name:'MiniMax M2.7 Highspeed',           p:'$0.60/$2.40'},
-    {id:'MiniMax-M2.5',           name:'MiniMax M2.5 — SWE-Bench 80.2%',  p:'$0.30/$1.20'},
-    {id:'MiniMax-M2.5-highspeed', name:'MiniMax M2.5 Highspeed',           p:'$0.60/$2.40'},
-    {id:'MiniMax-M2.1',           name:'MiniMax M2.1 — coding/agentic',   p:'$0.27/$0.95'},
-    {id:'MiniMax-M2',             name:'MiniMax M2',                       p:'$0.30/$1.20'},
-  ]},
-  deepinfra:{label:'DeepInfra',badge:'badge-deepinfra',url:'https://api.deepinfra.com/v1/openai',models:[
-    {id:'deepseek-ai/DeepSeek-V3.2',                 name:'DeepSeek V3.2 ★ cheapest frontier',   p:'$0.26/$0.38'},
-    {id:'deepseek-ai/DeepSeek-V3.1-Terminus',        name:'DeepSeek V3.1 Terminus',              p:'$0.21/$0.79'},
-    {id:'deepseek-ai/DeepSeek-R1-0528',              name:'DeepSeek R1 0528 — Reasoning',        p:'$0.50/$2.15'},
-    {id:'deepseek-ai/DeepSeek-R1-Distill-Llama-70B', name:'DeepSeek R1 Distill 70B',             p:'$0.70/$0.80'},
-    {id:'moonshotai/Kimi-K2-Instruct-0905',          name:'Kimi K2 0905',                        p:'$0.50/$2.00'},
-    {id:'moonshotai/Kimi-K2.5',                      name:'Kimi K2.5 — Reasoning (Jan 2026)',    p:'$0.45/$2.25'},
-    {id:'MiniMaxAI/MiniMax-M2.5',                    name:'MiniMax M2.5 via DeepInfra',          p:'$0.27/$0.95'},
-    {id:'MiniMaxAI/MiniMax-M2.1',                    name:'MiniMax M2.1 via DeepInfra',          p:'$0.18/$0.65'},
-    {id:'zai-org/GLM-5',                             name:'GLM-5 ★ #1 open-weight model',        p:'$0.80/$2.56'},
-    {id:'zai-org/GLM-4.7',                           name:'GLM-4.7 — Z.AI',                      p:'$0.38/$1.70'},
-    {id:'zai-org/GLM-4.7-Flash',                     name:'GLM-4.7 Flash — ultra cheap',         p:'$0.06/$0.40'},
-    {id:'Qwen/Qwen3-235B-A22B-Instruct-2507',        name:'Qwen3 235B ★ incredible value',       p:'$0.07/$0.10'},
-    {id:'Qwen/Qwen3-Coder-480B-A35B-Instruct',       name:'Qwen3 Coder 480B',                    p:'$0.40/$1.60'},
-    {id:'Qwen/Qwen3-32B',                            name:'Qwen3 32B — reasoning',               p:'$0.08/$0.28'},
-    {id:'nvidia/NVIDIA-Nemotron-3-Super-120B-A12B',  name:'Nemotron 3 Super 120B (1M ctx)',      p:'$0.10/$0.50'},
-    {id:'meta-llama/Llama-4-Scout-17B-16E-Instruct', name:'Llama 4 Scout 17B (Vision)',          p:'$0.11/$0.34'},
   ]},
   openrouter:{label:'OpenRouter',badge:'badge-openrouter',url:'https://openrouter.ai/api/v1',models:[
     // ── 🏆 Most Popular (from live rankings, April 2026) ──
@@ -2145,7 +2109,7 @@ function saveKey(p, v) {
 }
 function getKey(p) { return localStorage.getItem('key_'+p) || ''; }
 function loadKeys() {
-  ['groq','minimax','deepinfra','openrouter'].forEach(p => {
+  ['groq','opencode','openrouter'].forEach(p => {
     const k = getKey(p);
     if (k) { const el = document.getElementById('key-'+p); if(el) el.value=k; document.getElementById('dot-'+p)?.classList.add('saved'); }
   });
@@ -2350,7 +2314,7 @@ function renderAttachedFiles() {
 // ══════════════════════════════════════════
 
 // Which providers support a live /models endpoint
-const LIVE_PROVIDERS = new Set(['groq', 'openrouter', 'deepinfra']);
+const LIVE_PROVIDERS = new Set(['groq', 'opencode', 'openrouter']);
 
 // Cache fetched model lists per provider for the session
 const modelCache = {};
@@ -2419,7 +2383,7 @@ async function populateModels(p) {
   let models = null;
 
   // Try live fetch if provider supports it
-  const canFetchLive = LIVE_PROVIDERS.has(p) && (getKey(p) || p === 'openrouter' || p === 'deepinfra');
+  const canFetchLive = LIVE_PROVIDERS.has(p) && (getKey(p) || p === 'openrouter');
   if (canFetchLive) {
     if (modelCache[p]) {
       models = modelCache[p];
@@ -2473,7 +2437,7 @@ async function populateModels(p) {
 async function fetchLiveModels(provider) {
   const key = getKey(provider);
   // OpenRouter and DeepInfra endpoints are public, no key required to list models
-  if (!key && provider !== 'openrouter' && provider !== 'deepinfra') return null;
+  if (!key && provider !== 'openrouter') return null;
 
   // ── Primary: direct provider API ──
   try {
@@ -2598,20 +2562,16 @@ function formatLiveModels(provider, raw) {
       }));
   }
 
-  if (provider === 'deepinfra') {
+  if (provider === 'opencode') {
+    // OpenCode Go returns {object, data:[{id, object, created, owned_by}]}
     return raw
-      .filter(m => m.metadata && m.metadata.pricing && m.object === 'model')
-      .sort((a, b) => (b.metadata?.context_length || 0) - (a.metadata?.context_length || 0))
+      .filter(m => m.object === 'model')
       .map(m => {
-        const inP = m.metadata.pricing.input_tokens || 0;
-        const outP = m.metadata.pricing.output_tokens || 0;
-        const priceStr = `$${fmtPrice(inP)}/$${fmtPrice(outP)}`;
-        const ctx = m.metadata.context_length ? ` (${fmtCtx(m.metadata.context_length)})` : '';
-        const rawName = m.id.split('/').pop() || '';
+        const staticMatch = (PROVIDERS.opencode?.models || []).find(s => s.id === m.id);
         return {
           id: m.id,
-          name: rawName + ctx,
-          p: priceStr
+          name: staticMatch ? staticMatch.name : m.id,
+          p: staticMatch ? staticMatch.p : '',
         };
       });
   }
@@ -3062,16 +3022,11 @@ function providerFromModel(modelId) {
   }
   // fallback heuristic
   if (modelId.includes('minimax') || modelId.includes('MiniMax')) return 'minimax';
-  if (modelId.includes('deepseek') || modelId.includes('kimi') || modelId.includes('Kimi') ||
-      modelId.includes('qwen') || modelId.includes('Qwen') || modelId.includes('glm') ||
-      modelId.includes('GLM') || modelId.includes('nvidia') || modelId.includes('llama-4') ||
-      modelId.includes('stepfun') || modelId.includes('mimo') || modelId.includes('gemini') ||
-      modelId.includes('anthropic') || modelId.includes('openai/gpt')) return 'deepinfra';
   return 'groq';
 }
 
 function providerIcon(pid) {
-  return {groq:'⚡', minimax:'🔷', deepinfra:'🔵', openrouter:'🔀'}[pid] || '🤖';
+  return {groq:'⚡', opencode:'🟠', openrouter:'🔀'}[pid] || '🤖';
 }
 
 function shortModelName(modelId) {
