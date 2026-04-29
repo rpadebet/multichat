@@ -1013,9 +1013,9 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
         ondrop="handleRagDrop(event)">
         <div class="file-drop-icon">📄</div>
         <div class="file-drop-text">Click or drag files here</div>
-        <div class="file-drop-hint">.txt .md .csv .json .py .js .html .xml .yaml</div>
+        <div class="file-drop-hint">.txt .md .csv .json .py .js .html .xml .yaml .pdf</div>
       </div>
-      <input type="file" id="rag-input" multiple accept=".txt,.md,.csv,.json,.py,.js,.ts,.html,.css,.xml,.yaml,.yml" onchange="handleRagFiles(this.files)"/>
+      <input type="file" id="rag-input" multiple accept=".txt,.md,.csv,.json,.py,.js,.ts,.html,.css,.xml,.yaml,.yml,.pdf" onchange="handleRagFiles(this.files)"/>
       <div class="file-list" id="rag-file-list"></div>
 
       <div style="margin-top:10px;">
@@ -2315,14 +2315,14 @@ function handleRagDrop(e) {
 }
 function handleRagFiles(fileList) {
   Array.from(fileList).forEach(f => {
-    if (f.size > 2 * 1024 * 1024) { showToast(`${f.name} too large (max 2MB)`,'err'); return; }
+    const isPdf = f.name.toLowerCase().endsWith('.pdf');
     const reader = new FileReader();
     reader.onload = e => {
-      ragFiles.push({name: f.name, content: e.target.result, size: f.size});
+      ragFiles.push({name: f.name, content: e.target.result, size: f.size, type: isPdf ? 'pdf' : 'text'});
       renderRagFileList();
       updateCtxPreview();
     };
-    reader.readAsText(f);
+    if (isPdf) reader.readAsDataURL(f); else reader.readAsText(f);
   });
   document.getElementById('rag-input').value = '';
 }
@@ -2343,25 +2343,30 @@ function renderRagFileList() {
     </div>`).join('');
 }
 // Refreshes the context preview box and token estimate in the settings panel.
-// Uses a simple length/4 heuristic for token count — accurate enough for the
-// informational display without needing a full tokenizer.
+// Uses a simple length/4 heuristic for token count.
 function updateCtxPreview() {
   const preview = document.getElementById('ctx-preview');
   const tokEl = document.getElementById('ctx-tokens');
   if (!ragFiles.length) { preview.textContent = 'No files loaded'; tokEl.textContent = '0 tokens'; return; }
-  const combined = buildRagContext();
+  const combined = ragFiles.map(f => {
+    if (f.type === 'pdf') return `[PDF: ${f.name} (${fmtSize(f.size)})]`;
+    return `### ${f.name}\n${f.content}`;
+  }).join('\n\n');
   const approxTok = Math.ceil(combined.length / 4);
   tokEl.textContent = `~${approxTok.toLocaleString()} tokens`;
   preview.textContent = combined.slice(0, 600) + (combined.length > 600 ? '\n…' : '');
 }
-// Concatenates all loaded RAG files into a single fenced-code-block string
-// suitable for injection into the system prompt. Each file is labelled with
-// its filename so the model can reference specific files by name in its answer.
+// Concatenates all loaded RAG files into a string suitable for injection
+// into the system prompt. Text files are labelled with filename + fenced code;
+// PDFs are included as data URLs.
 function buildRagContext() {
   if (!ragFiles.length) return '';
-  return ragFiles.map(f =>
-    `### File: ${f.name}\n\`\`\`\n${f.content.slice(0, 50000)}\n\`\`\``
-  ).join('\n\n');
+  return ragFiles.map(f => {
+    if (f.type === 'pdf') {
+      return `### File: ${f.name} (PDF)\n${f.content}`;
+    }
+    return `### File: ${f.name}\n\`\`\`\n${f.content}\n\`\`\``;
+  }).join('\n\n');
 }
 
 // ══════════════════════════════════════════
@@ -2373,13 +2378,13 @@ function buildRagContext() {
 // ══════════════════════════════════════════
 function handleFileAttach(fileList) {
   Array.from(fileList).forEach(f => {
-    if (f.size > 1024 * 1024) { showToast(`${f.name} too large (max 1MB)`,'err'); return; }
+    const isPdf = f.name.toLowerCase().endsWith('.pdf');
     const reader = new FileReader();
     reader.onload = e => {
-      attachedFiles.push({name: f.name, content: e.target.result, size: f.size});
+      attachedFiles.push({name: f.name, content: e.target.result, size: f.size, type: isPdf ? 'pdf' : 'text'});
       renderAttachedFiles();
     };
-    reader.readAsText(f);
+    if (isPdf) reader.readAsDataURL(f); else reader.readAsText(f);
   });
   document.getElementById('attach-input').value = '';
 }
@@ -3543,9 +3548,10 @@ function buildApiMessages(chatMessages, snapAttach, systemPrompt, searchContext 
       }
       // Inject inline attachments for last user message
       if (isLast && snapAttach.length) {
-        const attachCtx = snapAttach.map(f =>
-          `\n\n### Attached: ${f.name}\n\`\`\`\n${f.content.slice(0,20000)}\n\`\`\``
-        ).join('');
+        const attachCtx = snapAttach.map(f => {
+          if (f.type === 'pdf') return `\n\n### Attached: ${f.name} (PDF)\n${f.content}`;
+          return `\n\n### Attached: ${f.name}\n\`\`\`\n${f.content}\n\`\`\``;
+        }).join('');
         content = content + attachCtx;
       } else if (m.attachments?.length && !isLast) {
         const names = m.attachments.map(a=>a.name).join(', ');
