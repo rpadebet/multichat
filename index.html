@@ -247,6 +247,7 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 .price-pill{font-size:11px;font-family:var(--font-mono);color:var(--text3);background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:2px 7px;}
 .prov-badge{padding:3px 8px;border-radius:20px;font-size:11px;font-family:var(--font-mono);}
 .badge-groq{background:rgba(46,125,94,.1);color:var(--green);border:1px solid rgba(46,125,94,.2);}
+.badge-opencode{background:rgba(249,115,22,.08);color:#f97316;border:1px solid rgba(249,115,22,.2);}
 .badge-minimax{background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent-border);}
 .badge-deepinfra{background:rgba(59,130,246,.08);color:#3b82f6;border:1px solid rgba(59,130,246,.2);}
 .badge-openrouter{background:rgba(107,99,246,.08);color:#6b63f6;border:1px solid rgba(107,99,246,.2);}
@@ -353,11 +354,13 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 .mb-groq    {background:rgba(46,125,94,.12);color:#1a6644;border-color:rgba(46,125,94,.3);}
 .mb-minimax {background:rgba(201,107,47,.1);color:var(--accent);border-color:var(--accent-border);}
 .mb-deepinfra{background:rgba(59,130,246,.1);color:#1d5fa8;border-color:rgba(59,130,246,.25);}
+.mb-opencode{background:rgba(249,115,22,.1);color:#c2410c;border-color:rgba(249,115,22,.25);}
 .mb-openrouter{background:rgba(107,99,246,.1);color:#4b44c4;border-color:rgba(107,99,246,.25);}
 /* dark/chatgpt/gemini theme overrides */
 [data-theme="chatgpt"] .mb-groq,[data-theme="dark"] .mb-groq{color:#4ade80;background:rgba(74,222,128,.1);border-color:rgba(74,222,128,.25);}
 [data-theme="chatgpt"] .mb-minimax,[data-theme="dark"] .mb-minimax,[data-theme="gemini"] .mb-minimax{color:#fb923c;background:rgba(251,146,60,.1);border-color:rgba(251,146,60,.25);}
 [data-theme="chatgpt"] .mb-deepinfra,[data-theme="dark"] .mb-deepinfra,[data-theme="gemini"] .mb-deepinfra{color:#60a5fa;background:rgba(96,165,250,.1);border-color:rgba(96,165,250,.25);}
+[data-theme="chatgpt"] .mb-opencode,[data-theme="dark"] .mb-opencode,[data-theme="gemini"] .mb-opencode{color:#fb923c;background:rgba(251,146,60,.1);border-color:rgba(251,146,60,.25);}
 [data-theme="chatgpt"] .mb-openrouter,[data-theme="dark"] .mb-openrouter,[data-theme="gemini"] .mb-openrouter{color:#a78bfa;background:rgba(167,139,250,.1);border-color:rgba(167,139,250,.25);}
 [data-theme="gemini"] .mb-groq{color:#81c995;background:rgba(129,201,149,.1);border-color:rgba(129,201,149,.25);}
 
@@ -803,6 +806,7 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
     <div class="sel-wrap">
       <select class="hdr-select" id="prov-sel" onchange="onProviderChange()">
         <option value="groq">⚡ Groq</option>
+        <option value="opencode">🟠 OpenCode Go</option>
         <option value="openrouter" selected>🔀 OpenRouter</option>
       </select>
       <span class="sel-chev">▾</span>
@@ -933,6 +937,10 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
       <div class="key-row">
         <div class="key-label"><span class="key-dot" id="dot-groq"></span>Groq</div>
         <input class="key-input" id="key-groq" type="password" placeholder="gsk_••••" oninput="saveKey('groq',this.value)"/>
+      </div>
+      <div class="key-row">
+        <div class="key-label"><span class="key-dot" id="dot-opencode"></span>OpenCode Go</div>
+        <input class="key-input" id="key-opencode" type="password" placeholder="opencode_••••" oninput="saveKey('opencode',this.value)"/>
       </div>
       <div class="key-row">
         <div class="key-label"><span class="key-dot" id="dot-openrouter"></span>OpenRouter</div>
@@ -1115,7 +1123,23 @@ const PROVIDERS = {
     {id:'llama-3.3-70b-versatile',       name:'Llama 3.3 70B Versatile',            p:'$0.59/$0.79'},
     {id:'llama-3.1-8b-instant',          name:'Llama 3.1 8B Instant (cheapest)',    p:'$0.05/$0.08'},
   ]},
-  openrouter:{label:'OpenRouter',badge:'badge-openrouter',url:'https://openrouter.ai/api/v1',models:[
+  opencode:{label:'OpenCode Go',badge:'badge-opencode',usageUrl:'https://opencode.ai/workspace/wrk_01KQA49DFKK6FNKT2MX99WVGQH/usage',url:'https://opencode.ai/zen/go/v1',models:[
+    {id:'minimax-m2.7',    name:'MiniMax M2.7',        p:'$0.30/$1.20'},
+    {id:'minimax-m2.5',    name:'MiniMax M2.5',        p:'$0.27/$0.95'},
+    {id:'kimi-k2.6',       name:'Kimi K2.6',           p:'$0.50/$2.50'},
+    {id:'kimi-k2.5',       name:'Kimi K2.5',           p:'$0.45/$2.25'},
+    {id:'glm-5.1',         name:'GLM 5.1',             p:'$0.95/$3.15'},
+    {id:'glm-5',           name:'GLM 5',               p:'$0.80/$2.56'},
+    {id:'deepseek-v4-pro', name:'DeepSeek V4 Pro',     p:'$0.50/$2.00'},
+    {id:'deepseek-v4-flash',name:'DeepSeek V4 Flash',  p:'$0.15/$0.60'},
+    {id:'qwen3.6-plus',    name:'Qwen 3.6 Plus',       p:'$0.30/$0.90'},
+    {id:'qwen3.5-plus',    name:'Qwen 3.5 Plus',       p:'$0.26/$1.56'},
+    {id:'mimo-v2-pro',     name:'MiMo V2 Pro',         p:'$1.00/$3.00'},
+    {id:'mimo-v2-omni',    name:'MiMo V2 Omni',        p:'$0.40/$2.00'},
+    {id:'mimo-v2.5-pro',   name:'MiMo V2.5 Pro',       p:'$0.80/$2.50'},
+    {id:'mimo-v2.5',       name:'MiMo V2.5',           p:'$0.30/$1.50'},
+  ]},
+  openrouter:{label:'OpenRouter',badge:'badge-openrouter',usageUrl:'https://openrouter.ai/activity',url:'https://openrouter.ai/api/v1',models:[
     // ── 🏆 Most Popular (from live rankings, April 2026) ──
     {id:'xiaomi/mimo-v2-pro-20260318',              name:'🏆 MiMo V2 Pro — Xiaomi (#1 ranked)',    p:'$1.00/$3.00'},
     {id:'minimax/minimax-m2.7-20260318',            name:'🏆 MiniMax M2.7 (#5 ranked)',             p:'$0.30/$1.20'},
