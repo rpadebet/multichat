@@ -27,15 +27,15 @@ function fmtCtx(n) {
 }
 
 async function run() {
-  console.log('Fetching latest models from OpenRouter and DeepInfra...');
-  
-  const [orData, diData] = await Promise.all([
+  console.log('Fetching latest models from OpenRouter and OpenCode Go...');
+
+  const [orData, ocData] = await Promise.all([
     fetchJson('https://openrouter.ai/api/v1/models'),
-    fetchJson('https://api.deepinfra.com/v1/openai/models')
+    fetchJson('https://opencode.ai/zen/go/v1/models')
   ]);
 
   const openrouterModels = orData.data || [];
-  const deepinfraModels = diData.data || [];
+  const opencodeModels = ocData.data || [];
 
   // Sort OpenRouter models: free first, then by context window descending
   const orSorted = openrouterModels.sort((a, b) => {
@@ -44,7 +44,7 @@ async function run() {
     if (aFree && !bFree) return -1;
     if (!aFree && bFree) return 1;
     return (b.context_length || 0) - (a.context_length || 0);
-  }).slice(0, 40); // Top 40 models
+  }).slice(0, 40);
 
   const formattedOr = orSorted.map(m => {
     const inP = parseFloat(m.pricing?.prompt || '0');
@@ -56,34 +56,54 @@ async function run() {
     return { id: m.id, name: `${freeTag}${m.name || m.id}${ctx}`.replace(/'/g, "\\'"), p: priceStr };
   });
 
-  const diSorted = deepinfraModels
-    .filter(m => m.metadata && m.metadata.pricing && m.object === 'model')
-    .sort((a, b) => (b.metadata?.context_length || 0) - (a.metadata?.context_length || 0))
-    .slice(0, 30);
+  // Read index.html (relative to script, in repo root)
+  const indexPath = __dirname + '/index.html';
+  let indexHtml = fs.readFileSync(indexPath, 'utf8');
 
-  const formattedDi = diSorted.map(m => {
-    const inP = m.metadata.pricing.input_tokens || 0;
-    const outP = m.metadata.pricing.output_tokens || 0;
-    const priceStr = `$${fmtPrice(inP)}/$${fmtPrice(outP)}`;
-    const ctx = m.metadata.context_length ? ` (${fmtCtx(m.metadata.context_length)})` : '';
-    let nm = (m.id.split('/').pop() || m.id) + ctx;
-    return { id: m.id, name: nm.replace(/'/g, "\\'"), p: priceStr };
+  // Extract static model names/prices from current opencode entry for fallback display names
+  const ocNameMap = {};
+  const ocStaticRegex = /opencode:\{label:'OpenCode Go',badge:'badge-opencode',usageUrl:'[^']+',url:'[^']+',models:\[([\s\S]*?)\]\}/;
+  const ocStaticMatch = indexHtml.match(ocStaticRegex);
+  if (ocStaticMatch) {
+    const modelLines = ocStaticMatch[1].match(/\{id:'([^']+)',\s*name:'([^']+)',\s*p:'([^']+)'\}/g) || [];
+    modelLines.forEach(line => {
+      const m = line.match(/id:'([^']+)',\s*name:'([^']+)',\s*p:'([^']+)'/);
+      if (m) ocNameMap[m[1]] = { name: m[2], p: m[3] };
+    });
+  }
+
+  // Format OpenCode Go models (no pricing from API — use static names)
+  const formattedOc = opencodeModels
+    .filter(m => m.object === 'model')
+    .map(m => {
+      const known = ocNameMap[m.id];
+      return {
+        id: m.id,
+        name: (known ? known.name : m.id).replace(/'/g, "\\'"),
+        p: known ? known.p : '',
+      };
+    });
+
+  // Preserve existing unknowns from static list (models NOT in the live API response)
+  const liveOcIds = new Set(formattedOc.map(m => m.id));
+  Object.entries(ocNameMap).forEach(([id, info]) => {
+    if (!liveOcIds.has(id)) {
+      formattedOc.push({ id, name: info.name.replace(/'/g, "\\'"), p: info.p });
+    }
   });
 
-  let indexHtml = fs.readFileSync('c:/Users/rohit/OneDrive/Documents/Claude Apps/multichat/index.html', 'utf8');
-
   // Replace OpenRouter
-  const orRegex = /openrouter:\{label:'OpenRouter',badge:'badge-openrouter',url:'https:\/\/openrouter\.ai\/api\/v1',models:\[([\s\S]*?)\]\}/;
+  const orRegex = /openrouter:\{label:'OpenRouter',badge:'badge-openrouter',usageUrl:'[^']+',url:'https:\/\/openrouter\.ai\/api\/v1',models:\[([\s\S]*?)\]\}/;
   let newOrText = formattedOr.map(m => `    {id:'${m.id}', name:'${m.name}', p:'${m.p}'},`).join('\n');
-  indexHtml = indexHtml.replace(orRegex, `openrouter:{label:'OpenRouter',badge:'badge-openrouter',url:'https://openrouter.ai/api/v1',models:[\n${newOrText}\n  ]}`);
+  indexHtml = indexHtml.replace(orRegex, `openrouter:{label:'OpenRouter',badge:'badge-openrouter',usageUrl:'https://openrouter.ai/activity',url:'https://openrouter.ai/api/v1',models:[\n${newOrText}\n  ]}`);
 
-  // Replace DeepInfra
-  const diRegex = /deepinfra:\{label:'DeepInfra',badge:'badge-deepinfra',url:'https:\/\/api\.deepinfra\.com\/v1\/openai',models:\[([\s\S]*?)\]\}/;
-  let newDiText = formattedDi.map(m => `    {id:'${m.id}', name:'${m.name}', p:'${m.p}'},`).join('\n');
-  indexHtml = indexHtml.replace(diRegex, `deepinfra:{label:'DeepInfra',badge:'badge-deepinfra',url:'https://api.deepinfra.com/v1/openai',models:[\n${newDiText}\n  ]}`);
+  // Replace OpenCode Go
+  const ocRegex = /opencode:\{label:'OpenCode Go',badge:'badge-opencode',usageUrl:'[^']+',url:'https:\/\/opencode\.ai\/zen\/go\/v1',models:\[([\s\S]*?)\]\}/;
+  let newOcText = formattedOc.map(m => `    {id:'${m.id}', name:'${m.name}', p:'${m.p}'},`).join('\n');
+  indexHtml = indexHtml.replace(ocRegex, `opencode:{label:'OpenCode Go',badge:'badge-opencode',usageUrl:'https://opencode.ai/workspace/wrk_01KQA49DFKK6FNKT2MX99WVGQH/usage',url:'https://opencode.ai/zen/go/v1',models:[\n${newOcText}\n  ]}`);
 
-  fs.writeFileSync('c:/Users/rohit/OneDrive/Documents/Claude Apps/multichat/index.html', indexHtml);
-  console.log('Successfully updated index.html default models!');
+  fs.writeFileSync(indexPath, indexHtml);
+  console.log(`Successfully updated index.html — OpenRouter: ${formattedOr.length} models, OpenCode Go: ${formattedOc.length} models`);
 }
 
 run().catch(console.error);
