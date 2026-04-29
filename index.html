@@ -553,6 +553,14 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 .input-hint{font-size:11px;color:var(--text3);}
 .input-hint kbd{font-family:var(--font-mono);background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:1px 4px;font-size:10px;}
 .tok-count{font-size:11px;color:var(--text3);font-family:var(--font-mono);}
+.stat-badge{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:2px 8px;border-radius:12px;
+  font-size:10px;font-family:var(--font-mono);
+  background:var(--accent-bg);color:var(--accent);
+  border:1px solid var(--accent-border);
+  white-space:nowrap;
+}
 
 /* ── Web search result panel ──
    Collapsible block rendered above the AI response text showing which queries
@@ -911,9 +919,8 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
       <span class="input-hint"><kbd>Enter</kbd> new line · tap <strong>↑</strong> to send</span>
       <div style="display:flex;align-items:center;gap:8px;">
         <span id="search-indicator"></span>
-        <span class="tok-count" id="query-stats" style="display:none;"></span>
-        <span class="tok-count" id="footer-sep" style="display:none;color:var(--border2);">│</span>
-        <span class="tok-count" id="conv-stats" style="display:none;"></span>
+        <span class="stat-badge" id="query-stats" style="display:none;"></span>
+        <span class="stat-badge" id="conv-stats" style="display:none;"></span>
         <span class="tok-count" id="tok-count">0 tokens</span>
       </div>
     </div>
@@ -2808,9 +2815,7 @@ function loadChat(id) {
   if (chat && chat.totalTokens) {
     updateFooterStats(0, 0, chat.totalTokens, chat.totalCost || 0);
     const qs = document.getElementById('query-stats');
-    const sep = document.getElementById('footer-sep');
     if (qs) qs.style.display = 'none';
-    if (sep) sep.style.display = 'none';
   } else {
     resetFooterStats();
   }
@@ -3718,21 +3723,24 @@ function copyMsg(msgIndex) {
   if (!msg) return;
   navigator.clipboard.writeText(msg.content || '').then(() => showToast('Copied to clipboard'));
 }
+function fmtNum(n) {
+  if (n >= 1e6) return (n/1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return (n/1e3).toFixed(1) + 'K';
+  return n.toLocaleString();
+}
 function updateFooterStats(queryTok, queryCost, totalTok, totalCost) {
   const qs = document.getElementById('query-stats');
   const cs = document.getElementById('conv-stats');
-  const sep = document.getElementById('footer-sep');
-  if (!qs || !cs || !sep) return;
+  if (!qs || !cs) return;
   if (queryTok > 0) {
-    qs.textContent = `${queryTok.toLocaleString()} tok · $${queryCost.toFixed(4)}`;
+    qs.textContent = `${fmtNum(queryTok)} tok · $${queryCost.toFixed(4)}`;
     qs.style.display = '';
-    sep.style.display = '';
   }
-  cs.textContent = `Σ ${totalTok.toLocaleString()} tok · $${totalCost.toFixed(4)}`;
+  cs.textContent = `Σ ${fmtNum(totalTok)} tok · $${totalCost.toFixed(4)}`;
   cs.style.display = '';
 }
 function resetFooterStats() {
-  ['query-stats','footer-sep','conv-stats'].forEach(id => {
+  ['query-stats','conv-stats'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
