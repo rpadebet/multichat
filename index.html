@@ -14,6 +14,7 @@
 <script>document.getElementById('manifest-link').href += '?v=' + Date.now();</script>
 <title>MultiChat</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4/build/pdf.min.mjs"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&family=Inter:wght@300;400;500;600&family=Google+Sans:wght@400;500;600&display=swap');
 
@@ -97,7 +98,7 @@
 ══════════════════════════════════════════════════ */
 *{margin:0;padding:0;box-sizing:border-box;}
 html{zoom:var(--ui-scale,1);}
-body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:100vh;display:flex;overflow:hidden;transition:background 0.2s,color 0.2s;}
+body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:calc(100vh/var(--ui-scale,1));display:flex;overflow:hidden;transition:background 0.2s,color 0.2s;}
 
 /* ══════════════════════════════════════════════════
    SIDEBAR
@@ -1931,7 +1932,11 @@ async function searchSerper(query, apiKey) {
 }
 
 async function searchSearXNG(query, baseUrl) {
-  const url = baseUrl + encodeURIComponent(query) + '&format=json';
+  // Ensure the base URL has a proper query separator
+  let url = baseUrl.trim();
+  if (!url.includes('?')) url += '?q=';
+  else if (!url.endsWith('?') && !url.endsWith('?q=') && !url.endsWith('&') && !url.endsWith('&q=')) url += '&q=';
+  url += encodeURIComponent(query) + '&format=json';
   const resp = await fetch(url);
   if (!resp.ok) throw new Error(`SearXNG HTTP ${resp.status}`);
   const data = await resp.json();
@@ -2374,15 +2379,32 @@ function handleRagDrop(e) {
   handleRagFiles(e.dataTransfer.files);
 }
 function handleRagFiles(fileList) {
-  Array.from(fileList).forEach(f => {
-    const isPdf = f.name.toLowerCase().endsWith('.pdf');
-    const reader = new FileReader();
-    reader.onload = e => {
-      ragFiles.push({name: f.name, content: e.target.result, size: f.size, type: isPdf ? 'pdf' : 'text'});
-      renderRagFileList();
-      updateCtxPreview();
-    };
-    if (isPdf) reader.readAsDataURL(f); else reader.readAsText(f);
+  Array.from(fileList).forEach(async f => {
+    const chipId = 'rag-' + Date.now() + '-' + Math.random().toString(36).slice(2,6);
+    ragFiles.push({name: f.name, content: '', size: f.size, type: 'text', chunks: null, _extracting: true, _chipId: chipId});
+    renderRagFileList();
+    updateCtxPreview();
+    try {
+      const isPdf = f.name.toLowerCase().endsWith('.pdf');
+      const rawText = isPdf ? await extractTextFromPdf(f) : await f.text();
+      const cleaned = extractStructuredText(rawText, f.name);
+      const chunks = chunkText(cleaned);
+      const fileObj = ragFiles.find(a => a._chipId === chipId);
+      if (fileObj) {
+        fileObj.content = cleaned;
+        fileObj.chunks = chunks;
+        fileObj.words = cleaned.split(/\s+/).filter(Boolean).length;
+        fileObj._extracting = false;
+      }
+    } catch(e) {
+      const fileObj = ragFiles.find(a => a._chipId === chipId);
+      if (fileObj) {
+        fileObj._extracting = false;
+        fileObj._error = e.message;
+      }
+    }
+    renderRagFileList();
+    updateCtxPreview();
   });
   document.getElementById('rag-input').value = '';
 }
@@ -2394,13 +2416,18 @@ function removeRagFile(i) {
 function renderRagFileList() {
   const list = document.getElementById('rag-file-list');
   if (!ragFiles.length) { list.innerHTML = ''; return; }
-  list.innerHTML = ragFiles.map((f,i) => `
-    <div class="file-chip">
+  list.innerHTML = ragFiles.map((f,i) => {
+    let detail = fmtSize(f.size);
+    if (f._extracting) detail = 'extracting…';
+    else if (f._error) detail = '⚠ ' + f._error;
+    else if (f.chunks) detail = `${f.chunks.length} chunks · ${f.words || '?'} words`;
+    return `<div class="file-chip">
       <span class="file-chip-icon">${fileIcon(f.name)}</span>
       <span class="file-chip-name">${esc(f.name)}</span>
-      <span class="file-chip-size">${fmtSize(f.size)}</span>
+      <span class="file-chip-size">${detail}</span>
       <button class="file-chip-del" onclick="removeRagFile(${i})">✕</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 // Refreshes the context preview box and token estimate in the settings panel.
 // Uses a simple length/4 heuristic for token count.
@@ -2408,12 +2435,16 @@ function updateCtxPreview() {
   const preview = document.getElementById('ctx-preview');
   const tokEl = document.getElementById('ctx-tokens');
   if (!ragFiles.length) { preview.textContent = 'No files loaded'; tokEl.textContent = '0 tokens'; return; }
-  const combined = ragFiles.map(f => {
+  const parts = ragFiles.map(f => {
+    if (f._extracting) return `[extracting: ${f.name}…]`;
+    if (f._error) return `[⚠ ${f.name}: ${f._error}]`;
+    if (f.chunks) return `### ${f.name} (${f.chunks.length} chunks, ~${f.words?.toLocaleString() || '?'} words)`;
     if (f.type === 'pdf') return `[PDF: ${f.name} (${fmtSize(f.size)})]`;
-    return `### ${f.name}\n${f.content}`;
-  }).join('\n\n');
-  const approxTok = Math.ceil(combined.length / 4);
-  tokEl.textContent = `~${approxTok.toLocaleString()} tokens`;
+    return `### ${f.name}\n${(f.content||'').slice(0, 200)}`;
+  });
+  const combined = parts.join('\n\n');
+  const totalTokens = ragFiles.reduce((sum, f) => sum + estimateTokens(f.content || ''), 0);
+  tokEl.textContent = `~${totalTokens.toLocaleString()} tokens`;
   preview.textContent = combined.slice(0, 600) + (combined.length > 600 ? '\n…' : '');
 }
 // Concatenates all loaded RAG files into a string suitable for injection
@@ -2422,29 +2453,182 @@ function updateCtxPreview() {
 function buildRagContext() {
   if (!ragFiles.length) return '';
   return ragFiles.map(f => {
-    if (f.type === 'pdf') {
-      return `### File: ${f.name} (PDF)\n${f.content}`;
+    if (f.chunks && f.chunks.length) {
+      // Use chunked files: include up to ~12K tokens of chunks
+      const combined = f.chunks.join('\n\n---\n\n').slice(0, 16000);
+      return `### File: ${f.name} (${f.chunks.length} chunks, ~${estimateTokens(combined)} tok)\n\`\`\`\n${combined}\n\`\`\``;
     }
-    return `### File: ${f.name}\n\`\`\`\n${f.content}\n\`\`\``;
+    if (f.type === 'pdf') {
+      return `### File: ${f.name} (PDF)\n${(f.content||'').slice(0, 8000)}`;
+    }
+    return `### File: ${f.name}\n\`\`\`\n${(f.content||'').slice(0, 8000)}\n\`\`\``;
   }).join('\n\n');
+}
+
+// ══════════════════════════════════════════
+// TEXT EXTRACTION + CHUNKING
+// ══════════════════════════════════════════
+
+const CHUNK_TOKENS = 4000; // target ~4K tokens per chunk (~3K words)
+const CHUNK_OVERLAP = 200; // token overlap between chunks
+
+let _pdfJsReady = false;
+async function ensurePdfJs() {
+  if (_pdfJsReady) return;
+  if (typeof pdfjsLib !== 'undefined') { pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4/build/pdf.worker.min.mjs'; _pdfJsReady = true; return; }
+  // If pdf.js hasn't loaded yet (race condition), wait
+  await new Promise(r => setTimeout(r, 100));
+  if (typeof pdfjsLib !== 'undefined') { pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4/build/pdf.worker.min.mjs'; _pdfJsReady = true; }
+}
+
+async function extractTextFromPdf(file) {
+  await ensurePdfJs();
+  if (typeof pdfjsLib === 'undefined') throw new Error('PDF.js failed to load');
+  const arrayBuf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuf }).promise;
+  const pages = [];
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const textContent = await page.getTextContent();
+    const pageText = textContent.items.map(item => item.str).join(' ');
+    pages.push(pageText);
+  }
+  return pages.join('\n\n').trim();
+}
+
+function extractStructuredText(text, fileName) {
+  const ext = (fileName || '').split('.').pop().toLowerCase();
+
+  // HTML: strip tags, preserve headings and links as markdown
+  if (ext === 'html' || ext === 'htm' || text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html')) {
+    text = text.replace(/<h1[^>]*>/gi, '\n\n# ').replace(/<\/h1>/gi, '\n');
+    text = text.replace(/<h2[^>]*>/gi, '\n\n## ').replace(/<\/h2>/gi, '\n');
+    text = text.replace(/<h3[^>]*>/gi, '\n\n### ').replace(/<\/h3>/gi, '\n');
+    text = text.replace(/<h4[^>]*>/gi, '\n\n#### ').replace(/<\/h4>/gi, '\n');
+    text = text.replace(/<a[^>]*href=["']([^"']*)["'][^>]*>([^<]*)<\/a>/gi, '[$2]($1)');
+    text = text.replace(/<br\s*\/?>/gi, '\n');
+    text = text.replace(/<p[^>]*>/gi, '\n\n').replace(/<\/p>/gi, '');
+    text = text.replace(/<li[^>]*>/gi, '\n- ').replace(/<\/li>/gi, '');
+    text = text.replace(/<[^>]+>/g, '');
+    text = text.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+    text = text.replace(/\n{3,}/g, '\n\n').trim();
+  }
+
+  // CSV: preserve as table-like text
+  if (ext === 'csv') {
+    const lines = text.trim().split('\n');
+    if (lines.length > 200) {
+      text = lines.slice(0, 5).join('\n') + `\n\n… (${lines.length - 5} more rows, truncated for context)`;
+    }
+  }
+
+  // JSON: pretty-print
+  if (ext === 'json') {
+    try {
+      const parsed = JSON.parse(text);
+      text = JSON.stringify(parsed, null, 2);
+    } catch(e) { /* keep as-is */ }
+  }
+
+  return text;
+}
+
+function estimateTokens(text) {
+  return Math.ceil((text || '').length / 4);
+}
+
+function chunkText(text, targetTokens) {
+  targetTokens = targetTokens || CHUNK_TOKENS;
+  const targetChars = targetTokens * 4;
+  if (!text || text.length <= targetChars) return [text];
+
+  const chunks = [];
+  // Split on double newlines (paragraph boundaries) first
+  const paragraphs = text.split(/\n\n+/);
+  let current = '';
+
+  for (const para of paragraphs) {
+    if ((current.length + para.length) > targetChars && current.length > targetChars * 0.3) {
+      chunks.push(current.trim());
+      // Overlap: include last ~100 chars of previous chunk
+      const overlap = current.slice(-Math.floor(CHUNK_OVERLAP * 4));
+      current = overlap ? overlap + '\n\n' + para : para;
+    } else {
+      current = current ? current + '\n\n' + para : para;
+    }
+  }
+  if (current.trim()) chunks.push(current.trim());
+
+  return chunks;
+}
+
+function injectChunks(chunks, maxTokens, query) {
+  if (!chunks || !chunks.length) return { text: '', used: 0, total: 0 };
+  const queryLower = (query || '').toLowerCase();
+
+  // Score chunks by keyword relevance to the query
+  const scored = chunks.map((chunk, i) => {
+    if (!queryLower) return { chunk, score: -i, idx: i }; // no query: keep original order
+    const chunkLower = chunk.toLowerCase();
+    const words = queryLower.split(/\s+/).filter(w => w.length > 2);
+    let score = 0;
+    for (const w of words) {
+      const count = (chunkLower.match(new RegExp(w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
+      score += count * 10;
+    }
+    // Bonus for title-like chunks (start with #)
+    if (chunk.trim().startsWith('#')) score += 5;
+    return { chunk, score, idx: i };
+  });
+
+  // Sort: highest score first, preserve order for ties
+  scored.sort((a, b) => b.score - a.score || a.idx - b.idx);
+
+  // Inject chunks until we run out of token budget
+  let used = 0;
+  let text = '';
+  const maxChars = maxTokens * 4;
+  for (const s of scored) {
+    const chunkTokens = estimateTokens(s.chunk);
+    if (used + chunkTokens > maxTokens) break;
+    text += (text ? '\n\n---\n\n' : '') + s.chunk;
+    used += chunkTokens;
+  }
+
+  return { text, used: Math.min(used, maxTokens), total: chunks.length };
 }
 
 // ══════════════════════════════════════════
 // INLINE ATTACH (per-message)
 // Unlike RAG files, inline attachments are cleared after each message send.
-// They are appended directly to the user message content in buildApiMessages()
-// and shown as chip previews above the textarea. Limited to 1MB per file to
-// avoid oversized payloads on per-message sends.
+// Files are extracted as structured text (PDFs via pdf.js, HTML → markdown),
+// chunked into ~4K token pieces, and injected context-aware at send time.
 // ══════════════════════════════════════════
 function handleFileAttach(fileList) {
-  Array.from(fileList).forEach(f => {
-    const isPdf = f.name.toLowerCase().endsWith('.pdf');
-    const reader = new FileReader();
-    reader.onload = e => {
-      attachedFiles.push({name: f.name, content: e.target.result, size: f.size, type: isPdf ? 'pdf' : 'text'});
-      renderAttachedFiles();
-    };
-    if (isPdf) reader.readAsDataURL(f); else reader.readAsText(f);
+  Array.from(fileList).forEach(async f => {
+    const chipId = 'att-' + Date.now() + '-' + Math.random().toString(36).slice(2,6);
+    attachedFiles.push({name: f.name, content: '', size: f.size, type: 'text', chunks: null, _extracting: true, _chipId: chipId});
+    renderAttachedFiles();
+    try {
+      const isPdf = f.name.toLowerCase().endsWith('.pdf');
+      const rawText = isPdf ? await extractTextFromPdf(f) : await f.text();
+      const cleaned = extractStructuredText(rawText, f.name);
+      const chunks = chunkText(cleaned);
+      const fileObj = attachedFiles.find(a => a._chipId === chipId);
+      if (fileObj) {
+        fileObj.content = cleaned;
+        fileObj.chunks = chunks;
+        fileObj.words = cleaned.split(/\s+/).filter(Boolean).length;
+        fileObj._extracting = false;
+      }
+    } catch(e) {
+      const fileObj = attachedFiles.find(a => a._chipId === chipId);
+      if (fileObj) {
+        fileObj._extracting = false;
+        fileObj._error = e.message;
+      }
+    }
+    renderAttachedFiles();
   });
   document.getElementById('attach-input').value = '';
 }
@@ -2456,11 +2640,17 @@ function renderAttachedFiles() {
   const wrap = document.getElementById('attached-files');
   if (!attachedFiles.length) { wrap.classList.remove('has-files'); wrap.innerHTML = ''; return; }
   wrap.classList.add('has-files');
-  wrap.innerHTML = attachedFiles.map((f,i) => `
-    <div class="att-chip">
-      ${fileIcon(f.name)} ${esc(f.name)} <span style="font-family:var(--font-mono);font-size:10px;color:var(--text3)">${fmtSize(f.size)}</span>
+  wrap.innerHTML = attachedFiles.map((f,i) => {
+    const icon = fileIcon(f.name);
+    let detail = fmtSize(f.size);
+    if (f._extracting) detail = 'extracting…';
+    else if (f._error) detail = '⚠ ' + f._error;
+    else if (f.chunks) detail = `${f.chunks.length} chunks · ${f.words || '?'} words`;
+    return `<div class="att-chip">
+      ${icon} ${esc(f.name)} <span style="font-family:var(--font-mono);font-size:10px;color:var(--text3)">${detail}</span>
       <button class="att-chip-del" onclick="removeAttached(${i})">✕</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 // ══════════════════════════════════════════
@@ -3224,6 +3414,23 @@ function shortModelName(modelId) {
   return modelId.split('/').pop().replace(/-instruct.*|Instruct.*/i,'').slice(0,36);
 }
 
+function getModelContextSize(modelId) {
+  // Known context window sizes in tokens — conservative defaults
+  const ctxMap = {
+    'deepseek-v4-pro': 1048576, 'deepseek-v4-flash': 1048576,
+    'mimo-v2-pro': 1048576, 'mimo-v2.5-pro': 1048576, 'mimo-v2.5': 1048576,
+    'qwen3.6-plus': 1000000, 'qwen3.5-plus': 1000000,
+    'kimi-k2.6': 256000, 'kimi-k2.5': 262144,
+    'glm-5.1': 202752, 'glm-5': 202752,
+    'minimax-m2.7': 196608, 'minimax-m2.5': 196608,
+  };
+  // Try exact match first, then partial
+  for (const [key, val] of Object.entries(ctxMap)) {
+    if (modelId.includes(key)) return val;
+  }
+  return 131072; // default conservative: 128K
+}
+
 function renderMessages() {
   const chat = currentChatId && conversations[currentChatId];
   if (!chat || !chat.messages.length) { showWelcome(); return; }
@@ -3378,6 +3585,12 @@ async function sendMessage() {
   const snapAttach = [...attachedFiles];
   attachedFiles = [];
   renderAttachedFiles();
+  // Show chunk usage summary if files were chunked
+  const totalChunks = snapAttach.reduce((sum, f) => sum + (f.chunks ? f.chunks.length : 0), 0);
+  const totalWords = snapAttach.reduce((sum, f) => sum + (f.words || 0), 0);
+  if (totalChunks > 0) {
+    showToast(`📎 ${totalChunks} chunks (~${totalWords.toLocaleString()} words) prepared for context injection`);
+  }
   input.value = '';
   autoResize(input);
   updateTokCount('');
@@ -3606,11 +3819,24 @@ function buildApiMessages(chatMessages, snapAttach, systemPrompt, searchContext 
           if (histCtx) content = content + '\n\n' + histCtx;
         }
       }
-      // Inject inline attachments for last user message
+      // Inject inline attachments for last user message (chunk-aware)
       if (isLast && snapAttach.length) {
-        const attachCtx = snapAttach.map(f => {
-          if (f.type === 'pdf') return `\n\n### Attached: ${f.name} (PDF)\n${f.content}`;
-          return `\n\n### Attached: ${f.name}\n\`\`\`\n${f.content}\n\`\`\``;
+        const modelCtx = getModelContextSize(document.getElementById('model-sel').value);
+        const sysPromptTokens = estimateTokens(systemPrompt || defaultSys);
+        const historyTokens = estimateTokens(chatMessages.map(m => m.content || '').join(' '));
+        const searchTokens = searchContext ? estimateTokens(searchContext) : 0;
+        const available = Math.max(modelCtx - sysPromptTokens - historyTokens - searchTokens - 2000, 2000);
+        const query = content;
+        const attachParts = snapAttach.map(f => {
+          if (f.chunks && f.chunks.length) {
+            const result = injectChunks(f.chunks, Math.floor(available / snapAttach.length), query);
+            return { name: f.name, text: result.text, used: result.used, total: result.total };
+          }
+          return { name: f.name, text: (f.content || '').slice(0, 8000), used: estimateTokens((f.content||'').slice(0, 8000)), total: 1 };
+        });
+        const attachCtx = attachParts.map(a => {
+          if (a.total > 1) return `\n\n### Attached: ${a.name} (${a.used} tokens from ${a.total} chunks)\n${a.text}`;
+          return `\n\n### Attached: ${a.name}\n\`\`\`\n${a.text}\n\`\`\``;
         }).join('');
         content = content + attachCtx;
       } else if (m.attachments?.length && !isLast) {
