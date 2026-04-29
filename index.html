@@ -14,7 +14,6 @@
 <script>document.getElementById('manifest-link').href += '?v=' + Date.now();</script>
 <title>MultiChat</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4/build/pdf.min.mjs"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&family=Inter:wght@300;400;500;600&family=Google+Sans:wght@400;500;600&display=swap');
 
@@ -2475,10 +2474,15 @@ const CHUNK_OVERLAP = 200; // token overlap between chunks
 let _pdfJsReady = false;
 async function ensurePdfJs() {
   if (_pdfJsReady) return;
-  if (typeof pdfjsLib !== 'undefined') { pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4/build/pdf.worker.min.mjs'; _pdfJsReady = true; return; }
-  // If pdf.js hasn't loaded yet (race condition), wait
-  await new Promise(r => setTimeout(r, 100));
-  if (typeof pdfjsLib !== 'undefined') { pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4/build/pdf.worker.min.mjs'; _pdfJsReady = true; }
+  try {
+    const pdfjsLib = await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4/build/pdf.min.mjs');
+    window.pdfjsLib = pdfjsLib;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4/build/pdf.worker.min.mjs';
+    _pdfJsReady = true;
+  } catch(e) {
+    console.warn('PDF.js failed to load:', e.message);
+    throw e;
+  }
 }
 
 async function extractTextFromPdf(file) {
@@ -2550,7 +2554,7 @@ function chunkText(text, targetTokens) {
   for (const para of paragraphs) {
     if ((current.length + para.length) > targetChars && current.length > targetChars * 0.3) {
       chunks.push(current.trim());
-      // Overlap: include last ~100 chars of previous chunk
+      // Overlap: include last ~800 chars of previous chunk
       const overlap = current.slice(-Math.floor(CHUNK_OVERLAP * 4));
       current = overlap ? overlap + '\n\n' + para : para;
     } else {
@@ -2587,7 +2591,6 @@ function injectChunks(chunks, maxTokens, query) {
   // Inject chunks until we run out of token budget
   let used = 0;
   let text = '';
-  const maxChars = maxTokens * 4;
   for (const s of scored) {
     const chunkTokens = estimateTokens(s.chunk);
     if (used + chunkTokens > maxTokens) break;
@@ -3564,6 +3567,12 @@ async function sendMessage() {
   if (!text && !attachedFiles.length) return;
   if (isStreaming) return;
 
+  // Guard: wait for any still-extracting files
+  if (attachedFiles.some(f => f._extracting)) {
+    showToast('⏳ Files still extracting…Please wait','err');
+    return;
+  }
+
   const provider = document.getElementById('prov-sel').value;
   const model = document.getElementById('model-sel').value;
   const apiKey = getKey(provider);
@@ -3825,7 +3834,8 @@ function buildApiMessages(chatMessages, snapAttach, systemPrompt, searchContext 
         const sysPromptTokens = estimateTokens(systemPrompt || defaultSys);
         const historyTokens = estimateTokens(chatMessages.map(m => m.content || '').join(' '));
         const searchTokens = searchContext ? estimateTokens(searchContext) : 0;
-        const available = Math.max(modelCtx - sysPromptTokens - historyTokens - searchTokens - 2000, 2000);
+        const ragTokens = ragCtx ? estimateTokens(ragCtx) : 0;
+        const available = Math.max(modelCtx - sysPromptTokens - historyTokens - searchTokens - ragTokens - 2000, 2000);
         const query = content;
         const attachParts = snapAttach.map(f => {
           if (f.chunks && f.chunks.length) {
