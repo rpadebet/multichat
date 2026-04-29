@@ -525,6 +525,8 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 .mic-cost-item{display:flex;flex-direction:column;align-items:center;gap:4px;}
 .mic-cost-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text3);}
 .mic-cost-value{font-size:17px;font-weight:600;color:var(--text);font-family:var(--font-mono);}
+.mic-usage-link{font-size:12px;color:var(--accent);text-decoration:none;padding:5px 14px;border:1px solid var(--accent-border);border-radius:var(--radius);text-align:center;transition:all 0.15s;display:inline-block;}
+.mic-usage-link:hover{background:var(--accent);color:white;}
 
 /* ── Input area ── */
 #input-area{padding:12px 22px 16px;border-top:1px solid var(--border);background:var(--surface);}
@@ -873,6 +875,8 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
               <span class="mic-cost-value" id="mic-out">—</span>
             </div>
           </div>
+          <div class="mic-divider" id="mic-usage-divider" style="display:none;"></div>
+          <a id="mic-usage-link" href="#" target="_blank" rel="noopener" class="mic-usage-link" style="display:none;">📊 View Usage & Billing →</a>
         </div>
       </div>
     </div>
@@ -2736,6 +2740,18 @@ function updatePricePill() {
     const parts = pr ? pr.split('/') : [];
     if (micIn) micIn.textContent = parts[0] || 'FREE';
     if (micOut) micOut.textContent = parts[1] || 'FREE';
+    // Usage link — shown for providers with a usageUrl
+    const provider = document.getElementById('prov-sel').value;
+    const usageUrl = PROVIDERS[provider]?.usageUrl;
+    const usageDiv = document.getElementById('mic-usage-divider');
+    const usageLink = document.getElementById('mic-usage-link');
+    if (usageUrl && opt && opt.value) {
+      if (usageDiv) usageDiv.style.display = '';
+      if (usageLink) { usageLink.href = usageUrl; usageLink.style.display = ''; }
+    } else {
+      if (usageDiv) usageDiv.style.display = 'none';
+      if (usageLink) usageLink.style.display = 'none';
+    }
   } else {
     micEmpty.style.display = '';
     micContent.classList.remove('visible');
@@ -3031,6 +3047,8 @@ function showWelcome() {
               <span class="mic-cost-value" id="mic-out">—</span>
             </div>
           </div>
+          <div class="mic-divider" id="mic-usage-divider" style="display:none;"></div>
+          <a id="mic-usage-link" href="#" target="_blank" rel="noopener" class="mic-usage-link" style="display:none;">📊 View Usage & Billing →</a>
         </div>
       </div>
     </div>`;
