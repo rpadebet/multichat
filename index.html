@@ -96,6 +96,7 @@
    at the body level — only inner panels scroll independently.
 ══════════════════════════════════════════════════ */
 *{margin:0;padding:0;box-sizing:border-box;}
+html{zoom:var(--ui-scale,1);}
 body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:100vh;display:flex;overflow:hidden;transition:background 0.2s,color 0.2s;}
 
 /* ══════════════════════════════════════════════════
@@ -973,6 +974,15 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
       </div>
     </div>
 
+    <!-- UI Scale — range slider that zooms the entire interface. Separate desktop
+         and mobile values are stored independently and auto-switch on resize. -->
+    <div>
+      <div class="sp-section-title">🖥 Display</div>
+      <div class="sp-label">UI Scale <span id="scale-val">1.00x</span></div>
+      <input class="sp-range" type="range" id="scale-range" min="1" max="1.5" step="0.05" value="1"
+        oninput="setUiScale(parseFloat(this.value))"/>
+    </div>
+
     <!-- System Prompt — free-text instructions prepended to every API request
          as the system role message. Saved on every keystroke via saveSettings().
          When blank, a sensible default is injected by buildApiMessages(). -->
@@ -1013,9 +1023,9 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
         ondrop="handleRagDrop(event)">
         <div class="file-drop-icon">📄</div>
         <div class="file-drop-text">Click or drag files here</div>
-        <div class="file-drop-hint">.txt .md .csv .json .py .js .html .xml .yaml</div>
+        <div class="file-drop-hint">.txt .md .csv .json .py .js .html .xml .yaml .pdf</div>
       </div>
-      <input type="file" id="rag-input" multiple accept=".txt,.md,.csv,.json,.py,.js,.ts,.html,.css,.xml,.yaml,.yml" onchange="handleRagFiles(this.files)"/>
+      <input type="file" id="rag-input" multiple accept=".txt,.md,.csv,.json,.py,.js,.ts,.html,.css,.xml,.yaml,.yml,.pdf" onchange="handleRagFiles(this.files)"/>
       <div class="file-list" id="rag-file-list"></div>
 
       <div style="margin-top:10px;">
@@ -2148,6 +2158,7 @@ window.onload = async () => {
   }
   updatePricePill();
   loadTheme();
+  loadUiScale();
   // Close the custom model dropdown when the user clicks anywhere outside it
   document.addEventListener('click', function(e) {
     const wrap = document.getElementById('model-dd-wrap');
@@ -2175,6 +2186,51 @@ function loadTheme() {
   const t = localStorage.getItem('mc_theme') || 'claude';
   setTheme(t);
 }
+
+// ══════════════════════════════════════════
+// UI SCALE
+// ══════════════════════════════════════════
+
+const UI_SCALE_BP = 700; // must match the CSS mobile breakpoint
+
+function isMobileView() { return window.innerWidth <= UI_SCALE_BP; }
+
+function uiScaleKey() { return isMobileView() ? 'mc_ui_scale_mobile' : 'mc_ui_scale_desktop'; }
+
+function uiScaleDefault() { return isMobileView() ? 1.1 : 1.0; }
+
+function setUiScale(v) {
+  if (v == null) v = parseFloat(localStorage.getItem(uiScaleKey())) || uiScaleDefault();
+  document.documentElement.style.setProperty('--ui-scale', v);
+  localStorage.setItem(uiScaleKey(), v);
+  const label = document.getElementById('scale-val');
+  const range = document.getElementById('scale-range');
+  if (label) label.textContent = v.toFixed(2) + 'x';
+  if (range && parseFloat(range.value) !== v) range.value = v;
+  // Update section label to indicate desktop vs mobile
+  const title = document.querySelector('#settings-panel .sp-section-title');
+  // find the Display section title
+  document.querySelectorAll('#settings-panel .sp-section-title').forEach(el => {
+    if (el.textContent.startsWith('🖥')) {
+      el.textContent = `🖥 Display (${isMobileView() ? 'Mobile' : 'Desktop'})`;
+    }
+  });
+}
+
+function loadUiScale() {
+  const v = parseFloat(localStorage.getItem(uiScaleKey())) || uiScaleDefault();
+  setUiScale(v);
+}
+
+// Auto-switch scale when crossing the mobile breakpoint
+let _lastMobileView = isMobileView();
+window.addEventListener('resize', () => {
+  const nowMobile = isMobileView();
+  if (nowMobile !== _lastMobileView) {
+    _lastMobileView = nowMobile;
+    loadUiScale();
+  }
+});
 
 // ══════════════════════════════════════════
 // API KEYS
@@ -2287,6 +2343,10 @@ function resetSettings() {
   localStorage.removeItem('mc_settings');
   updateSearchIndicator();
   resetCloudSettings();
+  // Reset UI scale to defaults
+  localStorage.removeItem('mc_ui_scale_desktop');
+  localStorage.removeItem('mc_ui_scale_mobile');
+  loadUiScale();
   showToast('Settings reset to defaults');
 }
 // Returns a plain object snapshot of the current settings values, used by
@@ -2315,14 +2375,14 @@ function handleRagDrop(e) {
 }
 function handleRagFiles(fileList) {
   Array.from(fileList).forEach(f => {
-    if (f.size > 2 * 1024 * 1024) { showToast(`${f.name} too large (max 2MB)`,'err'); return; }
+    const isPdf = f.name.toLowerCase().endsWith('.pdf');
     const reader = new FileReader();
     reader.onload = e => {
-      ragFiles.push({name: f.name, content: e.target.result, size: f.size});
+      ragFiles.push({name: f.name, content: e.target.result, size: f.size, type: isPdf ? 'pdf' : 'text'});
       renderRagFileList();
       updateCtxPreview();
     };
-    reader.readAsText(f);
+    if (isPdf) reader.readAsDataURL(f); else reader.readAsText(f);
   });
   document.getElementById('rag-input').value = '';
 }
@@ -2343,25 +2403,30 @@ function renderRagFileList() {
     </div>`).join('');
 }
 // Refreshes the context preview box and token estimate in the settings panel.
-// Uses a simple length/4 heuristic for token count — accurate enough for the
-// informational display without needing a full tokenizer.
+// Uses a simple length/4 heuristic for token count.
 function updateCtxPreview() {
   const preview = document.getElementById('ctx-preview');
   const tokEl = document.getElementById('ctx-tokens');
   if (!ragFiles.length) { preview.textContent = 'No files loaded'; tokEl.textContent = '0 tokens'; return; }
-  const combined = buildRagContext();
+  const combined = ragFiles.map(f => {
+    if (f.type === 'pdf') return `[PDF: ${f.name} (${fmtSize(f.size)})]`;
+    return `### ${f.name}\n${f.content}`;
+  }).join('\n\n');
   const approxTok = Math.ceil(combined.length / 4);
   tokEl.textContent = `~${approxTok.toLocaleString()} tokens`;
   preview.textContent = combined.slice(0, 600) + (combined.length > 600 ? '\n…' : '');
 }
-// Concatenates all loaded RAG files into a single fenced-code-block string
-// suitable for injection into the system prompt. Each file is labelled with
-// its filename so the model can reference specific files by name in its answer.
+// Concatenates all loaded RAG files into a string suitable for injection
+// into the system prompt. Text files are labelled with filename + fenced code;
+// PDFs are included as data URLs.
 function buildRagContext() {
   if (!ragFiles.length) return '';
-  return ragFiles.map(f =>
-    `### File: ${f.name}\n\`\`\`\n${f.content.slice(0, 50000)}\n\`\`\``
-  ).join('\n\n');
+  return ragFiles.map(f => {
+    if (f.type === 'pdf') {
+      return `### File: ${f.name} (PDF)\n${f.content}`;
+    }
+    return `### File: ${f.name}\n\`\`\`\n${f.content}\n\`\`\``;
+  }).join('\n\n');
 }
 
 // ══════════════════════════════════════════
@@ -2373,13 +2438,13 @@ function buildRagContext() {
 // ══════════════════════════════════════════
 function handleFileAttach(fileList) {
   Array.from(fileList).forEach(f => {
-    if (f.size > 1024 * 1024) { showToast(`${f.name} too large (max 1MB)`,'err'); return; }
+    const isPdf = f.name.toLowerCase().endsWith('.pdf');
     const reader = new FileReader();
     reader.onload = e => {
-      attachedFiles.push({name: f.name, content: e.target.result, size: f.size});
+      attachedFiles.push({name: f.name, content: e.target.result, size: f.size, type: isPdf ? 'pdf' : 'text'});
       renderAttachedFiles();
     };
-    reader.readAsText(f);
+    if (isPdf) reader.readAsDataURL(f); else reader.readAsText(f);
   });
   document.getElementById('attach-input').value = '';
 }
@@ -3543,9 +3608,10 @@ function buildApiMessages(chatMessages, snapAttach, systemPrompt, searchContext 
       }
       // Inject inline attachments for last user message
       if (isLast && snapAttach.length) {
-        const attachCtx = snapAttach.map(f =>
-          `\n\n### Attached: ${f.name}\n\`\`\`\n${f.content.slice(0,20000)}\n\`\`\``
-        ).join('');
+        const attachCtx = snapAttach.map(f => {
+          if (f.type === 'pdf') return `\n\n### Attached: ${f.name} (PDF)\n${f.content}`;
+          return `\n\n### Attached: ${f.name}\n\`\`\`\n${f.content}\n\`\`\``;
+        }).join('');
         content = content + attachCtx;
       } else if (m.attachments?.length && !isLast) {
         const names = m.attachments.map(a=>a.name).join(', ');
