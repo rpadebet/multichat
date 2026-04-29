@@ -1992,7 +1992,9 @@ You MUST output ONLY a raw JSON object. No markdown. No explanation. No code fen
   try {
     const providerUrl = PROVIDERS[provider]?.url;
     if (!providerUrl) throw new Error('Unknown provider');
-    const resp = await fetch(providerUrl + '/chat/completions', {
+    const isMiniMax = /^minimax-m2/i.test(model);
+    const endpoint = (provider === 'opencode' && isMiniMax) ? '/messages' : '/chat/completions';
+    const resp = await fetch(providerUrl + endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
       body: JSON.stringify({
@@ -3728,7 +3730,10 @@ async function sendMessage() {
 
 
   try {
-    const resp = await fetch(PROVIDERS[provider].url + '/chat/completions', {
+    // MiniMax models on OpenCode Go use the /messages (Anthropic-style) endpoint
+    const isMiniMax = /^minimax-m2/i.test(model);
+    const endpoint = (provider === 'opencode' && isMiniMax) ? '/messages' : '/chat/completions';
+    const resp = await fetch(PROVIDERS[provider].url + endpoint, {
       method:'POST',
       headers:{
         'Content-Type':'application/json',

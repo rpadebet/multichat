@@ -5,6 +5,36 @@ const SHELL = [
   './manifest.json',
 ];
 
+// Hosts that need CORS proxying (these APIs don't return CORS headers)
+const PROXY_HOSTS = ['opencode.ai'];
+
+// Proxy a request through the SW to bypass CORS.
+// Fetches from the SW context (no CORS restrictions), then wraps the response
+// with CORS headers so the page can read it.
+async function proxyWithCors(request) {
+  const headers = {};
+  for (const [k, v] of request.headers.entries()) {
+    headers[k] = v;
+  }
+  let body = undefined;
+  if (!['GET', 'HEAD'].includes(request.method)) {
+    try { body = await request.clone().text(); } catch(e) {}
+  }
+  const resp = await fetch(request.url, { method: request.method, headers, body });
+
+  if (resp.type === 'opaqueredirect') return resp;
+
+  const corsHeaders = new Headers(resp.headers);
+  corsHeaders.set('Access-Control-Allow-Origin', '*');
+  corsHeaders.set('Access-Control-Expose-Headers', '*');
+
+  return new Response(resp.body, {
+    status: resp.status,
+    statusText: resp.statusText,
+    headers: corsHeaders,
+  });
+}
+
 // Install: cache the app shell
 self.addEventListener('install', e => {
   e.waitUntil(
@@ -21,26 +51,14 @@ self.addEventListener('activate', e => {
   );
 });
 
-// Fetch: serve shell from cache, proxy OpenCode Go, bypass other cross-origin
+// Fetch: proxy CORS-blocked hosts, bypass other cross-origin, cache shell
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
 
-  // Proxy OpenCode Go API requests through SW to bypass CORS
-  // (opencode.ai server doesn't return CORS headers)
-  if (url.hostname === 'opencode.ai') {
-    e.respondWith(
-      (async () => {
-        const headers = {};
-        for (const [k, v] of e.request.headers.entries()) {
-          headers[k] = v;
-        }
-        return fetch(e.request.url, {
-          method: e.request.method,
-          headers: headers,
-          body: ['GET','HEAD'].includes(e.request.method) ? undefined : await e.request.clone().text(),
-        });
-      })()
-    );
+  // Proxy requests to hosts that don't support CORS
+  const shouldProxy = PROXY_HOSTS.includes(url.hostname) || url.hostname === 'localhost';
+  if (shouldProxy) {
+    e.respondWith(proxyWithCors(e.request));
     return;
   }
 
