@@ -2078,8 +2078,26 @@ window.onload = async () => {
   if (isCloudSyncEnabled()) {
     await pullSync();
   }
-  await populateModels('openrouter');
-  updateProviderBadge('openrouter');
+  // Restore last provider and model
+  const savedProvider = localStorage.getItem('mc_last_provider') || 'openrouter';
+  document.getElementById('prov-sel').value = savedProvider;
+  updateProviderBadge(savedProvider);
+  await populateModels(savedProvider);
+  // Restore last model for this provider, or select first
+  const savedModel = localStorage.getItem('mc_last_model_' + savedProvider);
+  if (savedModel) {
+    const sel = document.getElementById('model-sel');
+    const match = [...sel.options].find(o => o.value === savedModel);
+    if (match) {
+      sel.value = savedModel;
+      const label = document.getElementById('model-dd-label');
+      if (label) label.textContent = match.text;
+      // Mark the matching item in the custom dropdown
+      document.querySelectorAll('#model-dd-list .model-dd-item').forEach(el => {
+        el.classList.toggle('selected', el.dataset.id === savedModel);
+      });
+    }
+  }
   updatePricePill();
   loadTheme();
   // Close the custom model dropdown when the user clicks anywhere outside it
@@ -2390,11 +2408,15 @@ function selectModel(id, name, price) {
   const trigger = document.getElementById('model-dd-trigger');
   if (trigger) { trigger.classList.remove('open'); trigger.setAttribute('aria-expanded','false'); }
   updatePricePill();
+  // Persist last model per provider
+  const p = document.getElementById('prov-sel').value;
+  localStorage.setItem('mc_last_model_' + p, id);
 }
 
 async function onProviderChange(forceRefresh = false) {
   const p = document.getElementById('prov-sel').value;
   updateProviderBadge(p);
+  localStorage.setItem('mc_last_provider', p);
   if (forceRefresh && modelCache[p]) delete modelCache[p];
   await populateModels(p);
 }
@@ -3059,6 +3081,12 @@ function showWelcome() {
 }
 function providerFromModel(modelId) {
   if (!modelId) return 'groq';
+  // Check preferred providers first (opencode = paid subscription priority)
+  const preferred = ['opencode', 'openrouter', 'groq'];
+  for (const pid of preferred) {
+    const pdata = PROVIDERS[pid];
+    if (pdata && pdata.models.some(m => m.id === modelId)) return pid;
+  }
   for (const [pid, pdata] of Object.entries(PROVIDERS)) {
     if (pdata.models.some(m => m.id === modelId)) return pid;
   }
