@@ -14,7 +14,7 @@ gh repo create multichat --public
 cd multichat
 
 # 2. Upload these 5 files
-index.html          # The entire app (~3,200 lines)
+index.html          # The entire app (~4,200 lines)
 sw.js               # Service Worker for offline caching
 manifest.json       # PWA manifest for installability
 icon-192.png        # App icon
@@ -33,8 +33,7 @@ That's it. No `npm install`, no bundler, no configuration.
 | Provider | Models | Notes |
 |----------|--------|-------|
 | **Groq** | Llama, Qwen3, Kimi K2, GPT-OSS 120B | Free tier — routes via OpenRouter proxy when CORS is blocked |
-| **MiniMax** | M2.5, M2.7 | Chinese frontier models |
-| **DeepInfra** | DeepSeek V3.2, GLM-5, Kimi K2.5, Qwen3 235B | OpenAI-compatible API |
+| **OpenCode Go** | MiniMax, DeepSeek, GLM, Qwen, Kimi, MiMo | Requires CORS proxy (see setup below) |
 | **OpenRouter** | 300+ models across 50+ providers | Unified router with free tier options |
 
 ---
@@ -42,7 +41,7 @@ That's it. No `npm install`, no bundler, no configuration.
 ## Features
 
 ### Core Chat
-- **Multi-provider support** — Switch between Groq, MiniMax, DeepInfra, OpenRouter instantly
+- **Multi-provider support** — Switch between Groq, OpenCode Go, OpenRouter instantly
 - **Streaming responses** — Real-time token generation via Server-Sent Events (SSE)
 - **Token tracking** — Live usage stats and cost estimation per query
 - **Conversation history** — All chats persist in browser localStorage
@@ -50,9 +49,11 @@ That's it. No `npm install`, no bundler, no configuration.
 
 ### Advanced Capabilities
 - **Web Search (RAG)** — Two-phase LLM planning + parallel query execution for real-time information
-  - Providers: Tavily or Serper
+  - Providers: Tavily, Serper, or SearXNG (self-hosted)
   - Modes: Auto (LLM decides) or Always
-- **File Upload / RAG** — Persistent context injection from `.txt`, `.md`, `.csv`, `.json`, `.py`, `.js` files
+- **File Upload / RAG** — Persistent context injection from `.txt`, `.md`, `.csv`, `.json`, `.py`, `.js`, `.pdf` files
+  - PDF support via pdf.js
+  - Smart chunking with context-aware injection
 - **Inline Attachments** — Per-message file uploads cleared after send
 - **Thinking View** — Collapsible panel shows model reasoning (`<think>` tags)
 - **Citation Links** — Clickable sources from web search results
@@ -60,8 +61,10 @@ That's it. No `npm install`, no bundler, no configuration.
 
 ### UX & Customization
 - **5 Themes** — Claude, ChatGPT, Gemini, Dark, Minimal
+- **UI Scale** — Zoom the entire interface (1x–1.5x) with separate desktop/mobile memory
 - **Custom System Prompt** — Persistent system instructions
 - **Generation Settings** — Temperature (0-2), Max Tokens (256-16384), Top-P (0.1-1.0)
+- **Collapsible Settings Panel** — Organized accordion sections with persistent state
 - **Smart Chat Organization** — Grouped by time (Today, Yesterday, Last 7 Days, etc.)
 - **Pinned Conversations** — Keep important chats at the top
 - **Chat Search/Filter** — Find old conversations quickly
@@ -99,13 +102,44 @@ Enter keys in the **Settings** sidebar (gear icon). Keys are stored **only in yo
 | Key | Format | Required |
 |-----|--------|----------|
 | Groq | `gsk_••••` | For Groq models |
-| MiniMax | `sk-••••` | For MiniMax models |
-| DeepInfra | `••••` | For DeepInfra models |
+| OpenCode Go | `opencode_••••` | For OpenCode Go models |
 | OpenRouter | `sk-or-••••` | For OpenRouter models |
+| Proxy Key | any string | Only if proxy auth is enabled |
 | Tavily | `••••` | For web search (optional) |
 | Serper | `••••` | For web search (optional) |
 
 **No key is shared between providers.** Each provider uses only its own key.
+
+### Proxy Key (Optional)
+
+If you run the OpenCode Go proxy with `PROXY_KEY=your-secret-key`, enter the same key in Settings → API Keys → Proxy Key. This header is only sent to the proxy, never to OpenRouter or Groq.
+
+---
+
+## OpenCode Go CORS Proxy Setup
+
+OpenCode Go (`opencode.ai`) does not return CORS headers on API responses, making direct browser fetch impossible. The included `proxy.js` solves this:
+
+```bash
+# Start the proxy locally
+node proxy.js
+
+# Or with authentication
+PROXY_KEY=your-secret-key node proxy.js
+```
+
+**Expose via Cloudflare Tunnel** (or any tunnel) to use from any device:
+
+```yaml
+# ~/.cloudflared/config.yml
+ingress:
+  - hostname: proxy.yourdomain.com
+    service: http://localhost:3456
+```
+
+Then update `index.html` to point at your proxy URL, or use the default `https://proxy.opencodechat.dpdns.org`.
+
+The proxy also routes localhost SearXNG instances through `/proxy?url=<target>` so self-hosted search works from any device.
 
 ---
 
@@ -124,14 +158,15 @@ The entire application exists in `index.html` with no build step. This means:
 
 ```
 multichat/
-├── index.html              # THE ENTIRE APP (~3,200 lines: CSS + HTML + JS)
+├── index.html              # THE ENTIRE APP (~4,200 lines: CSS + HTML + JS)
 ├── sw.js                   # Service Worker (cache management)
 ├── manifest.json           # PWA manifest (icons, theme, shortcuts)
+├── proxy.js                # CORS proxy for OpenCode Go / SearXNG
 ├── icon-192.png            # PWA icon (192x192)
 ├── icon-512.png            # PWA icon (512x512)
 ├── update_models.js        # Node.js script to fetch & update model lists
-├── deepinfra_models.json   # Cached DeepInfra API response (reference)
-├── or_models.json          # Cached OpenRouter API response (reference)
+├── deepinfra_models.json   # Cached API response (reference)
+├── or_models.json          # Cached API response (reference)
 ├── AGENTS.md               # Architecture docs for AI agents
 ├── README.md               # This file
 └── .github/
@@ -151,6 +186,7 @@ multichat/
 | **Custom dropdown + hidden `<select>`** | Native `<select>` can't support search; hybrid approach maintains compatibility |
 | **Two-phase web search** | LLM plans queries → parallel execution → results injected into context |
 | **Client-side encryption** | AES-GCM + PBKDF2 for cloud sync — server never sees plaintext |
+| **CORS proxy for OpenCode Go** | Server lacks CORS headers; proxy injects them for browser access |
 
 ---
 
@@ -164,7 +200,7 @@ open index.html           # macOS
 start index.html          # Windows
 
 # Option 2: Serve with Python
-python -m http.server 8000
+python -m http.server 3000
 
 # Option 3: Serve with Node.js
 npx serve .
@@ -179,18 +215,18 @@ node update_models.js
 ```
 
 This script:
-1. Fetches live `/models` from OpenRouter and DeepInfra
+1. Fetches live `/models` from OpenRouter and OpenCode Go
 2. Parses and formats the responses
 3. Mutates `index.html` in-place via regex replacement
 
-Groq and MiniMax have no public listing endpoint and remain hand-curated.
+Groq has no public listing endpoint and remains hand-curated.
 
 ### Service Worker Cache
 
 After making changes, **bump the cache version** in `sw.js`:
 
 ```javascript
-const CACHE = 'multichat-v6';  // Increment this number
+const CACHE = 'multichat-v12';  // Increment this number
 ```
 
 Without this, returning users may see stale cached shells.
@@ -223,6 +259,7 @@ MultiChat can optionally sync conversations to the cloud via Supabase:
 - **Direct API calls** — Prompts go straight from your browser to the provider
 - **Client-side encryption** — Cloud sync uses AES-GCM; server sees only ciphertext
 - **No telemetry** — No error reporting, no usage metrics, no cookies
+- **Proxy key isolation** — Proxy auth key is only sent to your proxy, never to AI providers
 
 ---
 
@@ -236,6 +273,7 @@ There is no automated test suite. Manual verification:
 4. Switch providers — verify model dropdown repopulates
 5. Toggle web search — verify search indicator appears in input footer
 6. Upload a file — verify RAG context injects
+7. Test proxy key — if proxy auth is enabled, verify OpenCode Go works with key
 
 ---
 
@@ -260,9 +298,17 @@ The repo includes two GitHub Actions:
 - **Cause:** CORS failure on `/models` fetch
 - **Fix:** Falls back to static `PROVIDERS` registry. Check browser console for CORS errors.
 
-### Groq models not loading
-- **Cause:** Groq CORS is often blocked
-- **Fix:** App automatically falls back to OpenRouter proxy for Groq models
+### OpenCode Go "Missing API key" or CORS error
+- **Cause:** `opencode.ai` doesn't send CORS headers
+- **Fix:** Run `proxy.js` locally and expose via Cloudflare Tunnel. Enter proxy URL in `index.html`.
+
+### OpenRouter fails with proxy key entered
+- **Cause:** Old versions sent `x-proxy-key` to all providers
+- **Fix:** Ensure you're on latest version — proxy key is only sent to OpenCode Go and localhost SearXNG
+
+### SearXNG localhost not working
+- **Cause:** Localhost SearXNG lacks CORS headers
+- **Fix:** Use a public SearXNG instance, or route localhost through the proxy (automatic when URL contains `localhost`)
 
 ### PWA not installable
 - **Cause:** Missing `manifest.json` or icons
@@ -294,9 +340,11 @@ MIT License.
 Built with:
 - [Supabase](https://supabase.com) — Cloud sync backend
 - [Groq](https://groq.com) — Fast inference
+- [OpenCode Go](https://opencode.ai) — Frontier model access
 - [OpenRouter](https://openrouter.ai) — Multi-provider router
 - [Tavily](https://tavily.com) — AI search API
 - [Serper](https://serper.dev) — Google Search API
+- [SearXNG](https://docs.searxng.org) — Self-hosted metasearch
 
 ---
 

@@ -275,8 +275,17 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 .sp-title{font-family:var(--font-head);font-weight:600;font-size:15px;color:var(--text);}
 .sp-close{background:none;border:none;cursor:pointer;color:var(--text3);font-size:18px;line-height:1;padding:2px 4px;}
 .sp-close:hover{color:var(--text);}
-.sp-body{padding:14px 16px;display:flex;flex-direction:column;gap:16px;}
-.sp-section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.9px;color:var(--text3);margin-bottom:6px;}
+.sp-body{padding:14px 16px;display:flex;flex-direction:column;gap:4px;}
+.sp-section{border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:var(--surface);}
+.sp-section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.9px;color:var(--text3);padding:10px 12px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;transition:background 0.15s;}
+.sp-section-title:hover{background:var(--bg3);}
+.sp-section-title .sp-chevron{font-size:10px;transition:transform 0.2s;color:var(--text3);}
+.sp-section.collapsed .sp-chevron{transform:rotate(-90deg);}
+.sp-section-content{padding:0 12px 12px;display:flex;flex-direction:column;gap:10px;transition:max-height 0.25s ease-out,opacity 0.2s,padding 0.2s;max-height:2000px;opacity:1;overflow:hidden;}
+.sp-section.collapsed .sp-section-content{max-height:0;opacity:0;padding:0 12px;}
+.sp-section-actions{display:flex;gap:6px;padding-bottom:8px;}
+.sp-section-actions button{flex:1;padding:4px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text3);font-size:11px;cursor:pointer;font-family:var(--font-body);transition:all 0.15s;}
+.sp-section-actions button:hover{background:var(--border);color:var(--text2);}
 .sp-label{font-size:12px;font-weight:500;color:var(--text2);margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;}
 .sp-label span{font-family:var(--font-mono);color:var(--accent);font-size:11px;}
 .sp-textarea{width:100%;padding:9px 11px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:var(--font-body);font-size:13px;line-height:1.55;resize:vertical;outline:none;min-height:90px;transition:border-color 0.15s;}
@@ -941,186 +950,203 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
   </div>
   <div class="sp-body">
 
-    <!-- API Keys — one password input per provider. Keys are saved to
-         localStorage on every keystroke via saveKey(); the green dot indicator
-         updates immediately so the user knows the key is stored. -->
-    <div>
-      <div class="sp-section-title">🔑 API Keys</div>
-      <div class="key-row">
-        <div class="key-label"><span class="key-dot" id="dot-groq"></span>Groq</div>
-        <input class="key-input" id="key-groq" type="password" placeholder="gsk_••••" oninput="saveKey('groq',this.value)"/>
+    <!-- Expand / Collapse All -->
+    <div class="sp-section-actions">
+      <button onclick="expandAllSections()">Expand all</button>
+      <button onclick="collapseAllSections()">Collapse all</button>
+    </div>
+
+    <!-- API Keys -->
+    <div class="sp-section" data-section="keys">
+      <div class="sp-section-title" onclick="toggleSection(this)">
+        <span>🔑 API Keys</span>
+        <span class="sp-chevron">▼</span>
       </div>
-      <div class="key-row">
-        <div class="key-label"><span class="key-dot" id="dot-opencode"></span>OpenCode Go</div>
-        <input class="key-input" id="key-opencode" type="password" placeholder="opencode_••••" oninput="saveKey('opencode',this.value)"/>
-      </div>
-      <div class="key-row">
-        <div class="key-label"><span class="key-dot" id="dot-openrouter"></span>OpenRouter</div>
-        <input class="key-input" id="key-openrouter" type="password" placeholder="sk-or-••••" oninput="saveKey('openrouter',this.value)"/>
+      <div class="sp-section-content">
+        <div class="key-row">
+          <div class="key-label"><span class="key-dot" id="dot-groq"></span>Groq</div>
+          <input class="key-input" id="key-groq" type="password" placeholder="gsk_••••" oninput="saveKey('groq',this.value)"/>
+        </div>
+        <div class="key-row">
+          <div class="key-label"><span class="key-dot" id="dot-opencode"></span>OpenCode Go</div>
+          <input class="key-input" id="key-opencode" type="password" placeholder="opencode_••••" oninput="saveKey('opencode',this.value)"/>
+        </div>
+        <div class="key-row">
+          <div class="key-label"><span class="key-dot" id="dot-openrouter"></span>OpenRouter</div>
+          <input class="key-input" id="key-openrouter" type="password" placeholder="sk-or-••••" oninput="saveKey('openrouter',this.value)"/>
+        </div>
+        <div class="key-row">
+          <div class="key-label"><span class="key-dot" id="dot-proxy"></span>Proxy Key</div>
+          <input class="key-input" id="key-proxy" type="password" placeholder="Only needed if proxy auth is enabled" oninput="saveProxyKey(this.value)"/>
+        </div>
+        <div style="font-size:11px;color:var(--text3);">
+          Required only if your proxy server is running with PROXY_KEY set.
+        </div>
       </div>
     </div>
 
-    <!-- Theme picker — pill buttons that call setTheme() which swaps the
-         data-theme attribute on <html>, persists to localStorage, and updates
-         the PWA theme-color meta tag for the browser chrome. -->
-    <div>
-      <div class="sp-section-title">🎨 Theme</div>
-      <div class="theme-row" id="theme-row">
-        <button class="theme-btn active" data-theme="claude" onclick="setTheme('claude')">Claude</button>
-        <button class="theme-btn" data-theme="chatgpt" onclick="setTheme('chatgpt')">ChatGPT</button>
-        <button class="theme-btn" data-theme="gemini" onclick="setTheme('gemini')">Gemini</button>
-        <button class="theme-btn" data-theme="dark" onclick="setTheme('dark')">Dark</button>
-        <button class="theme-btn" data-theme="minimal" onclick="setTheme('minimal')">Minimal</button>
+    <!-- Appearance: Theme + Display -->
+    <div class="sp-section" data-section="appearance">
+      <div class="sp-section-title" onclick="toggleSection(this)">
+        <span>🎨 Appearance</span>
+        <span class="sp-chevron">▼</span>
+      </div>
+      <div class="sp-section-content">
+        <div class="sp-label">Theme</div>
+        <div class="theme-row" id="theme-row">
+          <button class="theme-btn active" data-theme="claude" onclick="setTheme('claude')">Claude</button>
+          <button class="theme-btn" data-theme="chatgpt" onclick="setTheme('chatgpt')">ChatGPT</button>
+          <button class="theme-btn" data-theme="gemini" onclick="setTheme('gemini')">Gemini</button>
+          <button class="theme-btn" data-theme="dark" onclick="setTheme('dark')">Dark</button>
+          <button class="theme-btn" data-theme="minimal" onclick="setTheme('minimal')">Minimal</button>
+        </div>
+        <div class="sp-label">UI Scale <span id="scale-val">1.00x</span></div>
+        <input class="sp-range" type="range" id="scale-range" min="1" max="1.5" step="0.05" value="1"
+          oninput="setUiScale(parseFloat(this.value))"/>
       </div>
     </div>
 
-    <!-- UI Scale — range slider that zooms the entire interface. Separate desktop
-         and mobile values are stored independently and auto-switch on resize. -->
-    <div>
-      <div class="sp-section-title">🖥 Display</div>
-      <div class="sp-label">UI Scale <span id="scale-val">1.00x</span></div>
-      <input class="sp-range" type="range" id="scale-range" min="1" max="1.5" step="0.05" value="1"
-        oninput="setUiScale(parseFloat(this.value))"/>
-    </div>
-
-    <!-- System Prompt — free-text instructions prepended to every API request
-         as the system role message. Saved on every keystroke via saveSettings().
-         When blank, a sensible default is injected by buildApiMessages(). -->
-    <div>
-      <div class="sp-section-title">System Prompt</div>
-      <div class="sp-label">Instructions for the model</div>
-      <textarea class="sp-textarea" id="system-prompt" placeholder="You are a helpful assistant specialized in financial index operations and Databricks pipelines…" rows="5" oninput="saveSettings()"></textarea>
-    </div>
-
-    <!-- Generation parameters — temperature, max tokens, top-p are range sliders
-         whose live value labels update on every input event. All three are read
-         by getSettings() and passed directly into the API payload on each send. -->
-    <div>
-      <div class="sp-section-title">Parameters</div>
-      <div class="sp-label">Temperature <span id="temp-val">0.7</span></div>
-      <input type="range" class="sp-range" id="temp-range" min="0" max="2" step="0.05" value="0.7"
-        oninput="document.getElementById('temp-val').textContent=parseFloat(this.value).toFixed(2);saveSettings()"/>
-
-      <div class="sp-label" style="margin-top:10px;">Max Tokens <span id="maxtok-val">4096</span></div>
-      <input type="range" class="sp-range" id="maxtok-range" min="256" max="16384" step="256" value="4096"
-        oninput="document.getElementById('maxtok-val').textContent=parseInt(this.value).toLocaleString();saveSettings()"/>
-
-      <div class="sp-label" style="margin-top:10px;">Top-P <span id="topp-val">1.0</span></div>
-      <input type="range" class="sp-range" id="topp-range" min="0.1" max="1" step="0.05" value="1.0"
-        oninput="document.getElementById('topp-val').textContent=parseFloat(this.value).toFixed(2);saveSettings()"/>
-    </div>
-
-    <!-- File context (RAG) — files dragged or selected here are read as text,
-         stored in the ragFiles array, and injected into every API request via
-         buildRagContext(). The context preview shows the first 600 chars and
-         an approximate token count so the user knows how much context they're using. -->
-    <div>
-      <div class="sp-section-title">📎 File Context (RAG)</div>
-      <div class="sp-label" style="margin-bottom:8px;">Files are chunked and injected as context</div>
-      <div class="file-drop" id="file-drop" onclick="document.getElementById('rag-input').click()"
-        ondragover="e=>e.preventDefault();this.classList.add('drag-over')"
-        ondragleave="this.classList.remove('drag-over')"
-        ondrop="handleRagDrop(event)">
-        <div class="file-drop-icon">📄</div>
-        <div class="file-drop-text">Click or drag files here</div>
-        <div class="file-drop-hint">.txt .md .csv .json .py .js .html .xml .yaml .pdf</div>
+    <!-- Model Behavior: System Prompt + Parameters -->
+    <div class="sp-section" data-section="behavior">
+      <div class="sp-section-title" onclick="toggleSection(this)">
+        <span>🧠 Model Behavior</span>
+        <span class="sp-chevron">▼</span>
       </div>
-      <input type="file" id="rag-input" multiple accept=".txt,.md,.csv,.json,.py,.js,.ts,.html,.css,.xml,.yaml,.yml,.pdf" onchange="handleRagFiles(this.files)"/>
-      <div class="file-list" id="rag-file-list"></div>
+      <div class="sp-section-content">
+        <div class="sp-label">System Prompt</div>
+        <textarea class="sp-textarea" id="system-prompt" placeholder="You are a helpful assistant specialized in financial index operations and Databricks pipelines…" rows="4" oninput="saveSettings()"></textarea>
+        <div class="sp-label">Temperature <span id="temp-val">0.7</span></div>
+        <input type="range" class="sp-range" id="temp-range" min="0" max="2" step="0.05" value="0.7"
+          oninput="document.getElementById('temp-val').textContent=parseFloat(this.value).toFixed(2);saveSettings()"/>
+        <div class="sp-label">Max Tokens <span id="maxtok-val">4096</span></div>
+        <input type="range" class="sp-range" id="maxtok-range" min="256" max="16384" step="256" value="4096"
+          oninput="document.getElementById('maxtok-val').textContent=parseInt(this.value).toLocaleString();saveSettings()"/>
+        <div class="sp-label">Top-P <span id="topp-val">1.0</span></div>
+        <input type="range" class="sp-range" id="topp-range" min="0.1" max="1" step="0.05" value="1.0"
+          oninput="document.getElementById('topp-val').textContent=parseFloat(this.value).toFixed(2);saveSettings()"/>
+      </div>
+    </div>
 
-      <div style="margin-top:10px;">
+    <!-- File Context (RAG) -->
+    <div class="sp-section" data-section="rag">
+      <div class="sp-section-title" onclick="toggleSection(this)">
+        <span>📎 File Context (RAG)</span>
+        <span class="sp-chevron">▼</span>
+      </div>
+      <div class="sp-section-content">
+        <div class="sp-label" style="margin-bottom:8px;">Files are chunked and injected as context</div>
+        <div class="file-drop" id="file-drop" onclick="document.getElementById('rag-input').click()"
+          ondragover="e=>e.preventDefault();this.classList.add('drag-over')"
+          ondragleave="this.classList.remove('drag-over')"
+          ondrop="handleRagDrop(event)">
+          <div class="file-drop-icon">📄</div>
+          <div class="file-drop-text">Click or drag files here</div>
+          <div class="file-drop-hint">.txt .md .csv .json .py .js .html .xml .yaml .pdf</div>
+        </div>
+        <input type="file" id="rag-input" multiple accept=".txt,.md,.csv,.json,.py,.js,.ts,.html,.css,.xml,.yaml,.yml,.pdf" onchange="handleRagFiles(this.files)"/>
+        <div class="file-list" id="rag-file-list"></div>
         <div class="sp-label">Context Preview <span id="ctx-tokens">0 tokens</span></div>
         <div class="ctx-preview" id="ctx-preview">No files loaded</div>
       </div>
     </div>
 
-    <!-- Web search configuration — master toggle, provider selector (Tavily/Serper),
-         per-provider API key input, and search mode (auto-detect vs always).
-         The #ws-config section is hidden until the toggle is enabled. API keys
-         are stored separately from main settings under provider-specific keys
-         so switching providers restores the correct saved key. -->
-    <div>
-      <div class="sp-section-title">🔍 Web Search</div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-        <div class="sp-label" style="margin:0;">Enable web search augmentation</div>
-        <label class="tog"><input type="checkbox" id="ws-enabled" onchange="onWebSearchToggle()"><div class="tog-track"></div><div class="tog-thumb"></div></label>
+    <!-- Web Search -->
+    <div class="sp-section" data-section="search">
+      <div class="sp-section-title" onclick="toggleSection(this)">
+        <span>🔍 Web Search</span>
+        <span class="sp-chevron">▼</span>
       </div>
-      <div id="ws-config" style="display:none;flex-direction:column;gap:8px;">
-        <div>
-          <div class="sp-label">Search provider</div>
-          <select class="sp-select" id="ws-provider" onchange="onWebSearchProviderChange()">
-            <option value="tavily">Tavily · 1,000 free/month (recommended)</option>
-            <option value="serper">Serper · 2,500 free on signup</option>
-            <option value="searxng">SearXNG · self-hosted (free)</option>
-          </select>
+      <div class="sp-section-content">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div class="sp-label" style="margin:0;">Enable web search augmentation</div>
+          <label class="tog"><input type="checkbox" id="ws-enabled" onchange="onWebSearchToggle()"><div class="tog-track"></div><div class="tog-thumb"></div></label>
         </div>
-        <div id="ws-key-row" style="display:none;">
-          <div class="sp-label">API key</div>
-          <input class="key-input" id="ws-key-input" type="password" placeholder="Paste API key…" oninput="saveSearchKey(this.value)"/>
+        <div id="ws-config" style="display:none;flex-direction:column;gap:8px;">
+          <div>
+            <div class="sp-label">Search provider</div>
+            <select class="sp-select" id="ws-provider" onchange="onWebSearchProviderChange()">
+              <option value="tavily">Tavily · 1,000 free/month (recommended)</option>
+              <option value="serper">Serper · 2,500 free on signup</option>
+              <option value="searxng">SearXNG · self-hosted (free)</option>
+            </select>
+          </div>
+          <div id="ws-key-row" style="display:none;">
+            <div class="sp-label">API key</div>
+            <input class="key-input" id="ws-key-input" type="password" placeholder="Paste API key…" oninput="saveSearchKey(this.value)"/>
+          </div>
+          <div id="ws-url-row" style="display:none;">
+            <div class="sp-label">Instance URL</div>
+            <input class="key-input" id="ws-url-input" type="text" placeholder="https://searx.example.com/search?q=" oninput="saveSearchUrl(this.value)"/>
+          </div>
+          <div>
+            <div class="sp-label">When to search</div>
+            <select class="sp-select" id="ws-mode" onchange="saveWebSearchSettings()">
+              <option value="auto">Auto-detect (recommended)</option>
+              <option value="always">Always search</option>
+            </select>
+          </div>
+          <div id="ws-cost-note" style="font-size:11px;color:var(--text3);line-height:1.55;padding:7px 9px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);"></div>
         </div>
-        <div id="ws-url-row" style="display:none;">
-          <div class="sp-label">Instance URL</div>
-          <input class="key-input" id="ws-url-input" type="text" placeholder="https://searx.example.com/search?q=" oninput="saveSearchUrl(this.value)"/>
-        </div>
-        <div>
-          <div class="sp-label">When to search</div>
-          <select class="sp-select" id="ws-mode" onchange="saveWebSearchSettings()">
-            <option value="auto">Auto-detect (recommended)</option>
-            <option value="always">Always search</option>
-          </select>
-        </div>
-        <div id="ws-cost-note" style="font-size:11px;color:var(--text3);line-height:1.55;padding:7px 9px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);"></div>
       </div>
     </div>
 
     <!-- Cloud Sync -->
-    <div>
-      <div class="sp-section-title">☁ Cloud Sync</div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-        <div class="sp-label" style="margin:0;">Enable cloud sync</div>
-        <label class="tog"><input type="checkbox" id="cs-enabled" onchange="onCloudToggle()"><div class="tog-track"></div><div class="tog-thumb"></div></label>
+    <div class="sp-section" data-section="cloud">
+      <div class="sp-section-title" onclick="toggleSection(this)">
+        <span>☁ Cloud Sync</span>
+        <span class="sp-chevron">▼</span>
       </div>
-      <div id="cs-config" style="display:none;flex-direction:column;gap:8px;">
-        <div>
-          <div class="sp-label">Provider</div>
-          <select class="sp-select" id="cs-provider" onchange="onCloudProviderChange()">
-            <option value="supabase">Supabase (free PostgreSQL)</option>
-          </select>
+      <div class="sp-section-content">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div class="sp-label" style="margin:0;">Enable cloud sync</div>
+          <label class="tog"><input type="checkbox" id="cs-enabled" onchange="onCloudToggle()"><div class="tog-track"></div><div class="tog-thumb"></div></label>
         </div>
-        <div>
-          <div class="sp-label">Supabase Project URL</div>
-          <input class="key-input" id="cs-url" type="password" placeholder="https://xxxx.supabase.co" oninput="saveCloudSettings()"/>
-        </div>
-        <div>
-          <div class="sp-label">Supabase Anon Key</div>
-          <input class="key-input" id="cs-key" type="password" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." oninput="saveCloudSettings()"/>
-        </div>
-        <div>
-          <div class="sp-label">Sync Passphrase <span style="font-size:10px;color:var(--text3);">(same on all devices)</span></div>
-          <input class="key-input" id="cs-passphrase" type="password" placeholder="Your secret passphrase…" oninput="saveCloudSettings()"/>
-        </div>
-        <div>
-          <div class="sp-label">Sync mode</div>
-          <select class="sp-select" id="cs-mode" onchange="saveCloudSettings()">
-            <option value="auto">Auto-sync (recommended)</option>
-            <option value="manual">Manual only</option>
-          </select>
-        </div>
-        <div style="display:flex;gap:6px;">
-          <button onclick="syncNow()" style="flex:1;padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);color:var(--text2);font-size:12px;cursor:pointer;font-family:var(--font-body);">↻ Sync now</button>
-          <button onclick="pullSync()" style="flex:1;padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);color:var(--text2);font-size:12px;cursor:pointer;font-family:var(--font-body);">⬇ Pull from cloud</button>
-        </div>
-        <div style="font-size:11px;color:var(--text3);line-height:1.55;padding:7px 9px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);">
-          Chats are encrypted with AES-GCM in your browser before upload. Only you can decrypt them with your passphrase.
+        <div id="cs-config" style="display:none;flex-direction:column;gap:8px;">
+          <div>
+            <div class="sp-label">Provider</div>
+            <select class="sp-select" id="cs-provider" onchange="onCloudProviderChange()">
+              <option value="supabase">Supabase (free PostgreSQL)</option>
+            </select>
+          </div>
+          <div>
+            <div class="sp-label">Supabase Project URL</div>
+            <input class="key-input" id="cs-url" type="password" placeholder="https://xxxx.supabase.co" oninput="saveCloudSettings()"/>
+          </div>
+          <div>
+            <div class="sp-label">Supabase Anon Key</div>
+            <input class="key-input" id="cs-key" type="password" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." oninput="saveCloudSettings()"/>
+          </div>
+          <div>
+            <div class="sp-label">Sync Passphrase <span style="font-size:10px;color:var(--text3);">(same on all devices)</span></div>
+            <input class="key-input" id="cs-passphrase" type="password" placeholder="Your secret passphrase…" oninput="saveCloudSettings()"/>
+          </div>
+          <div>
+            <div class="sp-label">Sync mode</div>
+            <select class="sp-select" id="cs-mode" onchange="saveCloudSettings()">
+              <option value="auto">Auto-sync (recommended)</option>
+              <option value="manual">Manual only</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:6px;">
+            <button onclick="syncNow()" style="flex:1;padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);color:var(--text2);font-size:12px;cursor:pointer;font-family:var(--font-body);">↻ Sync now</button>
+            <button onclick="pullSync()" style="flex:1;padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);color:var(--text2);font-size:12px;cursor:pointer;font-family:var(--font-body);">⬇ Pull from cloud</button>
+          </div>
+          <div style="font-size:11px;color:var(--text3);line-height:1.55;padding:7px 9px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);">
+            Chats are encrypted with AES-GCM in your browser before upload. Only you can decrypt them with your passphrase.
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Actions — resets all settings sliders, system prompt, and web search
-         config to defaults and removes the mc_settings key from localStorage. -->
-    <div>
-      <div class="sp-section-title">Actions</div>
-      <button onclick="resetSettings()" style="width:100%;padding:8px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text2);font-size:13px;cursor:pointer;font-family:var(--font-body);">↺ Reset to defaults</button>
+    <!-- Actions -->
+    <div class="sp-section" data-section="actions">
+      <div class="sp-section-title" onclick="toggleSection(this)">
+        <span>⚡ Actions</span>
+        <span class="sp-chevron">▼</span>
+      </div>
+      <div class="sp-section-content">
+        <button onclick="resetSettings()" style="width:100%;padding:8px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text2);font-size:13px;cursor:pointer;font-family:var(--font-body);">↺ Reset to defaults</button>
+      </div>
     </div>
 
   </div>
@@ -1946,7 +1972,7 @@ async function searchSearXNG(query, baseUrl) {
     ? 'https://proxy.opencodechat.dpdns.org/proxy?url=' + encodeURIComponent(url.toString())
     : url.toString();
 
-  const resp = await fetch(fetchUrl);
+  const resp = await fetch(fetchUrl, { headers: isLocalhost ? proxyHeaders({}, true) : {} });
   if (!resp.ok) throw new Error(`SearXNG HTTP ${resp.status}`);
   const data = await resp.json();
   return (data.results || []).map(r => ({
@@ -2004,7 +2030,7 @@ You MUST output ONLY a raw JSON object. No markdown. No explanation. No code fen
     if (!providerUrl) throw new Error('Unknown provider');
     const resp = await fetch(providerUrl + '/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      headers: proxyHeaders({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` }, provider === 'opencode'),
       body: JSON.stringify({
         model,
         messages: [
@@ -2173,6 +2199,7 @@ window.onload = async () => {
   updatePricePill();
   loadTheme();
   loadUiScale();
+  loadSectionState();
   // Close the custom model dropdown when the user clicks anywhere outside it
   document.addEventListener('click', function(e) {
     const wrap = document.getElementById('model-dd-wrap');
@@ -2277,6 +2304,30 @@ function loadKeys() {
     const k = getKey(p);
     if (k) { const el = document.getElementById('key-'+p); if(el) el.value=k; document.getElementById('dot-'+p)?.classList.add('saved'); }
   });
+  // Load proxy key
+  const proxyKey = getProxyKey();
+  if (proxyKey) {
+    const el = document.getElementById('key-proxy');
+    if (el) el.value = proxyKey;
+    document.getElementById('dot-proxy')?.classList.add('saved');
+  }
+}
+function saveProxyKey(v) {
+  if (v.trim()) {
+    localStorage.setItem('mc_proxy_key', v.trim());
+    document.getElementById('dot-proxy')?.classList.add('saved');
+  } else {
+    localStorage.removeItem('mc_proxy_key');
+    document.getElementById('dot-proxy')?.classList.remove('saved');
+  }
+}
+function getProxyKey() { return localStorage.getItem('mc_proxy_key') || ''; }
+function proxyHeaders(baseHeaders, needsProxy) {
+  if (needsProxy) {
+    const key = getProxyKey();
+    if (key) baseHeaders['x-proxy-key'] = key;
+  }
+  return baseHeaders;
 }
 
 // ══════════════════════════════════════════
@@ -2297,6 +2348,40 @@ function toggleSidebarCollapse() {
   sb.classList.toggle('collapsed');
   btn.textContent = sb.classList.contains('collapsed') ? '▶' : '◀';
 }
+
+// ── Collapsible settings sections ──
+function toggleSection(titleEl) {
+  const section = titleEl.closest('.sp-section');
+  section.classList.toggle('collapsed');
+  saveSectionState();
+}
+function expandAllSections() {
+  document.querySelectorAll('.sp-section').forEach(s => s.classList.remove('collapsed'));
+  saveSectionState();
+}
+function collapseAllSections() {
+  document.querySelectorAll('.sp-section').forEach(s => s.classList.add('collapsed'));
+  saveSectionState();
+}
+function saveSectionState() {
+  const states = {};
+  document.querySelectorAll('.sp-section').forEach(s => {
+    states[s.dataset.section] = !s.classList.contains('collapsed');
+  });
+  localStorage.setItem('mc_settings_sections', JSON.stringify(states));
+}
+function loadSectionState() {
+  try {
+    const states = JSON.parse(localStorage.getItem('mc_settings_sections') || '{}');
+    document.querySelectorAll('.sp-section').forEach(s => {
+      const key = s.dataset.section;
+      // Default: keys expanded, everything else collapsed
+      const isOpen = states.hasOwnProperty(key) ? states[key] : (key === 'keys');
+      s.classList.toggle('collapsed', !isOpen);
+    });
+  } catch(e) {}
+}
+
 // Persists UI parameters to mc_settings in localStorage. Explicitly reads and
 // re-merges existing web search settings so that saveSettings() (called by
 // slider/textarea oninput handlers) never accidentally clobbers them.
@@ -2821,13 +2906,13 @@ async function fetchLiveModels(provider) {
     const url = PROVIDERS[provider].url + '/models';
     const res = await fetch(url, {
       method: 'GET',
-      headers: {
+      headers: proxyHeaders({
         'Authorization': `Bearer ${key}`,
         'Content-Type': 'application/json',
         ...(provider === 'openrouter'
           ? {'HTTP-Referer': location.origin, 'X-Title': 'MultiChat'}
           : {})
-      }
+      }, provider === 'opencode'),
     });
 
     if (res.ok) {
@@ -3740,10 +3825,10 @@ async function sendMessage() {
   try {
     const resp = await fetch(PROVIDERS[provider].url + '/chat/completions', {
       method:'POST',
-      headers:{
+      headers: proxyHeaders({
         'Content-Type':'application/json',
         'Authorization':`Bearer ${apiKey}`
-      },
+      }, provider === 'opencode'),
       body: JSON.stringify(payload)
     });
 
