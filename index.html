@@ -730,6 +730,50 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
   /* 44×44 minimum touch targets for hamburger and provider select */
   #mob-menu-btn{width:44px;height:44px;}
   .sel-wrap{min-height:44px;display:flex;align-items:center;}
+
+  /* 500-700px phones: input + buttons side-by-side (horizontal layout) */
+  /* This complements the <500px block which stacks vertically */
+
+  #header {
+    padding: 10px 12px 8px;
+    gap: 8px;
+    flex-wrap: nowrap;
+  }
+
+  #messages {
+    padding: 8px 12px;
+  }
+
+  #input-area {
+    padding: 8px 12px;
+    gap: 8px;
+    flex-direction: row;
+    align-items: flex-end;
+  }
+
+  #chat-input {
+    flex: 1 1 auto;
+    min-height: 36px;
+    padding: 8px 10px;
+  }
+
+  /* Button group: send + info buttons */
+  .input-actions {
+    display: flex;
+    gap: 6px;
+    flex: 0 0 auto;
+  }
+
+  .input-actions button {
+    min-width: 44px;
+    min-height: 40px;
+    padding: 6px 10px;
+  }
+
+  /* Show button text on larger phones */
+  .input-actions button span {
+    display: inline;
+  }
 }
 
 /* ── Tiny screens (≤420px) ──
