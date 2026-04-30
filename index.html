@@ -244,7 +244,10 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 .tog-thumb{position:absolute;top:2px;left:2px;width:13px;height:13px;background:white;border-radius:50%;transition:transform 0.18s;box-shadow:0 1px 3px rgba(0,0,0,0.2);}
 .tog input:checked+.tog-track{background:var(--accent);}
 .tog input:checked~.tog-thumb{transform:translateX(15px);}
-.hdr-right{margin-left:auto;display:flex;align-items:center;gap:7px;}
+.hdr-right{display:flex;align-items:center;gap:7px;}
+/* Spacer that fills remaining header space on desktop, pushing hdr-right
+   to the far right. Hidden on mobile where the row-break splits the header. */
+.hdr-spacer{flex:1;}
 .price-pill{font-size:11px;font-family:var(--font-mono);color:var(--text3);background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:2px 7px;}
 .prov-badge{padding:3px 8px;border-radius:20px;font-size:11px;font-family:var(--font-mono);}
 .badge-groq{background:rgba(46,125,94,.1);color:var(--green);border:1px solid rgba(46,125,94,.2);}
@@ -259,10 +262,6 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 .icon-btn{width:30px;height:30px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg2);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2);transition:all 0.15s;flex-shrink:0;}
 .icon-btn:hover{background:var(--bg3);color:var(--text);}
 .icon-btn.active{background:var(--accent-bg);border-color:var(--accent-border);color:var(--accent);}
-/* Compact icon button used in input-actions (info popup trigger). Same sizing
-   as .icon-btn so all header/input buttons share consistent 30×30 dimensions. */
-.icon-button{width:30px;height:30px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg2);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2);transition:all 0.15s;flex-shrink:0;font-size:14px;padding:0;}
-.icon-button:hover{background:var(--bg3);color:var(--text);}
 
 /* ══════════════════════════════════════════════════
    SETTINGS PANEL (slide-in right)
@@ -543,6 +542,13 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 .mic-usage-link:hover{background:var(--accent);color:white;}
 
 /* ── Input area ── */
+/* Chat info bar sits between messages and input, visible only when a conversation
+   is loaded. Contains the info (ⓘ) button that opens the stats popup. */
+#chat-info-bar{max-width:800px;margin:0 auto;padding:0 22px 4px;display:none;justify-content:flex-end;}
+#chat-info-bar.vis{display:flex;}
+#info-btn{width:26px;height:26px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg2);cursor:pointer;color:var(--text3);font-size:13px;padding:0;transition:all 0.15s;}
+#info-btn:hover{background:var(--bg3);color:var(--text);}
+
 #input-area{flex:0 1 auto;padding:12px 22px 16px;border-top:1px solid var(--border);background:var(--surface);display:flex;flex-direction:column;}
 .input-wrap{max-width:800px;margin:0 auto;position:relative;}
 
@@ -563,18 +569,8 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 #send-btn:disabled{background:var(--border2);cursor:not-allowed;transform:none;}
 .attach-btn{width:34px;height:34px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2);transition:all 0.15s;}
 .attach-btn:hover{background:var(--bg3);color:var(--text);}
-.input-footer{max-width:800px;margin:6px auto 0;display:flex;align-items:center;justify-content:space-between;}
-.input-hint{font-size:11px;color:var(--text3);}
-.input-hint kbd{font-family:var(--font-mono);background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:1px 4px;font-size:10px;}
-.tok-count{font-size:11px;color:var(--text3);font-family:var(--font-mono);}
-.stat-badge{
-  display:inline-flex;align-items:center;gap:4px;
-  padding:2px 8px;border-radius:12px;
-  font-size:10px;font-family:var(--font-mono);
-  background:var(--accent-bg);color:var(--accent);
-  border:1px solid var(--accent-border);
-  white-space:nowrap;
-}
+.input-footer{max-width:800px;margin:6px auto 0;display:flex;align-items:center;justify-content:flex-end;}
+#search-indicator{font-size:11px;color:var(--accent);display:none;}
 
 /* ── Web search result panel ──
    Collapsible block rendered above the AI response text showing which queries
@@ -761,6 +757,11 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 #install-banner button{padding:5px 12px;background:white;color:var(--accent);border:none;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;}
 #install-banner .ib-close{background:none;color:white;opacity:0.7;font-size:16px;margin-left:auto;flex-shrink:0;}
 
+/* Row break div: hidden on desktop, forces header items to split across
+   two rows on mobile so the think toggle, refresh, and provider badge
+   appear on a dedicated second line below the provider/model selects. */
+.hdr-row-break{display:none;}
+
 /* ── Mobile layout (≤700px) ──
    Sidebar becomes a slide-in overlay (transform-based) so it doesn't consume
    horizontal space. Settings panel goes full-screen. env(safe-area-inset-bottom)
@@ -772,10 +773,14 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
   #mob-menu-btn{display:flex;}
 
   /* Hide cost/status items from header — surfaced in model info card instead */
-  .prov-badge{display:none;}
+  .prov-badge{font-size:10px;}
   .price-pill{display:none;}
-  .hdr-divider{display:none;}
+  /* Show model refresh and prov-badge on mobile row 2 (visible now) */
+  .model-dd-refresh{width:26px;height:26px;}
   .think-wrap .think-lbl{display:none;}
+
+  .hdr-row-break{display:block;flex-basis:100%;height:0;}
+  .hdr-spacer{display:none;}
 
   /* Sidebar slides in as overlay */
   #sidebar{
@@ -824,12 +829,6 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
   /* 500-700px phones: input + buttons side-by-side (horizontal layout) */
   /* This complements the <500px block which stacks vertically */
 
-  #header {
-    padding: 10px 12px 8px;
-    gap: 8px;
-    flex-wrap: nowrap;
-  }
-
   #messages {
     padding: 8px 12px;
   }
@@ -837,33 +836,19 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
   #input-area {
     padding: 8px 12px;
     gap: 8px;
-    flex-direction: row;
-    align-items: flex-end;
   }
 
   #chat-input {
     flex: 1 1 auto;
-    min-height: 36px;
+    min-height: 40px;
     padding: 8px 10px;
   }
 
-  /* Button group: send + info buttons */
-  .input-actions {
-    display: flex;
-    gap: 6px;
-    flex: 0 0 auto;
-  }
+  /* Touch-friendly send + attach buttons */
+  #send-btn,.attach-btn{width:44px;height:44px;}
 
-  .input-actions button {
-    min-width: 44px;
-    min-height: 40px;
-    padding: 6px 10px;
-  }
-
-  /* Show button text on larger phones */
-  .input-actions button span {
-    display: inline;
-  }
+  #chat-info-bar{padding:0 12px 4px;}
+  #info-btn{width:30px;height:30px;font-size:14px;}
 }
 
 /* ── Tiny screens (≤420px) ──
@@ -918,7 +903,7 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
     width: 100%;
     flex: 1 1 auto;
     padding: 8px;
-    min-height: 36px;
+    min-height: 38px;
   }
 
   /* Button row stays inline to the right of input */
@@ -940,11 +925,6 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
   /* Safe area bottom padding for phones with home bar */
   #input-area {
     padding-bottom: calc(6px + env(safe-area-inset-bottom));
-  }
-
-  /* Hide hint text on mobile to save space */
-  .input-hint {
-    display: none;
   }
 }
 
@@ -1019,10 +999,9 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 <div id="main">
 
   <!-- ── Header bar ──
-       Contains (left-to-right): mobile hamburger, provider <select>, custom
-       model dropdown with inline search, think toggle, price pill, provider
-       badge, and the settings icon button. flex-wrap:wrap lets items reflow
-       onto a second line on narrow viewports. -->
+       Row 1 (desktop: one line; mobile: wraps): hamburger · provider · model · settings
+       Row 2 (mobile only): think toggle · refresh · prov-badge · price-pill
+       .hdr-row-break is hidden on desktop, flex-basis:100% on mobile to force wrapping. -->
   <div id="header">
     <!-- Mobile hamburger — hidden on desktop via CSS, shown ≤700px -->
     <button id="mob-menu-btn" onclick="toggleSidebar()" title="Menu">
@@ -1043,7 +1022,6 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
         <span class="model-dd-label" id="model-dd-label">Select model…</span>
         <span class="model-dd-chev">▾</span>
       </div>
-      <button class="model-dd-refresh icon-btn" onclick="onProviderChange(true)" title="Refresh live model list">🔄</button>
       <div class="model-dd-panel" id="model-dd-panel" role="listbox">
         <input class="model-search" id="model-search" placeholder="Search models…" type="text"
                oninput="filterModelList(this.value)" onclick="event.stopPropagation()">
@@ -1052,20 +1030,21 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
       <!-- Hidden native select keeps the selected model ID; consumed by sendMessage(), updatePricePill(), etc. -->
       <select id="model-sel" style="display:none;" aria-hidden="true"></select>
     </div>
-
-    <div class="hdr-divider"></div>
-    <div class="think-wrap">
-      <label class="tog"><input type="checkbox" id="show-think" onchange="updateThinkLabel()"><div class="tog-track"></div><div class="tog-thumb"></div></label>
-      <span class="think-lbl" id="think-lbl">Hide thinking</span>
-    </div>
-
+    <!-- Row break: invisible on desktop, forces wrap to second line on mobile -->
+    <div class="hdr-spacer"></div>
     <div class="hdr-right">
       <span class="price-pill" id="price-pill"></span>
-      <span class="prov-badge badge-groq" id="prov-badge">Groq LPU</span>
       <button class="icon-btn" id="settings-toggle" onclick="toggleSettings()" title="Model settings">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       </button>
     </div>
+    <div class="hdr-row-break"></div>
+    <div class="think-wrap">
+      <label class="tog"><input type="checkbox" id="show-think" onchange="updateThinkLabel()"><div class="tog-track"></div><div class="tog-thumb"></div></label>
+      <span class="think-lbl" id="think-lbl">Hide thinking</span>
+    </div>
+    <button class="model-dd-refresh icon-btn" onclick="onProviderChange(true)" title="Refresh live model list">🔄</button>
+    <span class="prov-badge badge-groq" id="prov-badge">Groq LPU</span>
   </div>
 
   <!-- ── Message area ──
@@ -1105,6 +1084,12 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
     </div>
   </div>
 
+  <!-- Chat info bar — thin strip between messages and input containing
+       the info (ⓘ) button. Hidden when no conversation is loaded. -->
+  <div id="chat-info-bar">
+    <button id="info-btn" onclick="openInfoPopup()" title="Chat Info">ⓘ</button>
+  </div>
+
   <!-- ── Input area ──
        Fixed to the bottom of #main. Contains the optional attached-files strip,
        the textarea with send/attach buttons, and the footer stats bar showing
@@ -1126,19 +1111,12 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
           <button class="attach-btn" onclick="document.getElementById('attach-input').click()" title="Attach file">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
           </button>
-          <button id="info-btn" onclick="openInfoPopup()" title="Chat Info" class="icon-button">ⓘ</button>
         </div>
       </div>
       <input type="file" id="attach-input" multiple accept=".txt,.md,.csv,.json,.py,.js,.ts,.html,.css,.pdf,.xml,.yaml,.yml" onchange="handleFileAttach(this.files)"/>
     </div>
     <div class="input-footer">
-      <span class="input-hint"><kbd>Enter</kbd> new line · tap <strong>↑</strong> to send</span>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <span id="search-indicator"></span>
-        <span class="stat-badge" id="query-stats" style="display:none;"></span>
-        <span class="stat-badge" id="conv-stats" style="display:none;"></span>
-        <span class="tok-count" id="tok-count">0 tokens</span>
-      </div>
+      <span id="search-indicator"></span>
     </div>
   </div>
 </div>
@@ -1377,11 +1355,15 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
         <span id="info-model">—</span>
       </div>
       <div class="info-row">
-        <span class="label">Tokens:</span>
-        <span id="info-tokens">—</span>
+        <span class="label">Last query:</span>
+        <span id="info-query-stats">—</span>
       </div>
       <div class="info-row">
-        <span class="label">Started:</span>
+        <span class="label">Conversation:</span>
+        <span id="info-conv-stats">—</span>
+      </div>
+      <div class="info-row">
+        <span class="label">Updated:</span>
         <span id="info-timestamp">—</span>
       </div>
     </div>
@@ -1493,6 +1475,8 @@ const PROVIDERS = {
 let conversations = {};
 let currentChatId = null;
 let isStreaming = false;
+let _lastStats = { queryTok: 0, queryCost: 0, totalTok: 0, totalCost: 0, updated: Date.now() };
+let _lastTokCount = 0;
 let attachedFiles = []; // {name, content, size} for inline attach (per-message)
 let ragFiles = [];      // {name, content, size} for persistent RAG context
 let lastSearchMeta = null; // {queries[], provider, results[], grouped[]} for the current in-flight response
@@ -3441,17 +3425,17 @@ function newChat() {
   attachedFiles = [];
   renderAttachedFiles();
   resetFooterStats();
+  document.getElementById('chat-info-bar').classList.remove('vis');
 }
 function loadChat(id) {
   currentChatId = id;
   renderChatList();
   renderMessages();
   renderChatInfoBar(id);
+  document.getElementById('chat-info-bar').classList.add('vis');
   const chat = conversations[id];
   if (chat && chat.totalTokens) {
     updateFooterStats(0, 0, chat.totalTokens, chat.totalCost || 0);
-    const qs = document.getElementById('query-stats');
-    if (qs) qs.style.display = 'none';
   } else {
     resetFooterStats();
   }
@@ -4419,21 +4403,10 @@ function fmtNum(n) {
   return n.toLocaleString();
 }
 function updateFooterStats(queryTok, queryCost, totalTok, totalCost) {
-  const qs = document.getElementById('query-stats');
-  const cs = document.getElementById('conv-stats');
-  if (!qs || !cs) return;
-  if (queryTok > 0) {
-    qs.textContent = `${fmtNum(queryTok)} tok · $${queryCost.toFixed(4)}`;
-    qs.style.display = '';
-  }
-  cs.textContent = `Σ ${fmtNum(totalTok)} tok · $${totalCost.toFixed(4)}`;
-  cs.style.display = '';
+  _lastStats = { queryTok, queryCost, totalTok, totalCost, updated: Date.now() };
 }
 function resetFooterStats() {
-  ['query-stats','conv-stats'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.style.display = 'none';
-  });
+  _lastStats = { queryTok: 0, queryCost: 0, totalTok: 0, totalCost: 0, updated: Date.now() };
 }
 
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -4449,7 +4422,7 @@ function handleKey(e) {
   updateTokCount(document.getElementById('chat-input').value);
 }
 function autoResize(el) { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,200)+'px'; updateTokCount(el.value); }
-function updateTokCount(t) { document.getElementById('tok-count').textContent=`~${Math.ceil((t||'').length/4)} tokens`; }
+function updateTokCount(t) { _lastTokCount = Math.ceil((t||'').length/4); }
 function useSug(t) { const inp=document.getElementById('chat-input'); inp.value=t; autoResize(inp); sendMessage(); }
 function showToast(msg, type='') {
   const t = document.getElementById('toast');
@@ -4466,16 +4439,21 @@ function openInfoPopup() {
   const modelSelect = document.getElementById('model-sel');
   const currentModel = modelSelect ? modelSelect.value : 'Unknown';
 
-  // Get token count from the token counter
-  const tokCount = document.getElementById('tok-count') ? document.getElementById('tok-count').textContent : '—';
-
-  // Current timestamp
-  const startTime = new Date().toLocaleString();
+  // Get stats from global _lastStats (set by updateFooterStats)
+  const s = _lastStats || {};
+  const queryStr = s.queryTok > 0
+    ? `${fmtNum(s.queryTok)} tok · $${(s.queryCost||0).toFixed(4)}`
+    : '—';
+  const convStr = s.totalTok > 0
+    ? `${fmtNum(s.totalTok)} tok · $${(s.totalCost||0).toFixed(4)}`
+    : '—';
+  const timeStr = s.updated ? new Date(s.updated).toLocaleString() : new Date().toLocaleString();
 
   // Populate popup fields
   document.getElementById('info-model').textContent = currentModel || 'Unknown';
-  document.getElementById('info-tokens').textContent = tokCount || '—';
-  document.getElementById('info-timestamp').textContent = startTime;
+  document.getElementById('info-query-stats').textContent = queryStr;
+  document.getElementById('info-conv-stats').textContent = convStr;
+  document.getElementById('info-timestamp').textContent = timeStr;
 
   // Show popup
   popup.classList.remove('hidden');
