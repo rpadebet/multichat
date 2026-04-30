@@ -544,8 +544,7 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 /* ── Input area ── */
 /* Chat info bar sits between messages and input, visible only when a conversation
    is loaded. Contains the info (ⓘ) button that opens the stats popup. */
-#chat-info-bar{max-width:2400px;margin:0 auto;padding:0 22px 4px;display:none;justify-content:flex-end;}
-#chat-info-bar.vis{display:flex;}
+#chat-info-bar{width:100%;max-width:2400px;margin:0 auto;padding:0 22px 4px;display:flex;justify-content:space-between;align-items:center;}
 #info-btn{width:26px;height:26px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg2);cursor:pointer;color:var(--text3);font-size:13px;padding:0;transition:all 0.15s;}
 #info-btn:hover{background:var(--bg3);color:var(--text);}
 
@@ -560,7 +559,7 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 .att-chip-del:hover{color:var(--red);}
 
 .input-row{display:flex;align-items:flex-end;gap:6px;width:100%;}
-#chat-input{flex:1 1 auto;width:100%;padding:12px 14px;background:var(--user-bg);border:1px solid var(--border);border-radius:var(--radius-lg);color:var(--text);font-family:var(--font-body);font-size:14px;line-height:1.6;resize:none;outline:none;transition:border-color 0.17s,box-shadow 0.17s;min-height:50px;max-height:200px;overflow-y:auto;box-shadow:0 1px 4px var(--shadow);}
+#chat-input{flex:1 1 auto;width:100%;min-width:680px;padding:12px 14px;background:var(--user-bg);border:1px solid var(--border);border-radius:var(--radius-lg);color:var(--text);font-family:var(--font-body);font-size:14px;line-height:1.6;resize:none;outline:none;transition:border-color 0.17s,box-shadow 0.17s;min-height:50px;max-height:200px;overflow-y:auto;box-shadow:0 1px 4px var(--shadow);}
 #chat-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg);}
 #chat-input::placeholder{color:var(--text3);}
 .input-actions{display:flex;flex-direction:row;gap:4px;flex:0 0 auto;align-items:flex-end;}
@@ -769,15 +768,16 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
    font-size:16px on #chat-input specifically prevents iOS Safari from
    auto-zooming the viewport when the textarea is focused. */
 @media (max-width: 700px) {
+  /* Dynamic viewport height resizes when mobile keyboard appears,
+     so the input area stays visible instead of being pushed off-screen. */
+  body{height:100vh;height:100dvh;}
+
   /* Show hamburger */
   #mob-menu-btn{display:flex;}
 
-  /* Hide cost/status items from header — surfaced in model info card instead */
-  .prov-badge{font-size:10px;}
+  /* Hide price-pill on mobile */
   .price-pill{display:none;}
-  /* Show model refresh and prov-badge on mobile row 2 (visible now) */
   .model-dd-refresh{width:26px;height:26px;}
-  .think-wrap .think-lbl{display:none;}
 
   .hdr-row-break{display:block;flex-basis:100%;height:0;}
   .hdr-spacer{display:none;}
@@ -840,6 +840,7 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 
   #chat-input {
     flex: 1 1 auto;
+    min-width: 0;
     min-height: 40px;
     padding: 8px 10px;
   }
@@ -905,6 +906,7 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
   #chat-input {
     width: 100%;
     flex: 1 1 auto;
+    min-width: 0;
     padding: 8px;
     min-height: 38px;
   }
@@ -1044,13 +1046,6 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       </button>
     </div>
-    <div class="hdr-row-break"></div>
-    <div class="think-wrap">
-      <label class="tog"><input type="checkbox" id="show-think" onchange="updateThinkLabel()"><div class="tog-track"></div><div class="tog-thumb"></div></label>
-      <span class="think-lbl" id="think-lbl">Hide thinking</span>
-    </div>
-    <button class="model-dd-refresh icon-btn" onclick="onProviderChange(true)" title="Refresh live model list">🔄</button>
-    <span class="prov-badge badge-groq" id="prov-badge">Groq LPU</span>
   </div>
 
   <!-- ── Message area ──
@@ -1094,6 +1089,10 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
        the info (ⓘ) button. Hidden when no conversation is loaded. -->
   <div id="chat-info-bar">
     <button id="info-btn" onclick="openInfoPopup()" title="Chat Info">ⓘ</button>
+    <div class="think-wrap">
+      <label class="tog"><input type="checkbox" id="show-think" onchange="updateThinkLabel()"><div class="tog-track"></div><div class="tog-thumb"></div></label>
+      <span class="think-lbl" id="think-lbl">Hide thinking</span>
+    </div>
   </div>
 
   <!-- ── Input area ──
@@ -1139,6 +1138,11 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
     <button class="sp-close" onclick="toggleSettings()">✕</button>
   </div>
   <div class="sp-body">
+
+    <!-- Model actions: refresh button + model source pill -->
+    <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:8px;">
+      <span id="model-source-pill"></span>
+    </div>
 
     <!-- Expand / Collapse All -->
     <div class="sp-section-actions">
@@ -3328,32 +3332,23 @@ function fmtPrice(n) {
 
 // Model source indicator (live vs static)
 function updateModelSourceBadge(provider, count, isLive) {
-  let pill = document.getElementById('model-source-pill');
-  if (!pill) {
-    pill = document.createElement('span');
-    pill.id = 'model-source-pill';
-    pill.style.cssText = `font-size:10px;font-family:var(--font-mono);padding:2px 7px;border-radius:20px;border:1px solid;cursor:pointer;white-space:nowrap;`;
-    pill.title = 'Click to refresh model list';
-    pill.onclick = () => refreshModels();
-    document.getElementById('prov-badge').insertAdjacentElement('beforebegin', pill);
-  }
+  const pill = document.getElementById('model-source-pill');
+  if (!pill) return;
   if (isLive) {
     pill.textContent = `↺ ${count} live`;
-    pill.style.color = 'var(--green)';
-    pill.style.background = 'rgba(46,125,94,.08)';
-    pill.style.borderColor = 'rgba(46,125,94,.25)';
+    pill.style.cssText = 'font-size:10px;font-family:var(--font-mono);padding:2px 7px;border-radius:20px;border:1px solid rgba(46,125,94,.25);color:var(--green);background:rgba(46,125,94,.08);cursor:pointer;white-space:nowrap;';
     pill.title = `${count} models fetched live. Click to refresh.`;
+    pill.onclick = () => refreshModels();
   } else if (count > 0) {
     pill.textContent = `${count} cached`;
-    pill.style.color = 'var(--text3)';
-    pill.style.background = 'var(--bg3)';
-    pill.style.borderColor = 'var(--border)';
+    pill.style.cssText = 'font-size:10px;font-family:var(--font-mono);padding:2px 7px;border-radius:20px;border:1px solid var(--border);color:var(--text3);background:var(--bg3);cursor:pointer;white-space:nowrap;';
     pill.title = 'Using built-in model list. Add an API key to fetch live models.';
+    pill.onclick = () => refreshModels();
   } else {
-    pill.textContent = `static`;
-    pill.style.color = 'var(--text3)';
-    pill.style.background = 'var(--bg3)';
-    pill.style.borderColor = 'var(--border)';
+    pill.textContent = '';
+    pill.style.cssText = '';
+    pill.title = '';
+    pill.onclick = null;
   }
 }
 
@@ -3365,10 +3360,7 @@ async function refreshModels() {
 }
 
 function updateProviderBadge(p) {
-  const b = document.getElementById('prov-badge');
   const info = PROVIDERS[p];
-  b.textContent = info.label;
-  b.className = 'prov-badge ' + info.badge;
   // Mirror in model info card
   const mb = document.getElementById('mic-badge');
   if (mb) { mb.textContent = info.label; mb.className = 'prov-badge ' + info.badge; }
@@ -3431,14 +3423,12 @@ function newChat() {
   attachedFiles = [];
   renderAttachedFiles();
   resetFooterStats();
-  document.getElementById('chat-info-bar').classList.remove('vis');
 }
 function loadChat(id) {
   currentChatId = id;
   renderChatList();
   renderMessages();
   renderChatInfoBar(id);
-  document.getElementById('chat-info-bar').classList.add('vis');
   const chat = conversations[id];
   if (chat && chat.totalTokens) {
     updateFooterStats(0, 0, chat.totalTokens, chat.totalCost || 0);
