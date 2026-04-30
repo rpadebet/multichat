@@ -38,6 +38,25 @@ That's it. No `npm install`, no bundler, no configuration.
 
 ---
 
+## Mobile Layout Improvements (2026-04-30)
+
+Recent updates significantly enhance mobile responsiveness and usability:
+
+- **Maximized chat message area:** Chat messages now occupy 75%+ of mobile screen height (increased from ~60%)
+- **Dynamic input expansion:** Input field expands from 36px to 150px maximum only when typing, preserving screen space for messages
+- **Full-width input field:** Query box spans entire input area width for better typing experience
+- **Repositioned controls:** Send and attach buttons positioned to the right of input field
+- **Info popup for chat details:** New ⓘ button in bottom bar shows model, tokens, timestamp, and other metadata
+- **Fixed provider dropdown visibility:** Resolved overlapping dropdown issues in header for proper model selection
+- **Ultra-compact styles for small phones (<500px):** Reduced padding, compact spacing, optimized button layout
+- **Balanced layout for larger phones (500-700px):** Input + buttons side-by-side with proper spacing
+- **Flexbox-based layout restructure:** Improved mobile portrait prioritization with flex-direction management
+- **Tested devices:** iPhone SE (375px), iPhone 12 (390px), Android (480px) at UI scales 1.0x and 1.5x
+
+These changes maintain full functionality on desktop while providing an optimized mobile experience.
+
+---
+
 ## Features
 
 ### Core Chat
