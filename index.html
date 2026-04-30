@@ -771,7 +771,7 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
   /* interactive-widget=resizes-content in <meta> tells browser to resize
      the viewport when keyboard appears. dvh reflects the resized viewport
      so the body shrinks and flex layout keeps the input above the keyboard. */
-  body{height:100vh;height:100dvh;}
+  body{height:calc(100vh/var(--ui-scale,1));height:calc(100dvh/var(--ui-scale,1));}
 
   /* Show hamburger */
   #mob-menu-btn{display:flex;}
@@ -834,20 +834,21 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
   }
 
   #input-area {
-    padding: 6px 12px;
+    padding: 6px 8px;
     padding-bottom: calc(10px + env(safe-area-inset-bottom));
     gap: 6px;
   }
 
   #chat-input {
     flex: 1 1 auto;
-    min-width: 0;
+    min-width: 50vw;
     min-height: 40px;
     padding: 8px 10px;
   }
 
   /* Touch-friendly send + attach buttons */
-  #send-btn,.attach-btn{width:44px;height:44px;}
+  #send-btn,.attach-btn{width:38px;height:38px;}
+  .input-actions{gap:2px;}
 
   #chat-info-bar{padding:0 12px 4px;}
   #info-btn{width:30px;height:30px;font-size:14px;}
@@ -894,20 +895,20 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
   .msg-row{padding-left:8px;padding-right:8px;}
 
   #input-area {
-    padding: 6px 8px;
+    padding: 6px 6px;
     gap: 6px;
   }
 
   /* Keep input and buttons in a row on mobile */
   .input-row {
     flex-direction: row;
-    gap: 6px;
+    gap: 4px;
   }
 
   #chat-input {
     width: 100%;
     flex: 1 1 auto;
-    min-width: 0;
+    min-width: 50vw;
     padding: 8px;
     min-height: 38px;
   }
@@ -916,14 +917,14 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
   .input-actions {
     display: flex;
     flex-direction: row;
-    gap: 4px;
+    gap: 2px;
     flex: 0 0 auto;
     align-items: flex-end;
   }
 
   .input-actions button {
-    width: 34px;
-    min-height: 34px;
+    width: 30px;
+    min-height: 30px;
     padding: 4px;
     font-size: 12px;
   }
@@ -4443,8 +4444,25 @@ function openInfoPopup() {
   const modelSelect = document.getElementById('model-sel');
   const currentModel = modelSelect ? modelSelect.value : 'Unknown';
 
-  // Get stats from global _lastStats (set by updateFooterStats)
-  const s = _lastStats || {};
+  // Get stats from global _lastStats (set by updateFooterStats in current session)
+  let s = _lastStats || {};
+  // Fallback: read usage from the last AI message (persisted across devices)
+  if (!s.queryTok && currentChatId && conversations[currentChatId]) {
+    const msgs = conversations[currentChatId].messages || [];
+    for (let i = msgs.length - 1; i >= 0; i--) {
+      const m = msgs[i];
+      if (m.role === 'assistant' && m.usage) {
+        s = {
+          queryTok: (m.usage.prompt_tokens || 0) + (m.usage.completion_tokens || 0),
+          queryCost: m.usage.cost || 0,
+          totalTok: s.totalTok || 0,
+          totalCost: s.totalCost || 0,
+          updated: s.updated || m.timestamp || Date.now()
+        };
+        break;
+      }
+    }
+  }
   const queryStr = s.queryTok > 0
     ? `${fmtNum(s.queryTok)} tok · $${(s.queryCost||0).toFixed(4)}`
     : '—';
