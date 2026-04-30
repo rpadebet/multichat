@@ -1149,7 +1149,7 @@ const PROVIDERS = {
     {id:'llama-3.3-70b-versatile',       name:'Llama 3.3 70B Versatile',            p:'$0.59/$0.79'},
     {id:'llama-3.1-8b-instant',          name:'Llama 3.1 8B Instant (cheapest)',    p:'$0.05/$0.08'},
   ]},
-  opencode:{label:'OpenCode Go',badge:'badge-opencode',usageUrl:'https://opencode.ai/workspace/wrk_01KQA49DFKK6FNKT2MX99WVGQH/usage',url:'https://opencode.ai/zen/go/v1',models:[
+  opencode:{label:'OpenCode Go',badge:'badge-opencode',usageUrl:'https://opencode.ai/workspace/wrk_01KQA49DFKK6FNKT2MX99WVGQH/usage',url:'https://proxy.opencodechat.dpdns.org/zen/go/v1',models:[
     {id:'minimax-m2.7',    name:'MiniMax M2.7',        p:'$0.30/$1.20'},
     {id:'minimax-m2.5',    name:'MiniMax M2.5',        p:'$0.27/$0.95'},
     {id:'kimi-k2.6',       name:'Kimi K2.6',           p:'$0.50/$2.50'},
@@ -1931,14 +1931,22 @@ async function searchSerper(query, apiKey) {
 }
 
 async function searchSearXNG(query, baseUrl) {
-  // Ensure the base URL has a proper query separator
-  let url = baseUrl.trim();
-  // Strip any literal placeholder the user may have entered (e.g. '?q=<query>')
-  url = url.replace(/[?&]q=<query>/i, '');
-  if (!url.includes('?')) url += '?q=';
-  else if (!/[?&]q=$/.test(url)) url += '&q=';
-  url += encodeURIComponent(query) + '&format=json';
-  const resp = await fetch(url);
+  let url;
+  try {
+    url = new URL(baseUrl.trim());
+  } catch (e) {
+    throw new Error('Invalid SearXNG URL. Expected something like https://searx.example.com/search');
+  }
+  url.searchParams.set('q', query);
+  url.searchParams.set('format', 'json');
+
+  // Route localhost/private-network SearXNG through the CORS proxy
+  const isLocalhost = /^(localhost|127\.0\.0\.1|\[::1\])$/i.test(url.hostname);
+  const fetchUrl = isLocalhost
+    ? 'https://proxy.opencodechat.dpdns.org/proxy?url=' + encodeURIComponent(url.toString())
+    : url.toString();
+
+  const resp = await fetch(fetchUrl);
   if (!resp.ok) throw new Error(`SearXNG HTTP ${resp.status}`);
   const data = await resp.json();
   return (data.results || []).map(r => ({

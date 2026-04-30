@@ -67,3 +67,40 @@ There is no test suite. Verification is manual:
 - **Model IDs in the static registry must match the provider's API exactly** (e.g. `openai/gpt-oss-120b` vs `openai/gpt-oss-120b:free`). Mismatches cause 404s on send.
 - **The custom dropdown search** matches against `dataset.name + ' ' + dataset.id`. If you add models with unusual IDs, ensure the `data-id` attribute is populated in `populateModels()`.
 - **CORS is real**: live model fetching only works for providers with permissive CORS (OpenRouter). Groq and OpenCode Go often fail direct fetch without a key; Groq falls back to the OpenRouter proxy.
+
+## OpenCode Go CORS proxy setup
+
+OpenCode Go (`opencode.ai`) does not return `Access-Control-Allow-Origin` headers on actual API responses (only on `OPTIONS` preflight). This makes direct browser fetch impossible. To use OpenCode Go from any device:
+
+1. **Run the local proxy** (`node proxy.js`) — it listens on `localhost:3456`, forwards requests to `opencode.ai`, and injects synthetic CORS headers.
+2. **Expose the proxy via Cloudflare Tunnel** (or similar) to a public HTTPS domain, e.g. `https://proxy.opencodechat.dpdns.org`.
+3. **Point `index.html`** at the public proxy URL (`https://proxy.opencodechat.dpdns.org/zen/go/v1`).
+4. **SearXNG localhost instances** are also routed through the proxy (`/proxy?url=<target>`) so they work from any device.
+
+The app remains hosted on GitHub Pages; only the API calls route through your personal proxy.
+
+### Cloudflare Tunnel quick setup
+
+```bash
+# 1. Add ingress to your existing tunnel config (~/.cloudflared/config.yml)
+ingress:
+  - hostname: proxy.opencodechat.dpdns.org
+    service: http://localhost:3456
+  - service: http_status:404
+
+# 2. Create DNS record
+cloudflared tunnel route dns <TUNNEL_ID> proxy.opencodechat.dpdns.org
+
+# 3. Start the proxy
+node proxy.js
+
+# 4. Run your tunnel (if not already running)
+cloudflared tunnel run <TUNNEL_ID>
+```
+
+### Proxy security (optional)
+Set an environment variable to require a simple shared key:
+```bash
+PROXY_KEY=your-secret-key node proxy.js
+```
+If set, every request must include the header `x-proxy-key: your-secret-key`.

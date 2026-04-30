@@ -1,4 +1,4 @@
-const CACHE = 'multichat-v11';
+const CACHE = 'multichat-v12';
 const SHELL = [
   './',
   './index.html',
@@ -9,11 +9,9 @@ const SHELL = [
 const PROXY_HOSTS = ['opencode.ai', '127.0.0.1', '[::1]'];
 
 // Proxy a request through the SW to bypass CORS.
-// Fetches from the SW context (no CORS restrictions), then wraps the response
-// with CORS headers so the page can read it.
+// Forwards the original Request object directly (preserving all metadata),
+// then wraps the response with synthetic CORS headers so the page can read it.
 async function proxyWithCors(request) {
-  const url = new URL(request.url);
-
   // ── Handle CORS preflight (OPTIONS) directly — no need to forward ──
   if (request.method === 'OPTIONS') {
     return new Response(null, {
@@ -28,32 +26,25 @@ async function proxyWithCors(request) {
     });
   }
 
-  // ── Copy headers, filtering out preflight-only headers ──
-  const headers = {};
-  for (const [k, v] of request.headers.entries()) {
-    if (k.startsWith('access-control-request-')) continue;
-    headers[k] = v;
+  try {
+    const resp = await fetch(request);
+
+    if (resp.type === 'opaqueredirect') return resp;
+
+    const corsHeaders = new Headers(resp.headers);
+    corsHeaders.set('Access-Control-Allow-Origin', '*');
+    corsHeaders.set('Access-Control-Expose-Headers', '*');
+    corsHeaders.set('Access-Control-Allow-Private-Network', 'true');
+
+    return new Response(resp.body, {
+      status: resp.status,
+      statusText: resp.statusText,
+      headers: corsHeaders,
+    });
+  } catch (err) {
+    console.error('[SW proxy] Failed for', request.url, err);
+    throw err;
   }
-
-  let body = undefined;
-  if (!['GET', 'HEAD'].includes(request.method)) {
-    try { body = await request.clone().text(); } catch(e) {}
-  }
-
-  const resp = await fetch(request.url, { method: request.method, headers, body });
-
-  if (resp.type === 'opaqueredirect') return resp;
-
-  const corsHeaders = new Headers(resp.headers);
-  corsHeaders.set('Access-Control-Allow-Origin', '*');
-  corsHeaders.set('Access-Control-Expose-Headers', '*');
-  corsHeaders.set('Access-Control-Allow-Private-Network', 'true');
-
-  return new Response(resp.body, {
-    status: resp.status,
-    statusText: resp.statusText,
-    headers: corsHeaders,
-  });
 }
 
 // Install: cache the app shell
@@ -75,13 +66,6 @@ self.addEventListener('activate', e => {
 // Fetch: proxy CORS-blocked hosts, bypass other cross-origin, cache shell
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
-
-  // Proxy requests to hosts that don't support CORS
-  const shouldProxy = PROXY_HOSTS.includes(url.hostname) || url.hostname === 'localhost';
-  if (shouldProxy) {
-    e.respondWith(proxyWithCors(e.request));
-    return;
-  }
 
   // Bypass Service Worker entirely for cross-origin API calls 
   // (Prevents WebKit/Safari bugs where SW drops Authorization headers on POST requests)
