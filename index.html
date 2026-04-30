@@ -224,7 +224,7 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
    Sticky top bar holding the provider select, custom model dropdown, think
    toggle, price pill, and settings button. flex-wrap:wrap lets items reflow
    to a second line on narrow screens rather than overflowing. */
-#header{flex:0 0 44px;padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--surface);}
+#header{flex:0 0 44px;padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--surface);position:relative;z-index:10;}
 
 /* Provider <select> wrapper: position:relative lets the custom chevron icon
    be absolutely positioned over the native select without extra markup. */
@@ -454,7 +454,7 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
    an integrated search box and scrollable item list. The hidden native
    <select id="model-sel"> is kept in sync so all existing JS that reads
    .value or iterates .options continues to work without modification. */
-.model-dd-wrap{position:relative;display:flex;align-items:center;gap:4px;}
+.model-dd-wrap{position:relative;display:flex;align-items:center;gap:4px;z-index:210;}
 .model-dd-trigger{
   display:flex;align-items:center;justify-content:space-between;gap:6px;
   padding:6px 10px 6px 12px;
@@ -472,7 +472,7 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
   display:none;position:absolute;top:calc(100% + 5px);left:0;
   min-width:280px;max-width:360px;
   background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
-  box-shadow:0 8px 24px var(--shadow);z-index:200;overflow:hidden;
+  box-shadow:0 8px 24px var(--shadow);z-index:9999;overflow:hidden;
 }
 .model-dd-panel.open{display:block;}
 /* Search input at top of panel — SVG magnifier is inlined as a data-URI
@@ -744,8 +744,8 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 /* Semi-transparent full-screen overlay that appears behind the sidebar when it
    slides in on mobile. Clicking it calls closeSidebar(). backdrop-filter:blur
    gives depth without a hard black curtain. z-index:40 sits below sidebar (50). */
-#sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:40;backdrop-filter:blur(2px);}
-#sidebar-overlay.show{display:block;}
+#sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:40;backdrop-filter:blur(2px);pointer-events:none;}
+#sidebar-overlay.show{display:block;pointer-events:auto;}
 
 /* Hamburger button hidden on desktop (display:none), shown as display:flex on
    mobile via the @media block below. Kept in the DOM always to avoid layout shift. */
@@ -785,7 +785,7 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 
   /* Settings panel full-screen on mobile */
   #settings-panel{
-    position:fixed;inset:0;z-index:50;
+    position:fixed;inset:0;z-index:60;
     width:100%!important;min-width:unset!important;
     border-left:none;
   }
