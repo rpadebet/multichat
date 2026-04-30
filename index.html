@@ -4104,6 +4104,13 @@ async function sendMessage() {
       chat.totalTokens = (chat.totalTokens || 0) + promptTok + compTok;
       chat.totalCost = (chat.totalCost || 0) + queryCost;
       updateFooterStats(promptTok + compTok, queryCost, chat.totalTokens, chat.totalCost);
+    } else {
+      // No usage data from provider — estimate from response text length
+      const estTok = Math.ceil((aiMsg.content || '').length / 4) + Math.ceil(((aiMsg.thinking || '')).length / 4);
+      if (estTok > 0) {
+        chat.totalTokens = (chat.totalTokens || 0) + estTok;
+        updateFooterStats(estTok, 0, chat.totalTokens, chat.totalCost || 0);
+      }
     }
 
     saveChats();
