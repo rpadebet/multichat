@@ -162,7 +162,7 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 .chat-confirm-delete:hover{background:#a93226;}
 
 /* ── Chat info bar (message area) ── */
-.chat-info-bar{max-width:1200px;margin:0 auto;padding:8px 22px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text3);text-align:center;}
+.chat-info-bar{max-width:2400px;margin:0 auto;padding:8px 22px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text3);text-align:center;}
 
 /* ── API Keys panel ── */
 .api-panel{border-top:1px solid var(--border);padding:12px 12px 14px;}
@@ -335,7 +335,7 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
    Each row is centred and capped at 800px to keep long responses readable.
    The slide-up entrance animation (msgIn) fires once per message render to
    signal new content without being distracting on full history re-renders. */
-.msg-row{padding:4px 0;max-width:1200px;margin:0 auto;width:100%;padding-left:22px;padding-right:22px;animation:msgIn 0.2s ease forwards;}
+.msg-row{padding:4px 0;max-width:2400px;margin:0 auto;width:100%;padding-left:22px;padding-right:22px;animation:msgIn 0.2s ease forwards;}
 @keyframes msgIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
 /* Avatar + body side-by-side; align-items:flex-start keeps the avatar pinned
    to the top of the message rather than vertically centred with tall content. */
@@ -383,7 +383,7 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
    to fill equal space on both sides via flex:1, creating the ruled-line effect
    without extra DOM nodes. */
 .model-switch-divider{
-  max-width:1200px;margin:10px auto;
+  max-width:2400px;margin:10px auto;
   padding:0 22px;
   display:flex;align-items:center;gap:10px;
 }
@@ -424,7 +424,7 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 .msg-text li{margin-bottom:3px;}
 .msg-text blockquote{border-left:3px solid var(--border2);padding-left:13px;color:var(--text2);margin:7px 0;}
 .msg-text a{color:var(--accent);text-decoration:underline;}
-.msg-sep{height:1px;background:var(--border);max-width:1200px;margin:2px auto;opacity:0.4;}
+.msg-sep{height:1px;background:var(--border);max-width:2400px;margin:2px auto;opacity:0.4;}
 
 /* ── Message edit button ──
    Hidden (opacity:0) until the parent .msg-row is hovered, keeping the UI
@@ -544,13 +544,13 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 /* ── Input area ── */
 /* Chat info bar sits between messages and input, visible only when a conversation
    is loaded. Contains the info (ⓘ) button that opens the stats popup. */
-#chat-info-bar{max-width:1200px;margin:0 auto;padding:0 22px 4px;display:none;justify-content:flex-end;}
+#chat-info-bar{max-width:2400px;margin:0 auto;padding:0 22px 4px;display:none;justify-content:flex-end;}
 #chat-info-bar.vis{display:flex;}
 #info-btn{width:26px;height:26px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg2);cursor:pointer;color:var(--text3);font-size:13px;padding:0;transition:all 0.15s;}
 #info-btn:hover{background:var(--bg3);color:var(--text);}
 
 #input-area{flex:0 1 auto;padding:12px 22px 16px;border-top:1px solid var(--border);background:var(--surface);display:flex;flex-direction:column;}
-.input-wrap{max-width:1200px;margin:0 auto;position:relative;}
+.input-wrap{max-width:2400px;margin:0 auto;position:relative;}
 
 /* File preview strip above textarea */
 .attached-files{display:none;flex-wrap:wrap;gap:5px;margin-bottom:7px;padding:7px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);}
@@ -560,7 +560,7 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 .att-chip-del:hover{color:var(--red);}
 
 .input-row{display:flex;align-items:flex-end;gap:6px;width:100%;}
-#chat-input{flex:1 1 auto;width:100%;padding:12px 14px;background:var(--user-bg);border:1px solid var(--border);border-radius:var(--radius-lg);color:var(--text);font-family:var(--font-body);font-size:14px;line-height:1.6;resize:none;outline:none;transition:border-color 0.17s,box-shadow 0.17s;min-height:64px;max-height:200px;overflow-y:auto;box-shadow:0 1px 4px var(--shadow);}
+#chat-input{flex:1 1 auto;width:100%;padding:12px 14px;background:var(--user-bg);border:1px solid var(--border);border-radius:var(--radius-lg);color:var(--text);font-family:var(--font-body);font-size:14px;line-height:1.6;resize:none;outline:none;transition:border-color 0.17s,box-shadow 0.17s;min-height:50px;max-height:200px;overflow-y:auto;box-shadow:0 1px 4px var(--shadow);}
 #chat-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg);}
 #chat-input::placeholder{color:var(--text3);}
 .input-actions{display:flex;flex-direction:row;gap:4px;flex:0 0 auto;align-items:flex-end;}
@@ -569,7 +569,7 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 #send-btn:disabled{background:var(--border2);cursor:not-allowed;transform:none;}
 .attach-btn{width:34px;height:34px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2);transition:all 0.15s;}
 .attach-btn:hover{background:var(--bg3);color:var(--text);}
-.input-footer{max-width:1200px;margin:6px auto 0;display:flex;align-items:center;justify-content:flex-end;}
+.input-footer{max-width:2400px;margin:6px auto 0;display:flex;align-items:center;justify-content:flex-end;}
 #search-indicator{font-size:11px;color:var(--accent);display:none;}
 
 /* ── Web search result panel ──
