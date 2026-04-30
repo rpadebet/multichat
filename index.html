@@ -560,7 +560,7 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 .att-chip-del:hover{color:var(--red);}
 
 .input-row{display:flex;align-items:flex-end;gap:6px;width:100%;}
-#chat-input{flex:1 1 auto;width:100%;padding:12px 14px;background:var(--user-bg);border:1px solid var(--border);border-radius:var(--radius-lg);color:var(--text);font-family:var(--font-body);font-size:14px;line-height:1.6;resize:none;outline:none;transition:border-color 0.17s,box-shadow 0.17s;min-height:48px;max-height:200px;overflow-y:auto;box-shadow:0 1px 4px var(--shadow);}
+#chat-input{flex:1 1 auto;width:100%;padding:12px 14px;background:var(--user-bg);border:1px solid var(--border);border-radius:var(--radius-lg);color:var(--text);font-family:var(--font-body);font-size:14px;line-height:1.6;resize:none;outline:none;transition:border-color 0.17s,box-shadow 0.17s;min-height:50px;max-height:200px;overflow-y:auto;box-shadow:0 1px 4px var(--shadow);}
 #chat-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg);}
 #chat-input::placeholder{color:var(--text3);}
 .input-actions{display:flex;flex-direction:row;gap:4px;flex:0 0 auto;align-items:flex-end;}
@@ -802,9 +802,6 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
   /* Messages padding for safe area */
   #messages{padding-bottom:calc(16px + env(safe-area-inset-bottom));}
 
-  /* Input area safe area */
-  #input-area{padding-bottom:calc(14px + env(safe-area-inset-bottom));}
-
   /* Bigger touch targets */
   .hdr-select{font-size:14px;padding:8px 28px 8px 11px;}
   #send-btn,.attach-btn{width:40px;height:40px;}
@@ -819,23 +816,26 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
   .chat-search{font-size:16px;padding:8px 10px 8px 28px;}
   .sug-card{padding:14px;}
 
-  /* Header wrapping + safe-area-inset-top so content clears the browser chrome */
-  #header{padding:calc(8px + env(safe-area-inset-top)) 12px 8px;gap:6px;}
+  /* Header wrapping + safe-area-inset-top so content clears the browser chrome.
+     flex:0 0 auto lets the header grow vertically when wrapping to 2 rows. */
+  #header{flex:0 0 auto;padding:calc(8px + env(safe-area-inset-top)) 12px 8px;gap:6px;}
   .sel-wrap .hdr-select{max-width:calc(50vw - 60px);}
   /* 44×44 minimum touch targets for hamburger and provider select */
   #mob-menu-btn{width:44px;height:44px;}
   .sel-wrap{min-height:44px;display:flex;align-items:center;}
 
-  /* 500-700px phones: input + buttons side-by-side (horizontal layout) */
-  /* This complements the <500px block which stacks vertically */
+  /* Align message row and input padding so the input field matches the
+     conversation width. Desktop uses 22px; mobile 12px; tiny 8px. */
+  .msg-row{padding-left:12px;padding-right:12px;}
 
   #messages {
     padding: 8px 12px;
   }
 
   #input-area {
-    padding: 8px 12px;
-    gap: 8px;
+    padding: 6px 12px;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
+    gap: 6px;
   }
 
   #chat-input {
@@ -849,6 +849,8 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 
   #chat-info-bar{padding:0 12px 4px;}
   #info-btn{width:30px;height:30px;font-size:14px;}
+
+  .input-footer{margin-top:4px;}
 }
 
 /* ── Tiny screens (≤420px) ──
@@ -859,7 +861,6 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
   #header{flex-wrap:wrap;}
   .sel-wrap{flex:1;min-width:0;}
   .sel-wrap .hdr-select{width:100%;max-width:100%;}
-  .msg-row{padding-left:12px;padding-right:12px;}
 }
 
 /* ── Ultra-small phones (<500px width) ──
@@ -887,6 +888,8 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
   #messages {
     padding: 8px 8px;
   }
+
+  .msg-row{padding-left:8px;padding-right:8px;}
 
   #input-area {
     padding: 6px 8px;
@@ -926,6 +929,9 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
   #input-area {
     padding-bottom: calc(6px + env(safe-area-inset-bottom));
   }
+
+  #chat-info-bar{padding:0 8px 2px;}
+  .input-footer{margin-top:2px;}
 }
 
 /* ── Landscape mobile (height ≤500px) ──
