@@ -2,7 +2,7 @@
 <html lang="en" data-theme="claude">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -768,6 +768,11 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
    font-size:16px on #chat-input specifically prevents iOS Safari from
    auto-zooming the viewport when the textarea is focused. */
 @media (max-width: 700px) {
+  /* interactive-widget=resizes-content in <meta> tells browser to resize
+     the viewport when keyboard appears. dvh reflects the resized viewport
+     so the body shrinks and flex layout keeps the input above the keyboard. */
+  body{height:100vh;height:100dvh;}
+
   /* Show hamburger */
   #mob-menu-btn{display:flex;}
 
