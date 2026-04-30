@@ -231,7 +231,7 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 .sel-wrap{position:relative;}
 /* appearance:none removes the native OS dropdown arrow so our custom .sel-chev
    is the only visible indicator, giving consistent cross-browser styling. */
-.hdr-select{padding:6px 26px 6px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:var(--font-body);font-size:13px;font-weight:500;cursor:pointer;outline:none;appearance:none;transition:border-color 0.15s;max-width:280px;}
+.hdr-select{padding:6px 26px 6px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:var(--font-body);font-size:13px;font-weight:500;cursor:pointer;outline:none;appearance:none;transition:border-color 0.15s;max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .hdr-select:hover{border-color:var(--border2);}
 /* pointer-events:none so clicks pass through to the underlying <select>. */
 .sel-chev{position:absolute;right:8px;top:50%;transform:translateY(-50%);color:var(--text3);pointer-events:none;font-size:9px;}
@@ -549,11 +549,11 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 .att-chip-del{background:none;border:none;cursor:pointer;color:var(--text3);font-size:12px;line-height:1;padding:0 1px;margin-left:2px;}
 .att-chip-del:hover{color:var(--red);}
 
-.input-row{display:flex;align-items:flex-end;gap:6px;}
-#chat-input{flex:1;padding:12px 14px;background:var(--user-bg);border:1px solid var(--border);border-radius:var(--radius-lg);color:var(--text);font-family:var(--font-body);font-size:14px;line-height:1.6;resize:none;outline:none;transition:border-color 0.17s,box-shadow 0.17s;min-height:48px;max-height:200px;overflow-y:auto;box-shadow:0 1px 4px var(--shadow);}
+.input-row{display:flex;align-items:flex-end;gap:6px;width:100%;}
+#chat-input{flex:1 1 auto;width:100%;padding:12px 14px;background:var(--user-bg);border:1px solid var(--border);border-radius:var(--radius-lg);color:var(--text);font-family:var(--font-body);font-size:14px;line-height:1.6;resize:none;outline:none;transition:border-color 0.17s,box-shadow 0.17s;min-height:48px;max-height:200px;overflow-y:auto;box-shadow:0 1px 4px var(--shadow);}
 #chat-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg);}
 #chat-input::placeholder{color:var(--text3);}
-.input-actions{display:flex;flex-direction:column;gap:4px;}
+.input-actions{display:flex;flex-direction:row;gap:4px;flex:0 0 auto;align-items:flex-end;}
 #send-btn{width:34px;height:34px;background:var(--accent);border:none;border-radius:var(--radius);cursor:pointer;display:flex;align-items:center;justify-content:center;color:white;transition:all 0.17s;}
 #send-btn:hover{opacity:0.85;transform:scale(1.04);}
 #send-btn:disabled{background:var(--border2);cursor:not-allowed;transform:none;}
@@ -883,6 +883,18 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
     gap: 6px;
   }
 
+  /* Reduce provider dropdown width on very small screens */
+  .sel-wrap {
+    flex-shrink: 1;
+    min-width: 0;
+  }
+
+  .hdr-select {
+    max-width: 100px;
+    font-size: 12px;
+    padding: 5px 22px 5px 8px;
+  }
+
   #messages {
     padding: 8px 8px;
   }
@@ -892,34 +904,43 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
     gap: 6px;
   }
 
-  /* Input + send button stack vertically */
+  /* Keep input and buttons in a row on mobile */
   .input-row {
-    flex-direction: column;
+    flex-direction: row;
+    gap: 6px;
   }
 
   #chat-input {
     width: 100%;
+    flex: 1 1 auto;
     padding: 8px;
     min-height: 36px;
   }
 
-  /* Button row below input */
+  /* Button row stays inline to the right of input */
   .input-actions {
     display: flex;
-    gap: 6px;
-    width: 100%;
-    justify-content: space-between;
+    flex-direction: row;
+    gap: 4px;
+    flex: 0 0 auto;
+    align-items: flex-end;
   }
 
   .input-actions button {
-    flex: 1;
-    min-height: 40px;
-    font-size: 14px;
+    width: 34px;
+    min-height: 34px;
+    padding: 4px;
+    font-size: 12px;
   }
 
   /* Safe area bottom padding for phones with home bar */
   #input-area {
     padding-bottom: calc(6px + env(safe-area-inset-bottom));
+  }
+
+  /* Hide hint text on mobile to save space */
+  .input-hint {
+    display: none;
   }
 }
 
