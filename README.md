@@ -2,7 +2,7 @@
 
 A Claude-style AI chat interface as a **single-file Progressive Web App (PWA)** — no backend, no build tools, no server infrastructure. Host it anywhere (GitHub Pages, Netlify, S3) and it works instantly.
 
-**Live demo:** `https://YOUR-USERNAME.github.io/multichat/`
+**Live demo:** Deploy to GitHub Pages — see Quick Start below.
 
 ---
 
@@ -38,23 +38,6 @@ That's it. No `npm install`, no bundler, no configuration.
 
 ---
 
-## Mobile Layout Improvements (2026-04-30)
-
-Recent updates significantly enhance mobile responsiveness and usability:
-
-- **Maximized chat message area:** Chat messages now occupy 75%+ of mobile screen height (increased from ~60%)
-- **Dynamic input expansion:** Input field expands from 36px to 150px maximum only when typing, preserving screen space for messages
-- **Full-width input field:** Query box spans entire input area width for better typing experience
-- **Repositioned controls:** Send and attach buttons positioned to the right of input field
-- **Info popup for chat details:** New ⓘ button in bottom bar shows model, tokens, timestamp, and other metadata
-- **Fixed provider dropdown visibility:** Resolved overlapping dropdown issues in header for proper model selection
-- **Ultra-compact styles for small phones (<500px):** Reduced padding, compact spacing, optimized button layout
-- **Balanced layout for larger phones (500-700px):** Input + buttons side-by-side with proper spacing
-- **Flexbox-based layout restructure:** Improved mobile portrait prioritization with flex-direction management
-- **Tested devices:** iPhone SE (375px), iPhone 12 (390px), Android (480px) at UI scales 1.0x and 1.5x
-
-These changes maintain full functionality on desktop while providing an optimized mobile experience.
-
 ---
 
 ## Features
@@ -62,6 +45,7 @@ These changes maintain full functionality on desktop while providing an optimize
 ### Core Chat
 - **Multi-provider support** — Switch between Groq, OpenCode Go, OpenRouter instantly
 - **Streaming responses** — Real-time token generation via Server-Sent Events (SSE)
+- **Live model fetching** — Session-cached `/models` endpoints auto-refresh when API keys are entered; falls back to static registry on CORS failure
 - **Token tracking** — Live usage stats and cost estimation per query
 - **Conversation history** — All chats persist in browser localStorage
 - **Model switching** — Visual dividers mark model changes mid-conversation
@@ -79,7 +63,7 @@ These changes maintain full functionality on desktop while providing an optimize
 - **Cloud Sync** — Optional Supabase backup with client-side AES-GCM encryption
 
 ### UX & Customization
-- **5 Themes** — Claude, ChatGPT, Gemini, Dark, Minimal
+- **6 Themes** — Claude, ChatGPT, Gemini, Dark, Minimal, Duo
 - **UI Scale** — Zoom the entire interface (1x–1.5x) with separate desktop/mobile memory
 - **Custom System Prompt** — Persistent system instructions
 - **Generation Settings** — Temperature (0-2), Max Tokens (256-16384), Top-P (0.1-1.0)
@@ -92,6 +76,7 @@ These changes maintain full functionality on desktop while providing an optimize
 - **Auto-resizing Textarea** — Input grows with your message
 - **Live Token Counter** — Footer shows token count as you type
 - **Custom Model Dropdown** — Searchable model selector with inline filtering
+- **Responsive mobile layout** — Chat messages occupy 75%+ of screen height, dynamic input expansion (36px–150px only when typing), full-width input, flexbox-based with ultra-compact styles for <500px
 
 ---
 
@@ -188,6 +173,8 @@ multichat/
 ├── or_models.json          # Cached API response (reference)
 ├── AGENTS.md               # Architecture docs for AI agents
 ├── README.md               # This file
+├── docs/
+│   └── superpowers/        # Design specs & implementation plans
 └── .github/
     └── workflows/
         ├── claude.yml              # Claude Code on @mentions

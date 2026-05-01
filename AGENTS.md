@@ -2,7 +2,7 @@
 
 ## What this repo is
 
-Single-file vanilla HTML/CSS/JS PWA (Progressive Web App) hosted on GitHub Pages. No build tools, no bundler, no package manager. The entire app lives in `index.html` (~4200 lines of interleaved CSS, HTML, and JS).
+Single-file vanilla HTML/CSS/JS PWA (Progressive Web App) hosted on GitHub Pages. No build tools, no bundler, no package manager. The entire app lives in `index.html` (~4493 lines of interleaved CSS, HTML, and JS).
 
 ## Deploy / release flow
 
@@ -28,16 +28,46 @@ It edits the `PROVIDERS.openrouter.models` and `PROVIDERS.opencode.models` array
 - **Live vs static model lists**: `LIVE_PROVIDERS = new Set(['groq','opencode','openrouter'])`. On provider change, the app tries a live `/models` fetch (cached per session in `modelCache`). Falls back to the static `PROVIDERS` registry if CORS/network fails. Groq has a special OpenRouter proxy fallback (`fetchGroqViaOpenRouter`) because direct Groq CORS is often blocked.
 - **Web search is two-phase**: (1) a streaming LLM call plans whether search is needed and decomposes queries; (2) queries execute in parallel via Tavily, Serper, or SearXNG. If the planner fails, it silently falls back to regex heuristics (`detectSearchNeeded`).
 - **Cloud sync**: Supabase-backed, client-side AES-GCM encrypted with a user passphrase. Chats are merged by `updatedAt` timestamp on pull.
-- **Collapsible settings panel**: Settings are organized into 7 accordion sections (API Keys, Appearance, Model Behavior, File Context, Web Search, Cloud Sync, Actions). State is persisted to `localStorage`.
+- **Collapsible settings panel**: Settings are organized into 7 accordion sections (API Keys, Appearance, Model Behavior, File Context, Web Search, Cloud Sync, Actions) with state persisted to `mc_settings_sections` in localStorage. Default: only Keys is open.
 - **All persistence is localStorage**:
   - `mc_chats` — conversations
-  - `mc_settings` — generation params + web search config
+  - `mc_settings` — generation params + web search config + system prompt
   - `mc_theme` — active theme
   - `key_<provider>` — API keys
   - `mc_cloud_settings` — sync config
+  - `mc_synced_at` — last cloud sync timestamp
   - `key_search_tavily` / `key_search_serper` / `mc_search_url` — search config
   - `mc_proxy_key` — proxy authentication key
   - `mc_settings_sections` — accordion open/closed states
+  - `mc_ui_scale_desktop` / `mc_ui_scale_mobile` — zoom factor per device
+  - `mc_last_provider` — last selected provider
+  - `mc_last_model_<provider>` — last model per provider
+  - `mc_pwa_dismissed` — PWA install banner dismissed flag
+
+## Hidden features agents miss
+
+- **Grid header with hamburger**: Three-column CSS grid (`auto 1fr auto`). Hamburger always visible on mobile. Provider + model wraps to second row on narrow screens.
+- **Chat info popup**: ⓘ button shows model name, query tokens/cost, total tokens/cost, last updated timestamp. Closes on Escape or overlay click.
+- **Think toggle**: Switch in info bar to show/hide `<think>` / `<thinking>` blocks (both historic and live-streaming).
+- **Edit & resubmit**: Pencil icon on user messages loads text back into input, truncates conversation at that point (`chat.messages.splice(msgIndex)`). Toast confirms edit mode.
+- **Copy message**: Clipboard pill button on AI messages only via `navigator.clipboard.writeText()`.
+- **Pin conversations**: Star toggle sets `chat.pinned` boolean. Pinned chats render in their own group header, sorted first.
+- **Chat search/filter**: Filters by title; if >=3 characters, also searches message content. Groups: Pinned, Today, Yesterday, Last 7 Days, This Month, Older.
+- **Inline file attachments** (per-message): Paperclip button, cleared after send. Supports `.txt .md .csv .json .py .js .ts .html .css .pdf .xml .yaml .yml`. PDF extraction via `pdfjs-dist`. Chips show file name + size.
+- **Persistent RAG (File Context)**: Drag-and-drop zone in Settings. `ragFiles[]` persists across all messages. Chunked (~4K tokens, 200-token overlap), scored by keyword relevance, capped at 50K chars/file.
+- **System prompt**: Custom instructions in Settings → Model Behavior. If empty, auto-generated default includes today's date, placeholder prohibition, reasoning-mode hints. Persisted in `mc_settings`.
+- **Generation parameters**: Temperature (0–2), Max Tokens (256–16384), Top-P (0.1–1.0) in Settings → Model Behavior.
+- **6 themes**: `claude` (default), `chatgpt`, `gemini`, `dark`, `minimal`, `duo` — applied via `[data-theme]` on `<html>`. Per-theme badge colour overrides. `duo` pairs a light/minimal main area with dark sidebar + settings panel.
+- **UI Scale**: Slider (1.0x–1.5x, step 0.05). Separate desktop/mobile values, breakpoint at 700px. Mobile default 1.1x.
+- **Live token counter**: Character/4 estimate in input footer, updated on every keystroke.
+- **Price pill**: Per-1M-token cost displayed in header next to settings gear.
+- **Toast notifications**: `showToast(msg, type)` — centered, bottom-aligned, 4500ms auto-dismiss. `.err` type for errors.
+- **Pipeline progress blocks**: Visual breadcrumb during web search — "Planning" (live streaming) → collapses to "Planned N queries" → "Searching 0 of N" → collapses to "N sources". Finalized into clickable breadcrumb via `togglePipelineDetail()`.
+- **Citation links**: Clickable source URLs from web search results.
+- **Model switch divider**: Visual "Switched to ModelX" divider when model changes mid-conversation.
+- **PWA install banner**: `beforeinstallprompt` handled with dismissible banner (`mc_pwa_dismissed`). `?new=1` shortcut auto-creates a new chat.
+- **Reset to defaults**: Button in Settings → Actions resets system prompt, gen params, web search config, UI scale. Does NOT clear API keys.
+- **Keyboard shortcuts**: `Enter` always inserts newline (submit via Send button). `Escape` closes info popup.
 
 ## Testing / verifying changes
 
