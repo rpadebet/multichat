@@ -3953,6 +3953,10 @@ async function sendMessage() {
   saveChats();
   renderChatList();
   renderMsgsFromArr(chat.messages);
+  // Scroll to the new user question (last row) instead of the bottom
+  const _msgsEl = document.getElementById('messages');
+  const _rows = _msgsEl.querySelectorAll('.msg-row');
+  if (_rows.length) _rows[_rows.length - 1].scrollIntoView({block: 'start', behavior: 'instant'});
   appendTypingIndicator();
 
   isStreaming = true;
@@ -4226,7 +4230,7 @@ function appendTypingIndicator() {
     <div class="typing-ind"><div class="tdot"></div><div class="tdot"></div><div class="tdot"></div></div>
   </div></div>`;
   msgs.appendChild(row);
-  msgs.scrollTop = msgs.scrollHeight;
+  row.scrollIntoView({block: 'nearest', behavior: 'smooth'});
 }
 function removeTypingIndicator() { document.getElementById('typing-row')?.remove(); }
 
@@ -4261,7 +4265,7 @@ function appendStreamRow(msg) {
   streamTextEl = document.getElementById('sth-text');
   streamThinkEl = document.getElementById('sth-body');
   streamThinkBlock = document.getElementById('sth-block');
-  msgs.scrollTop = msgs.scrollHeight;
+  row.scrollIntoView({block: 'nearest', behavior: 'smooth'});
 }
 function updateStreamRow(msg) {
   if (!streamTextEl) return;
@@ -4273,7 +4277,8 @@ function updateStreamRow(msg) {
     if (wc) wc.textContent = wordCount(msg.thinking) + ' words';
   }
   streamTextEl.innerHTML = fmtText(stripThink(msg.content));
-  document.getElementById('messages').scrollTop = 99999;
+  const _m = document.getElementById('messages');
+  if (_m.scrollHeight - _m.scrollTop - _m.clientHeight < 150) _m.scrollTop = _m.scrollHeight;
 }
 
 // ══════════════════════════════════════════
