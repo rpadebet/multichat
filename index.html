@@ -4230,7 +4230,6 @@ function appendTypingIndicator() {
     <div class="typing-ind"><div class="tdot"></div><div class="tdot"></div><div class="tdot"></div></div>
   </div></div>`;
   msgs.appendChild(row);
-  row.scrollIntoView({block: 'nearest', behavior: 'smooth'});
 }
 function removeTypingIndicator() { document.getElementById('typing-row')?.remove(); }
 
@@ -4265,7 +4264,6 @@ function appendStreamRow(msg) {
   streamTextEl = document.getElementById('sth-text');
   streamThinkEl = document.getElementById('sth-body');
   streamThinkBlock = document.getElementById('sth-block');
-  row.scrollIntoView({block: 'nearest', behavior: 'smooth'});
 }
 function updateStreamRow(msg) {
   if (!streamTextEl) return;
