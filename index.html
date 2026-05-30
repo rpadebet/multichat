@@ -2003,7 +2003,6 @@ function appendPlanningBlock() {
 function updatePlanningBlock(block, text) {
   if (!block?.thinkEl) return;
   block.thinkEl.textContent += text;
-  document.getElementById('messages').scrollTop = 99999;
 }
 
 function collapsePlanningBlock(queries, block) {
@@ -2049,7 +2048,6 @@ function appendSearchResult(block, result) {
   block.listEl.appendChild(li);
   block.count++;
   block.badgeEl.textContent = `Searching · ${block.count} of ${block.total}`;
-  document.getElementById('messages').scrollTop = 99999;
   return true;
 }
 
@@ -4275,8 +4273,6 @@ function updateStreamRow(msg) {
     if (wc) wc.textContent = wordCount(msg.thinking) + ' words';
   }
   streamTextEl.innerHTML = fmtText(stripThink(msg.content));
-  const _m = document.getElementById('messages');
-  if (_m.scrollHeight - _m.scrollTop - _m.clientHeight < 150) _m.scrollTop = _m.scrollHeight;
 }
 
 // ══════════════════════════════════════════
