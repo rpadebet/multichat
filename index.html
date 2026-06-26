@@ -282,6 +282,7 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 .badge-minimax{background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent-border);}
 .badge-deepinfra{background:rgba(59,130,246,.08);color:#3b82f6;border:1px solid rgba(59,130,246,.2);}
 .badge-openrouter{background:rgba(107,99,246,.08);color:#6b63f6;border:1px solid rgba(107,99,246,.2);}
+.badge-neuralwatt{background:rgba(20,184,166,.08);color:#0d9488;border:1px solid rgba(20,184,166,.2);}
 
 /* General-purpose square icon button used for settings toggle and the model
    refresh button. The .active state (accent tint) signals the settings panel
@@ -396,18 +397,21 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 .mb-deepinfra{background:rgba(59,130,246,.1);color:#1d5fa8;border-color:rgba(59,130,246,.25);}
 .mb-opencode{background:rgba(249,115,22,.1);color:#c2410c;border-color:rgba(249,115,22,.25);}
 .mb-openrouter{background:rgba(107,99,246,.1);color:#4b44c4;border-color:rgba(107,99,246,.25);}
+.mb-neuralwatt{background:rgba(20,184,166,.1);color:#0f766e;border-color:rgba(20,184,166,.25);}
 /* dark/chatgpt/gemini theme overrides */
 [data-theme="chatgpt"] .mb-groq,[data-theme="dark"] .mb-groq{color:#4ade80;background:rgba(74,222,128,.1);border-color:rgba(74,222,128,.25);}
 [data-theme="chatgpt"] .mb-minimax,[data-theme="dark"] .mb-minimax,[data-theme="gemini"] .mb-minimax{color:#fb923c;background:rgba(251,146,60,.1);border-color:rgba(251,146,60,.25);}
 [data-theme="chatgpt"] .mb-deepinfra,[data-theme="dark"] .mb-deepinfra,[data-theme="gemini"] .mb-deepinfra{color:#60a5fa;background:rgba(96,165,250,.1);border-color:rgba(96,165,250,.25);}
 [data-theme="chatgpt"] .mb-opencode,[data-theme="dark"] .mb-opencode,[data-theme="gemini"] .mb-opencode{color:#fb923c;background:rgba(251,146,60,.1);border-color:rgba(251,146,60,.25);}
 [data-theme="chatgpt"] .mb-openrouter,[data-theme="dark"] .mb-openrouter,[data-theme="gemini"] .mb-openrouter{color:#a78bfa;background:rgba(167,139,250,.1);border-color:rgba(167,139,250,.25);}
+[data-theme="chatgpt"] .mb-neuralwatt,[data-theme="dark"] .mb-neuralwatt,[data-theme="gemini"] .mb-neuralwatt{color:#2dd4bf;background:rgba(45,212,191,.1);border-color:rgba(45,212,191,.25);}
 [data-theme="gemini"] .mb-groq{color:#81c995;background:rgba(129,201,149,.1);border-color:rgba(129,201,149,.25);}
 [data-theme="duo"] .mb-groq{color:#4ade80;background:rgba(74,222,128,.1);border-color:rgba(74,222,128,.25);}
 [data-theme="duo"] .mb-minimax{color:#fb923c;background:rgba(251,146,60,.1);border-color:rgba(251,146,60,.25);}
 [data-theme="duo"] .mb-deepinfra{color:#60a5fa;background:rgba(96,165,250,.1);border-color:rgba(96,165,250,.25);}
 [data-theme="duo"] .mb-opencode{color:#fb923c;background:rgba(251,146,60,.1);border-color:rgba(251,146,60,.25);}
 [data-theme="duo"] .mb-openrouter{color:#a78bfa;background:rgba(167,139,250,.1);border-color:rgba(167,139,250,.25);}
+[data-theme="duo"] .mb-neuralwatt{color:#2dd4bf;background:rgba(45,212,191,.1);border-color:rgba(45,212,191,.25);}
 
 /* ── Model switch divider ──
    Horizontal rule with a centred label injected between messages whenever the
@@ -1043,6 +1047,7 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
           <option value="groq">⚡ Groq</option>
           <option value="opencode">🟠 OpenCode Go</option>
           <option value="openrouter" selected>🔀 OpenRouter</option>
+          <option value="neuralwatt">🔋 NeuralWatt</option>
         </select>
         <span class="sel-chev">▾</span>
       </div>
@@ -1187,6 +1192,10 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
         <div class="key-row">
           <div class="key-label"><span class="key-dot" id="dot-openrouter"></span>OpenRouter</div>
           <input class="key-input" id="key-openrouter" type="password" placeholder="sk-or-••••" oninput="saveKey('openrouter',this.value)"/>
+        </div>
+        <div class="key-row">
+          <div class="key-label"><span class="key-dot" id="dot-neuralwatt"></span>NeuralWatt</div>
+          <input class="key-input" id="key-neuralwatt" type="password" placeholder="nw-••••" oninput="saveKey('neuralwatt',this.value)"/>
         </div>
         <div class="key-row">
           <div class="key-label"><span class="key-dot" id="dot-proxy"></span>Proxy Key</div>
@@ -1493,6 +1502,19 @@ const PROVIDERS = {
     {id:'mistralai/devstral-small',                 name:'Devstral Small — coding',                p:'$0.10/$0.30'},
     // ── ⚙ NVIDIA ──
     {id:'nvidia/nemotron-3-super-120b-a12b',        name:'Nemotron 3 Super 120B — 1M (paid)',      p:'$0.10/$0.50'},
+  ]},
+  neuralwatt:{label:'NeuralWatt',badge:'badge-neuralwatt',usageUrl:'https://portal.neuralwatt.com',url:'https://api.neuralwatt.com/v1',models:[
+    {id:'glm-5.2',            name:'GLM-5.2 — Reasoning ★ (1M ctx)',     p:'$1.45/$4.50'},
+    {id:'glm-5.2-fast',       name:'GLM-5.2 Fast (non-thinking)',        p:'$1.45/$4.50'},
+    {id:'glm-5.2-short',      name:'GLM-5.2 Short (200K ctx)',           p:'$1.45/$4.50'},
+    {id:'glm-5.2-short-fast', name:'GLM-5.2 Short Fast',                 p:'$1.45/$4.50'},
+    {id:'kimi-k2.7-code',     name:'Kimi K2.7 Code — Moonshot (Vision)', p:'$0.95/$4.00'},
+    {id:'kimi-k2.6',          name:'Kimi K2.6 — Moonshot (262K)',        p:'$0.69/$3.22'},
+    {id:'kimi-k2.6-fast',     name:'Kimi K2.6 Fast',                     p:'$0.69/$3.22'},
+    {id:'qwen3.5-397b',       name:'Qwen3.5 397B — Alibaba',             p:'$0.69/$4.14'},
+    {id:'qwen3.5-397b-fast',  name:'Qwen3.5 397B Fast',                  p:'$0.69/$4.14'},
+    {id:'qwen3.6-35b',        name:'Qwen3.6 35B',                        p:'$0.29/$1.15'},
+    {id:'qwen3.6-35b-fast',   name:'Qwen3.6 35B Fast (cheapest)',        p:'$0.29/$1.15'},
   ]},
 };
 
@@ -2543,7 +2565,7 @@ function saveKey(p, v) {
 }
 function getKey(p) { return localStorage.getItem('key_'+p) || ''; }
 function loadKeys() {
-  ['groq','opencode','openrouter'].forEach(p => {
+  ['groq','opencode','openrouter','neuralwatt'].forEach(p => {
     const k = getKey(p);
     if (k) { const el = document.getElementById('key-'+p); if(el) el.value=k; document.getElementById('dot-'+p)?.classList.add('saved'); }
   });
@@ -3007,7 +3029,7 @@ function renderAttachedFiles() {
 
 // ══════════════════════════════════════════
 // PROVIDER / MODEL — live fetch where supported
-// LIVE_PROVIDERS lists the three providers whose /models endpoints are
+// LIVE_PROVIDERS lists the providers whose /models endpoints are
 // accessible from the browser (OpenRouter has open CORS;
 // Groq requires a key but has a fallback via OpenRouter's provider filter).
 // modelCache stores fetched lists keyed by provider for the session lifetime
@@ -3015,7 +3037,7 @@ function renderAttachedFiles() {
 // ══════════════════════════════════════════
 
 // Which providers support a live /models endpoint
-const LIVE_PROVIDERS = new Set(['groq', 'opencode', 'openrouter']);
+const LIVE_PROVIDERS = new Set(['groq', 'opencode', 'openrouter', 'neuralwatt']);
 
 // Cache fetched model lists per provider for the session
 const modelCache = {};
@@ -3304,6 +3326,29 @@ function formatLiveModels(provider, raw) {
         return {
           id: m.id,
           name: `${freeTag}${m.name || m.id}${ctx}`,
+          p: priceStr,
+        };
+      });
+  }
+
+  if (provider === 'neuralwatt') {
+    // NeuralWatt returns {data:[{id, metadata:{display_name, pricing:{input_per_million,
+    // output_per_million}, limits:{max_context_length}, deprecated}}]}
+    return raw
+      .filter(m => !(m.metadata && m.metadata.deprecated))
+      .map(m => {
+        const md = m.metadata || {};
+        const pr = md.pricing || {};
+        const staticMatch = (PROVIDERS.neuralwatt?.models || []).find(s => s.id === m.id);
+        const inP = pr.input_per_million, outP = pr.output_per_million;
+        const priceStr = (inP != null && outP != null)
+          ? `$${fmtPrice(inP)}/$${fmtPrice(outP)}`
+          : (staticMatch ? staticMatch.p : '');
+        const ctxLen = (md.limits && md.limits.max_context_length) || 0;
+        const ctx = ctxLen ? ` (${fmtCtx(ctxLen)})` : '';
+        return {
+          id: m.id,
+          name: staticMatch ? staticMatch.name : `${md.display_name || m.id}${ctx}`,
           p: priceStr,
         };
       });
@@ -3735,7 +3780,7 @@ function providerFromModel(modelId) {
 }
 
 function providerIcon(pid) {
-  return {groq:'⚡', opencode:'🟠', openrouter:'🔀'}[pid] || '🤖';
+  return {groq:'⚡', opencode:'🟠', openrouter:'🔀', neuralwatt:'🔋'}[pid] || '🤖';
 }
 
 function shortModelName(modelId) {
