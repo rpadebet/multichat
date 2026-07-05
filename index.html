@@ -3851,10 +3851,13 @@ function getModelContextSize(modelId) {
   return 131072; // default conservative: 128K
 }
 
-function renderMessages() {
+function renderMessages(preserveScroll = false) {
   const chat = currentChatId && conversations[currentChatId];
   if (!chat || !chat.messages.length) { showWelcome(); return; }
   const msgs = document.getElementById('messages');
+  const prevScrollTop = msgs.scrollTop;
+  const wasAtBottom = msgs.scrollHeight - msgs.scrollTop - msgs.clientHeight < 50;
+
   let lastModel = null;
   let html = '';
   chat.messages.forEach((m, i, arr) => {
@@ -3871,11 +3874,22 @@ function renderMessages() {
   });
   msgs.innerHTML = html;
   renderChatInfoBar(currentChatId);
-  msgs.scrollTop = msgs.scrollHeight;
+  if (preserveScroll) {
+    if (wasAtBottom) {
+      msgs.scrollTop = msgs.scrollHeight;
+    } else {
+      msgs.scrollTop = prevScrollTop;
+    }
+  } else {
+    msgs.scrollTop = msgs.scrollHeight;
+  }
 }
-function renderMsgsFromArr(messages) {
+function renderMsgsFromArr(messages, preserveScroll = false) {
   const msgs = document.getElementById('messages');
   if (!messages.length) { showWelcome(); return; }
+  const prevScrollTop = msgs.scrollTop;
+  const wasAtBottom = msgs.scrollHeight - msgs.scrollTop - msgs.clientHeight < 50;
+
   let lastModel = null;
   let html = '';
   messages.forEach((m, i, arr) => {
@@ -3891,7 +3905,15 @@ function renderMsgsFromArr(messages) {
   });
   msgs.innerHTML = html;
   renderChatInfoBar(currentChatId);
-  msgs.scrollTop = msgs.scrollHeight;
+  if (preserveScroll) {
+    if (wasAtBottom) {
+      msgs.scrollTop = msgs.scrollHeight;
+    } else {
+      msgs.scrollTop = prevScrollTop;
+    }
+  } else {
+    msgs.scrollTop = msgs.scrollHeight;
+  }
 }
 function buildMsgHTML(m, msgIndex) {
   const isUser = m.role === 'user';
@@ -4219,14 +4241,14 @@ async function sendMessage() {
     }
 
     saveChats();
-    renderMessages();
+    renderMessages(true);
 
   } catch(err) {
     removeTypingIndicator();
     removePipelineBlocks();
     showToast('❌ ' + (err.message||'Request failed'),'err');
     chat.messages.pop();
-    renderMessages();
+    renderMessages(true);
     input.value = text;
     autoResize(input);
   } finally {
