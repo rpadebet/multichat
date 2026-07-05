@@ -1238,6 +1238,12 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
       <div class="sp-section-content">
         <div class="sp-label">System Prompt</div>
         <textarea class="sp-textarea" id="system-prompt" placeholder="You are a helpful assistant specialized in financial index operations and Databricks pipelines…" rows="4" oninput="saveSettings()"></textarea>
+        
+        <div id="nw-flex-container" style="display:none;align-items:center;justify-content:space-between;margin-bottom:12px;margin-top:12px;">
+          <div class="sp-label" style="margin:0;">🔋 Use NeuralWatt Flex Tier</div>
+          <label class="tog"><input type="checkbox" id="nw-flex-enabled" onchange="saveSettings();updatePricePill()"><div class="tog-track"></div><div class="tog-thumb"></div></label>
+        </div>
+
         <div class="sp-label">Temperature <span id="temp-val">0.7</span></div>
         <input type="range" class="sp-range" id="temp-range" min="0" max="2" step="0.05" value="0.7"
           oninput="document.getElementById('temp-val').textContent=parseFloat(this.value).toFixed(2);saveSettings()"/>
@@ -2293,6 +2299,7 @@ You MUST output ONLY a raw JSON object. No markdown. No explanation. No code fen
   try {
     const providerUrl = PROVIDERS[provider]?.url;
     if (!providerUrl) throw new Error('Unknown provider');
+    const isFlex = provider === 'neuralwatt' && JSON.parse(localStorage.getItem('mc_settings') || '{}').neuralwattFlexEnabled;
     const resp = await fetch(providerUrl + '/chat/completions', {
       method: 'POST',
       headers: proxyHeaders({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` }, provider === 'opencode'),
@@ -2305,7 +2312,8 @@ You MUST output ONLY a raw JSON object. No markdown. No explanation. No code fen
         max_tokens: 200,
         temperature: 0.1,
         stream: true,
-        ...(provider === 'openrouter' ? {} : {})
+        ...(provider === 'openrouter' ? {} : {}),
+        ...(isFlex ? { service_tier: 'flex' } : {})
       })
     });
     if (!resp.ok) throw new Error(`Planner HTTP ${resp.status}`);
@@ -2446,6 +2454,7 @@ window.onload = async () => {
   document.getElementById('prov-sel').value = savedProvider;
   updateProviderBadge(savedProvider);
   await populateModels(savedProvider);
+  updateFlexVisibility();
   // Restore last model for this provider, or select first
   const savedModel = localStorage.getItem('mc_last_model_' + savedProvider);
   if (savedModel) {
@@ -2661,6 +2670,7 @@ function saveSettings() {
     temperature: parseFloat(document.getElementById('temp-range').value),
     maxTokens: parseInt(document.getElementById('maxtok-range').value),
     topP: parseFloat(document.getElementById('topp-range').value),
+    neuralwattFlexEnabled: document.getElementById('nw-flex-enabled')?.checked || false,
   };
   localStorage.setItem('mc_settings', JSON.stringify(s));
 }
@@ -2683,8 +2693,13 @@ function loadSettings() {
       document.getElementById('topp-range').value = s.topP;
       document.getElementById('topp-val').textContent = s.topP.toFixed(2);
     }
+    if (s.neuralwattFlexEnabled != null) {
+      const flexEl = document.getElementById('nw-flex-enabled');
+      if (flexEl) flexEl.checked = s.neuralwattFlexEnabled;
+    }
   } catch(e) {}
   loadWebSearchSettings();
+  updateFlexVisibility();
 }
 // Resets all settings controls to their hardcoded defaults, clears mc_settings
 // from localStorage, and resets the web search UI. Does not clear API keys.
@@ -2693,6 +2708,8 @@ function resetSettings() {
   document.getElementById('temp-range').value = 0.7; document.getElementById('temp-val').textContent = '0.70';
   document.getElementById('maxtok-range').value = 4096; document.getElementById('maxtok-val').textContent = '4,096';
   document.getElementById('topp-range').value = 1.0; document.getElementById('topp-val').textContent = '1.00';
+  const flexEl = document.getElementById('nw-flex-enabled');
+  if (flexEl) flexEl.checked = false;
   // Reset web search UI
   const wsEl = document.getElementById('ws-enabled');
   if (wsEl) wsEl.checked = false;
@@ -2711,17 +2728,27 @@ function resetSettings() {
   localStorage.removeItem('mc_ui_scale_desktop');
   localStorage.removeItem('mc_ui_scale_mobile');
   loadUiScale();
+  updateFlexVisibility();
   showToast('Settings reset to defaults');
 }
 // Returns a plain object snapshot of the current settings values, used by
 // sendMessage() to build the API payload on each request.
 function getSettings() {
+  const flexEl = document.getElementById('nw-flex-enabled');
   return {
     systemPrompt: document.getElementById('system-prompt').value.trim(),
     temperature: parseFloat(document.getElementById('temp-range').value),
     maxTokens: parseInt(document.getElementById('maxtok-range').value),
     topP: parseFloat(document.getElementById('topp-range').value),
+    neuralwattFlexEnabled: flexEl ? flexEl.checked : false,
   };
+}
+function updateFlexVisibility() {
+  const p = document.getElementById('prov-sel').value;
+  const container = document.getElementById('nw-flex-container');
+  if (container) {
+    container.style.display = (p === 'neuralwatt') ? 'flex' : 'none';
+  }
 }
 
 // ══════════════════════════════════════════
@@ -3096,6 +3123,7 @@ async function onProviderChange(forceRefresh = false) {
   localStorage.setItem('mc_last_provider', p);
   if (forceRefresh && modelCache[p]) delete modelCache[p];
   await populateModels(p);
+  updateFlexVisibility();
 }
 
 // Dual-populates models for the selected provider: first attempts a live fetch
@@ -3433,7 +3461,16 @@ function updatePricePill() {
   const opt = sel.options[sel.selectedIndex];
   const pr = opt?.dataset?.price || '';
   const pill = document.getElementById('price-pill');
-  if (pill) pill.textContent = pr ? `in:${pr.split('/')[0]}  out:${pr.split('/')[1]}/M` : '';
+  const provider = document.getElementById('prov-sel').value;
+  const isFlex = provider === 'neuralwatt' && document.getElementById('nw-flex-enabled')?.checked;
+  if (pill) {
+    if (pr) {
+      const suffix = isFlex ? ' (Flex)' : '';
+      pill.textContent = `in:${pr.split('/')[0]}  out:${pr.split('/')[1]}/M${suffix}`;
+    } else {
+      pill.textContent = '';
+    }
+  }
   // Sync model info card
   const micEmpty = document.getElementById('mic-empty');
   const micContent = document.getElementById('mic-content');
@@ -4090,6 +4127,7 @@ async function sendMessage() {
     : null;
   const apiMessages = buildApiMessages(chat.messages, snapAttach, settings.systemPrompt, searchContext);
 
+  const isFlex = provider === 'neuralwatt' && settings.neuralwattFlexEnabled;
   const payload = {
     model,
     messages: apiMessages,
@@ -4097,6 +4135,7 @@ async function sendMessage() {
     max_tokens: settings.maxTokens,
     temperature: settings.temperature,
     top_p: settings.topP,
+    ...(isFlex ? { service_tier: 'flex' } : {})
   };
 
 
