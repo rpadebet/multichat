@@ -2206,7 +2206,8 @@ async function searchTavily(query, apiKey) {
   });
   if (!resp.ok) {
     const err = await resp.json().catch(() => ({}));
-    throw new Error(err?.detail || err?.message || `Tavily HTTP ${resp.status}`);
+    const errMsg = err?.detail?.error || (typeof err?.detail === 'string' ? err.detail : '') || err?.message || `Tavily HTTP ${resp.status}`;
+    throw new Error(errMsg);
   }
   const data = await resp.json();
   const results = (data.results || []).map(r => ({
