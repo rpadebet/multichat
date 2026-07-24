@@ -11,7 +11,11 @@
 <meta name="description" content="Chat with frontier AI models — Groq, OpenCode Go, OpenRouter">
 <link rel="manifest" href="manifest.json" id="manifest-link">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<script>document.getElementById('manifest-link').href += '?v=' + Date.now();</script>
+<script>
+  document.getElementById('manifest-link').href += '?v=' + Date.now();
+  const savedTheme = localStorage.getItem('mc_theme');
+  if (savedTheme) document.documentElement.setAttribute('data-theme', savedTheme);
+</script>
 <title>MultiChat</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
