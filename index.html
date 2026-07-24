@@ -2106,6 +2106,7 @@ function finalizePipeline(queries, total, provider) {
   const crumbs = [];
   if (queries?.length) crumbs.push(`Planned ${queries.length} quer${queries.length===1?'y':'ies'}`);
   if (total > 0) crumbs.push(`${total} source${total===1?'':'s'} via ${SEARCH_PROVIDERS[provider]?.label || provider}`);
+  else crumbs.push(`Search failed`);
 
   const planRow = document.getElementById('pipeline-plan');
   const searchRow = document.getElementById('pipeline-search');
@@ -2350,8 +2351,18 @@ You MUST output ONLY a raw JSON object. No markdown. No explanation. No code fen
     }
 
     let raw = fullContent;
-    // Strip markdown code fences if present
-    raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+    // Extract JSON block if present
+    const jsonMatch = raw.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+    if (jsonMatch) {
+      raw = jsonMatch[1];
+    } else {
+      // Otherwise fallback to finding the first { and last }
+      const start = raw.indexOf('{');
+      const end = raw.lastIndexOf('}');
+      if (start !== -1 && end !== -1) {
+        raw = raw.substring(start, end + 1);
+      }
+    }
     const plan = JSON.parse(raw);
     if (typeof plan.needs_search !== 'boolean' || !Array.isArray(plan.search_queries)) throw new Error('Bad plan format');
     return { needs_search: plan.needs_search, search_queries: plan.search_queries.filter(q => q?.trim()).slice(0, 3) };
