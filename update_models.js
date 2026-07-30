@@ -14,10 +14,10 @@ function fetchJson(url) {
 }
 
 function fmtPrice(n) {
-  if (n === 0) return '0';
+  if (!n || isNaN(n) || n === 0) return '0';
   if (n < 0.01) return n.toFixed(4);
-  const fixed = n.toFixed(3);
-  return fixed.endsWith('0') ? fixed.slice(0, -1) : fixed;
+  if (n < 1) return n.toFixed(3);
+  return n.toFixed(2);
 }
 
 function fmtCtx(n) {
@@ -53,7 +53,8 @@ async function run() {
     const priceStr = isFree ? 'FREE' : `$${fmtPrice(inP*1e6)}/$${fmtPrice(outP*1e6)}`;
     const freeTag = isFree ? '🆓 ' : '';
     const ctx = m.context_length ? ` (${fmtCtx(m.context_length)})` : '';
-    return { id: m.id, name: `${freeTag}${m.name || m.id}${ctx}`.replace(/'/g, "\\'"), p: priceStr };
+    const cleanName = `${freeTag}${m.name || m.id}${ctx}`.replace(/[\r\n]+/g, ' ').replace(/'/g, "\\'");
+    return { id: m.id, name: cleanName, p: priceStr };
   });
 
   // Read index.html (relative to script, in repo root)
@@ -93,14 +94,20 @@ async function run() {
   });
 
   // Replace OpenRouter
-  const orRegex = /openrouter:\{label:'OpenRouter',badge:'badge-openrouter',usageUrl:'[^']+',url:'https:\/\/openrouter\.ai\/api\/v1',models:\[([\s\S]*?)\]\}/;
+  const orRegex = /openrouter:\{label:'OpenRouter',badge:'badge-openrouter',usageUrl:'[^']+',url:'[^']+',models:\[[\s\S]*?\n\s*\]\},?/;
+  if (!orRegex.test(indexHtml)) {
+    throw new Error('OpenRouter regex failed to match PROVIDERS in index.html');
+  }
   let newOrText = formattedOr.map(m => `    {id:'${m.id}', name:'${m.name}', p:'${m.p}'},`).join('\n');
-  indexHtml = indexHtml.replace(orRegex, `openrouter:{label:'OpenRouter',badge:'badge-openrouter',usageUrl:'https://openrouter.ai/activity',url:'https://openrouter.ai/api/v1',models:[\n${newOrText}\n  ]}`);
+  indexHtml = indexHtml.replace(orRegex, () => `openrouter:{label:'OpenRouter',badge:'badge-openrouter',usageUrl:'https://openrouter.ai/activity',url:'https://openrouter.ai/api/v1',models:[\n${newOrText}\n  ]},`);
 
   // Replace OpenCode Go
-  const ocRegex = /opencode:\{label:'OpenCode Go',badge:'badge-opencode',usageUrl:'[^']+',url:'https:\/\/opencode\.ai\/zen\/go\/v1',models:\[([\s\S]*?)\]\}/;
+  const ocRegex = /opencode:\{label:'OpenCode Go',badge:'badge-opencode',usageUrl:'[^']+',url:'[^']+',models:\[[\s\S]*?\n\s*\]\},?/;
+  if (!ocRegex.test(indexHtml)) {
+    throw new Error('OpenCode Go regex failed to match PROVIDERS in index.html');
+  }
   let newOcText = formattedOc.map(m => `    {id:'${m.id}', name:'${m.name}', p:'${m.p}'},`).join('\n');
-  indexHtml = indexHtml.replace(ocRegex, `opencode:{label:'OpenCode Go',badge:'badge-opencode',usageUrl:'https://opencode.ai/workspace/wrk_01KQA49DFKK6FNKT2MX99WVGQH/usage',url:'https://opencode.ai/zen/go/v1',models:[\n${newOcText}\n  ]}`);
+  indexHtml = indexHtml.replace(ocRegex, () => `opencode:{label:'OpenCode Go',badge:'badge-opencode',usageUrl:'https://opencode.ai/workspace/wrk_01KQA49DFKK6FNKT2MX99WVGQH/usage',url:'https://proxy.opencodechat.dpdns.org/zen/go/v1',models:[\n${newOcText}\n  ]},`);
 
   fs.writeFileSync(indexPath, indexHtml);
   console.log(`Successfully updated index.html — OpenRouter: ${formattedOr.length} models, OpenCode Go: ${formattedOc.length} models`);

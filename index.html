@@ -2,6 +2,7 @@
 <html lang="en" data-theme="claude">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; connect-src 'self' https://api.groq.com https://openrouter.ai https://proxy.opencodechat.dpdns.org https://api.tavily.com https://google.serper.dev https://*.supabase.co https://cdn.jsdelivr.net http://localhost:* http://127.0.0.1:*; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:;">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -31,7 +32,7 @@
   --bg:#f5f0e8; --bg2:#ede8df; --bg3:#e4ddd3;
   --surface:#faf7f2; --surface2:#f0ebe2;
   --border:#d8d0c4; --border2:#c8bfb2;
-  --text:#2d2924; --text2:#6b6259; --text3:#9c9088;
+  --text:#2d2924; --text2:#6b6259; --text3:#7a7068;
   --accent:#c96b2f; --accent2:#e07840;
   --accent-bg:rgba(201,107,47,0.08); --accent-border:rgba(201,107,47,0.25);
   --user-bg:#ffffff; --think-bg:#f0ebe0; --think-border:#d4c9b8;
@@ -44,7 +45,7 @@
   --bg:#212121; --bg2:#2f2f2f; --bg3:#3a3a3a;
   --surface:#212121; --surface2:#2f2f2f;
   --border:#3f3f3f; --border2:#525252;
-  --text:#ececec; --text2:#b4b4b4; --text3:#6e6e6e;
+  --text:#ececec; --text2:#b4b4b4; --text3:#888888;
   --accent:#10a37f; --accent2:#1fc390;
   --accent-bg:rgba(16,163,127,0.1); --accent-border:rgba(16,163,127,0.3);
   --user-bg:#2f2f2f; --think-bg:#2a2a2a; --think-border:#3f3f3f;
@@ -57,7 +58,7 @@
   --bg:#0f0f10; --bg2:#1c1c1f; --bg3:#26262b;
   --surface:#1c1c1f; --surface2:#26262b;
   --border:#313135; --border2:#44444a;
-  --text:#e3e3e8; --text2:#9a9aa6; --text3:#5c5c68;
+  --text:#e3e3e8; --text2:#9a9aa6; --text3:#787886;
   --accent:#8ab4f8; --accent2:#aecbfa;
   --accent-bg:rgba(138,180,248,0.08); --accent-border:rgba(138,180,248,0.25);
   --user-bg:#26262b; --think-bg:#1e1e22; --think-border:#313135;
@@ -70,7 +71,7 @@
   --bg:#0d0d0d; --bg2:#161616; --bg3:#1f1f1f;
   --surface:#161616; --surface2:#1f1f1f;
   --border:#2a2a2a; --border2:#383838;
-  --text:#e8e8e8; --text2:#a0a0a0; --text3:#5a5a5a;
+  --text:#e8e8e8; --text2:#a0a0a0; --text3:#787878;
   --accent:#7c6af7; --accent2:#a594ff;
   --accent-bg:rgba(124,106,247,0.08); --accent-border:rgba(124,106,247,0.25);
   --user-bg:#1f1f1f; --think-bg:#141418; --think-border:#2a2a2a;
@@ -83,7 +84,7 @@
   --bg:#ffffff; --bg2:#f8f8f8; --bg3:#f0f0f0;
   --surface:#ffffff; --surface2:#f8f8f8;
   --border:#e5e5e5; --border2:#d0d0d0;
-  --text:#111111; --text2:#555555; --text3:#999999;
+  --text:#111111; --text2:#555555; --text3:#6e6e6e;
   --accent:#000000; --accent2:#333333;
   --accent-bg:rgba(0,0,0,0.04); --accent-border:rgba(0,0,0,0.15);
   --user-bg:#ffffff; --think-bg:#fafafa; --think-border:#e5e5e5;
@@ -96,7 +97,7 @@
   --bg:#f5f5f5; --bg2:#f0f0f0; --bg3:#e8e8e8;
   --surface:#ffffff; --surface2:#fafafa;
   --border:#e0e0e0; --border2:#d0d0d0;
-  --text:#111111; --text2:#555555; --text3:#999999;
+  --text:#111111; --text2:#555555; --text3:#6e6e6e;
   --accent:#111111; --accent2:#333333;
   --accent-bg:rgba(0,0,0,0.04); --accent-border:rgba(0,0,0,0.12);
   --user-bg:#ffffff; --think-bg:#f5f5f5; --think-border:#e0e0e0;
@@ -150,15 +151,10 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 
 /* Scrollable conversation list. flex:1 makes it fill all remaining sidebar
    height below the header. Thin custom scrollbar keeps it visually minimal. */
-.chat-list-wrap{flex:1;overflow-y:auto;padding:8px 6px;}
+.chat-list-wrap{flex:1;overflow-y:auto;padding:8px 6px;scrollbar-width:thin;scrollbar-color:var(--scrollbar) transparent;}
 .chat-list-wrap::-webkit-scrollbar{width:3px;}
 .chat-list-wrap::-webkit-scrollbar-thumb{background:var(--scrollbar);border-radius:3px;}
 .sec-label{padding:5px 8px 3px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.9px;color:var(--text3);}
-/* Single chat row: truncates long titles with ellipsis; transparent border on
-   idle state preserves layout so the active border doesn't cause reflow. */
-.chat-item{padding:7px 9px;border-radius:var(--radius);cursor:pointer;font-size:13px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:all 0.14s;margin-bottom:1px;border:1px solid transparent;}
-.chat-item:hover{background:var(--bg3);color:var(--text);}
-.chat-item.active{background:var(--surface);color:var(--text);border-color:var(--border);}
 
 /* ── Chat list search ── */
 .chat-search{width:100%;padding:6px 8px 6px 26px;background:var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") no-repeat 8px center;border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:var(--font-body);font-size:13px;outline:none;transition:border-color 0.15s;margin-bottom:6px;}
@@ -181,6 +177,138 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 .chat-action-btn:hover{background:var(--bg2);color:var(--text);}
 .chat-action-btn.pin-btn:hover{color:var(--accent);}
 .chat-action-btn.del-btn:hover{color:var(--red);}
+
+/* Accessibility focus outlines */
+*:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+input:focus-visible, textarea:focus-visible, select:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-bg); }
+
+/* Theme swatch preview indicator */
+.theme-swatch{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:middle;box-shadow:0 0 0 1px rgba(0,0,0,0.15);}
+
+/* Chat stats bar header */
+.chat-stats-bar{text-align:center;font-size:11px;color:var(--text3);padding:6px 12px;margin-bottom:10px;border-bottom:1px solid var(--border);}
+
+/* ── Rich text rendering for message content ── */
+.msg-text{font-family:var(--font-body);font-size:14.5px;line-height:1.75;color:var(--text);white-space:pre-wrap;word-break:break-word;}
+.msg-text strong{font-weight:600;}
+.msg-text em{font-style:italic;color:var(--text2);}
+.msg-text h1,.msg-text h2,.msg-text h3{font-family:var(--font-head);font-weight:600;color:var(--text);}
+.msg-text h1{font-size:22px;line-height:1.3;margin:16px 0 8px;padding-bottom:4px;border-bottom:1px solid var(--border);}
+.msg-text h2{font-size:18px;line-height:1.35;margin:14px 0 6px;}
+.msg-text h3{font-size:16px;line-height:1.4;margin:12px 0 4px;}
+.msg-text code{font-family:var(--font-mono);font-size:12px;background:var(--bg3);padding:2px 5px;border-radius:4px;color:var(--accent);border:1px solid var(--border);}
+.msg-text pre{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:13px 15px;overflow-x:auto;margin:9px 0;}
+.msg-text pre code{background:none;border:none;padding:0;color:var(--text2);font-size:12px;}
+.msg-text ul,.msg-text ol{padding-left:20px;margin:5px 0;}
+.msg-text li{margin-bottom:3px;}
+.msg-text blockquote{border-left:3px solid var(--border2);padding-left:13px;color:var(--text2);margin:7px 0;}
+.msg-text a{color:var(--accent);text-decoration:underline;}
+.msg-sep{height:1px;background:var(--border);max-width:2400px;margin:2px auto;opacity:0.4;}
+
+.msg-edit-btn{
+  background:none;border:none;cursor:pointer;padding:1px 4px;margin-left:5px;
+  font-size:13px;opacity:0;transition:opacity 0.15s;line-height:1;
+  color:var(--text3);vertical-align:middle;
+}
+.msg-row:hover .msg-edit-btn{opacity:1;}
+.msg-edit-btn:hover{opacity:1!important;color:var(--accent);}
+
+/* Touch device overrides for hover actions */
+@media (hover: none) {
+  .chat-item-actions { opacity: 1 !important; }
+  .msg-edit-btn { opacity: 0.6 !important; }
+  .msg-copy-pill { opacity: 1 !important; }
+}
+
+/* Reduced motion accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .msg-row { animation: none !important; }
+  .phase-badge { animation: none !important; opacity: 1 !important; }
+  .tdot { animation: none !important; opacity: 0.8 !important; }
+  .search-chev, .think-chev { transition: none !important; }
+}
+
+.input-row{display:flex;align-items:flex-end;gap:6px;width:100%;}
+#chat-input{flex:1 1 auto;width:100%;min-width:min(680px, calc(100vw - 320px));padding:12px 14px;background:var(--user-bg);border:1px solid var(--border);border-radius:var(--radius-lg);color:var(--text);font-family:var(--font-body);font-size:14px;line-height:1.6;resize:none;outline:none;transition:border-color 0.17s,box-shadow 0.17s;min-height:50px;max-height:200px;overflow-y:auto;box-shadow:0 1px 4px var(--shadow);scrollbar-width:thin;scrollbar-color:var(--scrollbar) transparent;}
+#chat-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg);}
+#chat-input::placeholder{color:var(--text3);}
+.input-actions{display:flex;flex-direction:row;gap:4px;flex:0 0 auto;align-items:flex-end;}
+#send-btn{width:34px;height:34px;background:var(--accent);border:none;border-radius:var(--radius);cursor:pointer;display:flex;align-items:center;justify-content:center;color:white;transition:all 0.17s;}
+#send-btn:hover{opacity:0.9;filter:brightness(1.1);}
+#send-btn:disabled{background:var(--border2);cursor:not-allowed;transform:none;filter:none;}
+.attach-btn{width:34px;height:34px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2);transition:all 0.15s;}
+.attach-btn:hover{background:var(--bg3);color:var(--text);}
+
+#toast{position:fixed;bottom:calc(72px + env(safe-area-inset-bottom, 0px));left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);color:var(--text2);padding:8px 16px;border-radius:var(--radius);font-size:13px;display:none;z-index:300;max-width:480px;text-align:center;box-shadow:0 4px 14px var(--shadow);}
+#toast.err{background:#fef2f2;border-color:#fecaca;color:#b91c1c;}
+[data-theme="chatgpt"] #toast.err,[data-theme="gemini"] #toast.err,[data-theme="dark"] #toast.err,[data-theme="duo"] #toast.err{background:#3b1515;border-color:#7f1d1d;color:#fca5a5;}
+
+#attach-input{display:none;}
+
+#info-popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+#info-popup.hidden {
+  display: none;
+}
+
+.popup-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+.popup-content {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius:var(--radius-lg);
+  padding: 16px;
+  max-width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+}
+
+.popup-header h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.popup-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0;
+  color: var(--text2);
+}
+
+.popup-close:hover {
+  color: var(--text);
+}
 
 /* ── Delete confirmation strip ── */
 .chat-confirm-strip{padding:6px 9px;border-radius:var(--radius);background:rgba(192,57,43,0.06);border:1px solid rgba(192,57,43,0.2);display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:1px;}
@@ -1220,12 +1348,12 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
       <div class="sp-section-content">
         <div class="sp-label">Theme</div>
         <div class="theme-row" id="theme-row">
-          <button class="theme-btn active" data-theme="claude" onclick="setTheme('claude')">Claude</button>
-          <button class="theme-btn" data-theme="chatgpt" onclick="setTheme('chatgpt')">ChatGPT</button>
-          <button class="theme-btn" data-theme="gemini" onclick="setTheme('gemini')">Gemini</button>
-          <button class="theme-btn" data-theme="dark" onclick="setTheme('dark')">Dark</button>
-          <button class="theme-btn" data-theme="minimal" onclick="setTheme('minimal')">Minimal</button>
-          <button class="theme-btn" data-theme="duo" onclick="setTheme('duo')">Duo</button>
+          <button class="theme-btn active" data-theme="claude" onclick="setTheme('claude')"><span class="theme-swatch" style="background:#c96b2f;"></span>Claude</button>
+          <button class="theme-btn" data-theme="chatgpt" onclick="setTheme('chatgpt')"><span class="theme-swatch" style="background:#10a37f;"></span>ChatGPT</button>
+          <button class="theme-btn" data-theme="gemini" onclick="setTheme('gemini')"><span class="theme-swatch" style="background:#8ab4f8;"></span>Gemini</button>
+          <button class="theme-btn" data-theme="dark" onclick="setTheme('dark')"><span class="theme-swatch" style="background:#7c6af7;"></span>Dark</button>
+          <button class="theme-btn" data-theme="minimal" onclick="setTheme('minimal')"><span class="theme-swatch" style="background:#111111;"></span>Minimal</button>
+          <button class="theme-btn" data-theme="duo" onclick="setTheme('duo')"><span class="theme-swatch" style="background:#16162a;"></span>Duo</button>
         </div>
         <div class="sp-label">UI Scale <span id="scale-val">1.00x</span></div>
         <input class="sp-range" type="range" id="scale-range" min="1" max="1.5" step="0.05" value="1"
@@ -1388,6 +1516,200 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 <!-- Toast notification container — content and visibility controlled entirely
      by showToast(). Placed outside all panels so z-index:300 puts it on top. -->
 <div id="toast"></div>
+        <div class="key-row">
+          <div class="key-label"><span class="key-dot" id="dot-openrouter"></span>OpenRouter</div>
+          <input class="key-input" id="key-openrouter" type="password" placeholder="sk-or-••••" oninput="saveKey('openrouter',this.value)"/>
+        </div>
+        <div class="key-row">
+          <div class="key-label"><span class="key-dot" id="dot-neuralwatt"></span>NeuralWatt</div>
+          <input class="key-input" id="key-neuralwatt" type="password" placeholder="nw-••••" oninput="saveKey('neuralwatt',this.value)"/>
+        </div>
+        <div class="key-row">
+          <div class="key-label"><span class="key-dot" id="dot-proxy"></span>Proxy Key</div>
+          <input class="key-input" id="key-proxy" type="password" placeholder="Only needed if proxy auth is enabled" oninput="saveProxyKey(this.value)"/>
+        </div>
+        <div style="font-size:11px;color:var(--text3);">
+          Required only if your proxy server is running with PROXY_KEY set.
+        </div>
+      </div>
+    </div>
+
+    <!-- Appearance: Theme + Display -->
+    <div class="sp-section" data-section="appearance">
+      <div class="sp-section-title" onclick="toggleSection(this)">
+        <span>🎨 Appearance</span>
+        <span class="sp-chevron">▼</span>
+      </div>
+      <div class="sp-section-content">
+        <div class="sp-label">Theme</div>
+        <div class="theme-row" id="theme-row">
+          <button class="theme-btn active" data-theme="claude" onclick="setTheme('claude')"><span class="theme-swatch" style="background:#c96b2f;"></span>Claude</button>
+          <button class="theme-btn" data-theme="chatgpt" onclick="setTheme('chatgpt')"><span class="theme-swatch" style="background:#10a37f;"></span>ChatGPT</button>
+          <button class="theme-btn" data-theme="gemini" onclick="setTheme('gemini')"><span class="theme-swatch" style="background:#8ab4f8;"></span>Gemini</button>
+          <button class="theme-btn" data-theme="dark" onclick="setTheme('dark')"><span class="theme-swatch" style="background:#7c6af7;"></span>Dark</button>
+          <button class="theme-btn" data-theme="minimal" onclick="setTheme('minimal')"><span class="theme-swatch" style="background:#111111;"></span>Minimal</button>
+          <button class="theme-btn" data-theme="duo" onclick="setTheme('duo')"><span class="theme-swatch" style="background:#16162a;"></span>Duo</button>
+        </div>
+        <div class="sp-label">UI Scale <span id="scale-val">1.00x</span></div>
+        <input class="sp-range" type="range" id="scale-range" min="1" max="1.5" step="0.05" value="1"
+          oninput="setUiScale(parseFloat(this.value))"/>
+      </div>
+    </div>
+
+    <!-- Model Behavior: System Prompt + Parameters -->
+    <div class="sp-section" data-section="behavior">
+      <div class="sp-section-title" onclick="toggleSection(this)">
+        <span>🧠 Model Behavior</span>
+        <span class="sp-chevron">▼</span>
+      </div>
+      <div class="sp-section-content">
+        <div class="sp-label">System Prompt</div>
+        <textarea class="sp-textarea" id="system-prompt" placeholder="You are a helpful assistant specialized in financial index operations and Databricks pipelines…" rows="4" oninput="saveSettings()"></textarea>
+        
+        <div id="nw-flex-container" style="display:none;align-items:center;justify-content:space-between;margin-bottom:12px;margin-top:12px;">
+          <div class="sp-label" style="margin:0;">🔋 Use NeuralWatt Flex Tier</div>
+          <label class="tog"><input type="checkbox" id="nw-flex-enabled" onchange="saveSettings();updatePricePill()"><div class="tog-track"></div><div class="tog-thumb"></div></label>
+        </div>
+
+        <div class="sp-label">Temperature <span id="temp-val">0.7</span></div>
+        <input type="range" class="sp-range" id="temp-range" min="0" max="2" step="0.05" value="0.7"
+          oninput="document.getElementById('temp-val').textContent=parseFloat(this.value).toFixed(2);saveSettings()"/>
+        <div class="sp-label">Max Tokens <span id="maxtok-val">4096</span></div>
+        <input type="range" class="sp-range" id="maxtok-range" min="256" max="16384" step="256" value="4096"
+          oninput="document.getElementById('maxtok-val').textContent=parseInt(this.value).toLocaleString();saveSettings()"/>
+        <div class="sp-label">Top-P <span id="topp-val">1.0</span></div>
+        <input type="range" class="sp-range" id="topp-range" min="0.1" max="1" step="0.05" value="1.0"
+          oninput="document.getElementById('topp-val').textContent=parseFloat(this.value).toFixed(2);saveSettings()"/>
+      </div>
+    </div>
+
+    <!-- File Context (RAG) -->
+    <div class="sp-section" data-section="rag">
+      <div class="sp-section-title" onclick="toggleSection(this)">
+        <span>📎 File Context (RAG)</span>
+        <span class="sp-chevron">▼</span>
+      </div>
+      <div class="sp-section-content">
+        <div class="sp-label" style="margin-bottom:8px;">Files are chunked and injected as context</div>
+        <div class="file-drop" id="file-drop" onclick="document.getElementById('rag-input').click()"
+          ondragover="e=>e.preventDefault();this.classList.add('drag-over')"
+          ondragleave="this.classList.remove('drag-over')"
+          ondrop="handleRagDrop(event)">
+          <div class="file-drop-icon">📄</div>
+          <div class="file-drop-text">Click or drag files here</div>
+          <div class="file-drop-hint">.txt .md .csv .json .py .js .html .xml .yaml .pdf</div>
+        </div>
+        <input type="file" id="rag-input" multiple accept=".txt,.md,.csv,.json,.py,.js,.ts,.html,.css,.xml,.yaml,.yml,.pdf" onchange="handleRagFiles(this.files)"/>
+        <div class="file-list" id="rag-file-list"></div>
+        <div class="sp-label">Context Preview <span id="ctx-tokens">0 tokens</span></div>
+        <div class="ctx-preview" id="ctx-preview">No files loaded</div>
+      </div>
+    </div>
+
+    <!-- Web Search -->
+    <div class="sp-section" data-section="search">
+      <div class="sp-section-title" onclick="toggleSection(this)">
+        <span>🔍 Web Search</span>
+        <span class="sp-chevron">▼</span>
+      </div>
+      <div class="sp-section-content">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div class="sp-label" style="margin:0;">Enable web search augmentation</div>
+          <label class="tog"><input type="checkbox" id="ws-enabled" onchange="onWebSearchToggle()"><div class="tog-track"></div><div class="tog-thumb"></div></label>
+        </div>
+        <div id="ws-config" style="display:none;flex-direction:column;gap:8px;">
+          <div>
+            <div class="sp-label">Search provider</div>
+            <select class="sp-select" id="ws-provider" onchange="onWebSearchProviderChange()">
+              <option value="tavily">Tavily · 1,000 free/month (recommended)</option>
+              <option value="serper">Serper · 2,500 free on signup</option>
+              <option value="searxng">SearXNG · self-hosted (free)</option>
+            </select>
+          </div>
+          <div id="ws-key-row" style="display:none;">
+            <div class="sp-label">API key</div>
+            <input class="key-input" id="ws-key-input" type="password" placeholder="Paste API key…" oninput="saveSearchKey(this.value)"/>
+          </div>
+          <div id="ws-url-row" style="display:none;">
+            <div class="sp-label">Instance URL</div>
+            <input class="key-input" id="ws-url-input" type="text" placeholder="https://searx.example.com/search?q=" oninput="saveSearchUrl(this.value)"/>
+          </div>
+          <div>
+            <div class="sp-label">When to search</div>
+            <select class="sp-select" id="ws-mode" onchange="saveWebSearchSettings()">
+              <option value="auto">Auto-detect (recommended)</option>
+              <option value="always">Always search</option>
+            </select>
+          </div>
+          <div id="ws-cost-note" style="font-size:11px;color:var(--text3);line-height:1.55;padding:7px 9px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cloud Sync -->
+    <div class="sp-section" data-section="cloud">
+      <div class="sp-section-title" onclick="toggleSection(this)">
+        <span>☁ Cloud Sync</span>
+        <span class="sp-chevron">▼</span>
+      </div>
+      <div class="sp-section-content">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div class="sp-label" style="margin:0;">Enable cloud sync</div>
+          <label class="tog"><input type="checkbox" id="cs-enabled" onchange="onCloudToggle()"><div class="tog-track"></div><div class="tog-thumb"></div></label>
+        </div>
+        <div id="cs-config" style="display:none;flex-direction:column;gap:8px;">
+          <div>
+            <div class="sp-label">Provider</div>
+            <select class="sp-select" id="cs-provider" onchange="onCloudProviderChange()">
+              <option value="supabase">Supabase (free PostgreSQL)</option>
+            </select>
+          </div>
+          <div>
+            <div class="sp-label">Supabase Project URL</div>
+            <input class="key-input" id="cs-url" type="password" placeholder="https://xxxx.supabase.co" oninput="saveCloudSettings()"/>
+          </div>
+          <div>
+            <div class="sp-label">Supabase Anon Key</div>
+            <input class="key-input" id="cs-key" type="password" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." oninput="saveCloudSettings()"/>
+          </div>
+          <div>
+            <div class="sp-label">Sync Passphrase <span style="font-size:10px;color:var(--text3);">(same on all devices)</span></div>
+            <input class="key-input" id="cs-passphrase" type="password" placeholder="Your secret passphrase…" oninput="saveCloudSettings()"/>
+          </div>
+          <div>
+            <div class="sp-label">Sync mode</div>
+            <select class="sp-select" id="cs-mode" onchange="saveCloudSettings()">
+              <option value="auto">Auto-sync (recommended)</option>
+              <option value="manual">Manual only</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:6px;">
+            <button onclick="syncNow()" style="flex:1;padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);color:var(--text2);font-size:12px;cursor:pointer;font-family:var(--font-body);">↻ Sync now</button>
+            <button onclick="pullSync()" style="flex:1;padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);color:var(--text2);font-size:12px;cursor:pointer;font-family:var(--font-body);">⬇ Pull from cloud</button>
+          </div>
+          <div style="font-size:11px;color:var(--text3);line-height:1.55;padding:7px 9px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);">
+            Chats are encrypted with AES-GCM in your browser before upload. Only you can decrypt them with your passphrase.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="sp-section" data-section="actions">
+      <div class="sp-section-title" onclick="toggleSection(this)">
+        <span>⚡ Actions</span>
+        <span class="sp-chevron">▼</span>
+      </div>
+      <div class="sp-section-content">
+        <button onclick="resetSettings()" style="width:100%;padding:8px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text2);font-size:13px;cursor:pointer;font-family:var(--font-body);">↺ Reset to defaults</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Toast notification container — content and visibility controlled entirely -->
+<div id="toast"></div>
 <input type="file" id="attach-input-dup" style="display:none" multiple/>
 
 <!-- Info popup for chat details — shows model, tokens, timestamp overlay -->
@@ -1420,13 +1742,6 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
 </div>
 
 <script>
-// ══════════════════════════════════════════
-// PROVIDERS
-// Static model registry used as the fallback when live /models fetches fail or
-// when a provider has no public listing endpoint. Each entry includes
-// a human-readable name, per-1M-token price string, and provider metadata used
-// for badge styling. Models are ordered by recommended usage (best first).
-// ══════════════════════════════════════════
 const PROVIDERS = {
   groq:{label:'Groq LPU',badge:'badge-groq',url:'https://api.groq.com/openai/v1',models:[
     {id:'openai/gpt-oss-120b',           name:'GPT-OSS 120B — Reasoning ★',         p:'$0.15/$0.60'},
@@ -1438,80 +1753,71 @@ const PROVIDERS = {
     {id:'llama-3.1-8b-instant',          name:'Llama 3.1 8B Instant (cheapest)',    p:'$0.05/$0.08'},
   ]},
   opencode:{label:'OpenCode Go',badge:'badge-opencode',usageUrl:'https://opencode.ai/workspace/wrk_01KQA49DFKK6FNKT2MX99WVGQH/usage',url:'https://proxy.opencodechat.dpdns.org/zen/go/v1',models:[
-    {id:'minimax-m2.7',    name:'MiniMax M2.7',        p:'$0.30/$1.20'},
-    {id:'minimax-m2.5',    name:'MiniMax M2.5',        p:'$0.27/$0.95'},
-    {id:'kimi-k2.6',       name:'Kimi K2.6',           p:'$0.50/$2.50'},
-    {id:'kimi-k2.5',       name:'Kimi K2.5',           p:'$0.45/$2.25'},
-    {id:'glm-5.1',         name:'GLM 5.1',             p:'$0.95/$3.15'},
-    {id:'glm-5',           name:'GLM 5',               p:'$0.80/$2.56'},
-    {id:'deepseek-v4-pro', name:'DeepSeek V4 Pro',     p:'$0.50/$2.00'},
-    {id:'deepseek-v4-flash',name:'DeepSeek V4 Flash',  p:'$0.15/$0.60'},
-    {id:'qwen3.6-plus',    name:'Qwen 3.6 Plus',       p:'$0.30/$0.90'},
-    {id:'qwen3.5-plus',    name:'Qwen 3.5 Plus',       p:'$0.26/$1.56'},
-    {id:'mimo-v2-pro',     name:'MiMo V2 Pro',         p:'$1.00/$3.00'},
-    {id:'mimo-v2-omni',    name:'MiMo V2 Omni',        p:'$0.40/$2.00'},
-    {id:'mimo-v2.5-pro',   name:'MiMo V2.5 Pro',       p:'$0.80/$2.50'},
-    {id:'mimo-v2.5',       name:'MiMo V2.5',           p:'$0.30/$1.50'},
+    {id:'minimax-m3', name:'minimax-m3', p:''},
+    {id:'minimax-m2.7', name:'MiniMax M2.7', p:'$0.30/$1.20'},
+    {id:'minimax-m2.5', name:'MiniMax M2.5', p:'$0.27/$0.95'},
+    {id:'kimi-k3', name:'kimi-k3', p:''},
+    {id:'kimi-k2.7-code', name:'kimi-k2.7-code', p:''},
+    {id:'kimi-k2.6', name:'Kimi K2.6', p:'$0.50/$2.50'},
+    {id:'kimi-k2.5', name:'Kimi K2.5', p:'$0.45/$2.25'},
+    {id:'glm-5.2', name:'glm-5.2', p:''},
+    {id:'glm-5.1', name:'GLM 5.1', p:'$0.95/$3.15'},
+    {id:'glm-5', name:'GLM 5', p:'$0.80/$2.56'},
+    {id:'deepseek-v4-pro', name:'DeepSeek V4 Pro', p:'$0.50/$2.00'},
+    {id:'deepseek-v4-flash', name:'DeepSeek V4 Flash', p:'$0.15/$0.60'},
+    {id:'qwen3.7-max', name:'qwen3.7-max', p:''},
+    {id:'qwen3.7-plus', name:'qwen3.7-plus', p:''},
+    {id:'qwen3.6-plus', name:'Qwen 3.6 Plus', p:'$0.30/$0.90'},
+    {id:'qwen3.5-plus', name:'Qwen 3.5 Plus', p:'$0.26/$1.56'},
+    {id:'mimo-v2-pro', name:'MiMo V2 Pro', p:'$1.00/$3.00'},
+    {id:'mimo-v2-omni', name:'MiMo V2 Omni', p:'$0.40/$2.00'},
+    {id:'mimo-v2.5-pro', name:'MiMo V2.5 Pro', p:'$0.80/$2.50'},
+    {id:'mimo-v2.5', name:'MiMo V2.5', p:'$0.30/$1.50'},
+    {id:'hy3', name:'hy3', p:''},
+    {id:'hy3-preview', name:'hy3-preview', p:''},
+    {id:'grok-4.5', name:'grok-4.5', p:''},
   ]},
   openrouter:{label:'OpenRouter',badge:'badge-openrouter',usageUrl:'https://openrouter.ai/activity',url:'https://openrouter.ai/api/v1',models:[
-    // ── 🏆 Most Popular (from live rankings, April 2026) ──
-    {id:'xiaomi/mimo-v2-pro-20260318',              name:'🏆 MiMo V2 Pro — Xiaomi (#1 ranked)',    p:'$1.00/$3.00'},
-    {id:'minimax/minimax-m2.7-20260318',            name:'🏆 MiniMax M2.7 (#5 ranked)',             p:'$0.30/$1.20'},
-    {id:'deepseek/deepseek-v3.2-20251201',          name:'🏆 DeepSeek V3.2 (#6 ranked)',            p:'$0.27/$1.10'},
-    {id:'z-ai/glm-5-turbo-20260315',                name:'🏆 GLM-5 Turbo — Z.AI (#10 ranked)',      p:'$0.50/$1.50'},
-    // ── 🆓 FREE Models (no cost, rate-limited) ──
-    {id:'qwen/qwen3.6-plus:free',                   name:'🆓 Qwen3.6 Plus — 1M ctx (FREE)',         p:'$0/$0'},
-    {id:'stepfun/step-3.5-flash:free',              name:'🆓 Step 3.5 Flash — reasoning (FREE)',    p:'$0/$0'},
-    {id:'nvidia/nemotron-3-super-120b-a12b:free',   name:'🆓 Nemotron 3 Super 120B — 1M ctx (FREE)',p:'$0/$0'},
-    {id:'openai/gpt-oss-120b:free',                 name:'🆓 GPT-OSS 120B — OpenAI (FREE)',         p:'$0/$0'},
-    {id:'openai/gpt-oss-20b:free',                  name:'🆓 GPT-OSS 20B — OpenAI (FREE)',          p:'$0/$0'},
-    {id:'minimax/minimax-m2.5:free',                name:'🆓 MiniMax M2.5 SWE 80.2% (FREE)',        p:'$0/$0'},
-    {id:'qwen/qwen3-coder:free',                    name:'🆓 Qwen3 Coder 480B (FREE)',              p:'$0/$0'},
-    {id:'qwen/qwen3-next-80b-a3b-instruct:free',    name:'🆓 Qwen3 Next 80B (FREE)',                p:'$0/$0'},
-    {id:'z-ai/glm-4.5-air:free',                    name:'🆓 GLM-4.5 Air — Z.AI (FREE)',            p:'$0/$0'},
-    {id:'nvidia/nemotron-3-nano-30b-a3b:free',      name:'🆓 Nemotron 3 Nano 30B (FREE)',           p:'$0/$0'},
-    {id:'arcee-ai/trinity-large-preview:free',      name:'🆓 Trinity Large 400B — Arcee (FREE)',    p:'$0/$0'},
-    {id:'meta-llama/llama-3.3-70b-instruct:free',   name:'🆓 Llama 3.3 70B (FREE)',                 p:'$0/$0'},
-    {id:'openrouter/free',                          name:'🆓 Auto-Free Router (best available)',    p:'$0/$0'},
-    // ── 🤖 Anthropic Claude ──
-    {id:'anthropic/claude-4.6-sonnet-20260217',     name:'Claude Sonnet 4.6 ★',                    p:'$3/$15'},
-    {id:'anthropic/claude-4.6-opus-20260205',       name:'Claude Opus 4.6',                        p:'$5/$25'},
-    {id:'anthropic/claude-opus-4-5',                name:'Claude Opus 4.5',                        p:'$5/$25'},
-    {id:'anthropic/claude-3.7-sonnet',              name:'Claude 3.7 Sonnet',                      p:'$3/$15'},
-    {id:'anthropic/claude-3.7-sonnet:thinking',     name:'Claude 3.7 Sonnet (Thinking)',           p:'$3/$15'},
-    // ── 🔵 Google Gemini ──
-    {id:'google/gemini-3-flash-preview-20251217',   name:'Gemini 3 Flash Preview',                 p:'$0.15/$0.60'},
-    {id:'google/gemini-2.5-pro',                    name:'Gemini 2.5 Pro',                         p:'$1.25/$10'},
-    {id:'google/gemini-2.5-flash',                  name:'Gemini 2.5 Flash',                       p:'$0.15/$0.60'},
-    {id:'google/gemma-3-27b-it',                    name:'Gemma 3 27B',                            p:'$0.10/$0.20'},
-    // ── 🤖 OpenAI ──
-    {id:'openai/gpt-5',                             name:'GPT-5',                                  p:'$5/$25'},
-    {id:'openai/o3',                                name:'OpenAI o3 (Reasoning)',                  p:'$2/$8'},
-    {id:'openai/gpt-4o',                            name:'GPT-4o',                                 p:'$2.50/$10'},
-    {id:'openai/gpt-oss-120b',                      name:'GPT-OSS 120B (paid)',                    p:'$0.15/$0.60'},
-    // ── ⚡ xAI Grok ──
-    {id:'x-ai/grok-4.1-fast',                       name:'Grok 4.1 Fast (#10 ranked)',              p:'$0.20/$1.50'},
-    {id:'x-ai/grok-3',                              name:'Grok 3',                                 p:'$3/$15'},
-    // ── 🇨🇳 Chinese Models (paid) ──
-    {id:'deepseek/deepseek-r1-0528',                name:'DeepSeek R1 0528 — Reasoning',           p:'$0.50/$2.15'},
-    {id:'moonshotai/kimi-k2',                       name:'Kimi K2 — Moonshot AI',                  p:'$1.00/$3.00'},
-    {id:'moonshotai/kimi-k2.5',                     name:'Kimi K2.5 — Reasoning',                  p:'$0.45/$2.25'},
-    {id:'minimax/minimax-m2.5',                     name:'MiniMax M2.5 (paid)',                     p:'$0.27/$0.95'},
-    {id:'z-ai/glm-5',                               name:'GLM-5 — Z.AI (paid)',                    p:'$0.80/$2.56'},
-    {id:'z-ai/glm-4.7-flash',                       name:'GLM-4.7 Flash',                          p:'$0.06/$0.40'},
-    {id:'qwen/qwen3.6-plus',                        name:'Qwen3.6 Plus (paid)',                    p:'$0.30/$0.90'},
-    {id:'qwen/qwen3-235b-a22b',                     name:'Qwen3 235B A22B',                        p:'$0.07/$0.10'},
-    {id:'qwen/qwen3-coder-480b-a35b',               name:'Qwen3 Coder 480B (paid)',                p:'$0.40/$1.60'},
-    {id:'stepfun/step-3.5-flash',                   name:'Step 3.5 Flash (paid)',                  p:'$0.10/$0.30'},
-    // ── 🦙 Meta Llama ──
-    {id:'meta-llama/llama-4-maverick',              name:'Llama 4 Maverick',                       p:'$0.27/$0.85'},
-    {id:'meta-llama/llama-4-scout',                 name:'Llama 4 Scout',                          p:'$0.11/$0.34'},
-    {id:'meta-llama/llama-3.3-70b-instruct',        name:'Llama 3.3 70B (paid)',                   p:'$0.10/$0.25'},
-    // ── 🔧 Mistral ──
-    {id:'mistralai/mistral-large-3',                name:'Mistral Large 3',                        p:'$2/$6'},
-    {id:'mistralai/devstral-small',                 name:'Devstral Small — coding',                p:'$0.10/$0.30'},
-    // ── ⚙ NVIDIA ──
-    {id:'nvidia/nemotron-3-super-120b-a12b',        name:'Nemotron 3 Super 120B — 1M (paid)',      p:'$0.10/$0.50'},
+    {id:'google/lyria-3-pro-preview', name:'🆓 Google: Lyria 3 Pro Preview (1M)', p:'FREE'},
+    {id:'google/lyria-3-clip-preview', name:'🆓 Google: Lyria 3 Clip Preview (1M)', p:'FREE'},
+    {id:'nvidia/nemotron-3-ultra-550b-a55b:free', name:'🆓 NVIDIA: Nemotron 3 Ultra (free) (1M)', p:'FREE'},
+    {id:'inclusionai/ling-3.0-flash:free', name:'🆓 Ling-3.0-flash (free) (256K)', p:'FREE'},
+    {id:'poolside/laguna-s-2.1:free', name:'🆓 Poolside: Laguna S 2.1 (free) (256K)', p:'FREE'},
+    {id:'poolside/laguna-xs-2.1:free', name:'🆓 Poolside: Laguna XS 2.1 (free) (256K)', p:'FREE'},
+    {id:'google/gemma-4-26b-a4b-it:free', name:'🆓 Google: Gemma 4 26B A4B  (free) (256K)', p:'FREE'},
+    {id:'google/gemma-4-31b-it:free', name:'🆓 Google: Gemma 4 31B (free) (256K)', p:'FREE'},
+    {id:'nvidia/nemotron-3-super-120b-a12b:free', name:'🆓 NVIDIA: Nemotron 3 Super (free) (256K)', p:'FREE'},
+    {id:'cohere/north-mini-code:free', name:'🆓 Cohere: North Mini Code (free) (250K)', p:'FREE'},
+    {id:'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free', name:'🆓 NVIDIA: Nemotron 3 Nano Omni (free) (250K)', p:'FREE'},
+    {id:'nvidia/nemotron-3-nano-30b-a3b:free', name:'🆓 NVIDIA: Nemotron 3 Nano 30B A3B (free) (250K)', p:'FREE'},
+    {id:'openrouter/free', name:'🆓 Free Models Router (195K)', p:'FREE'},
+    {id:'openai/gpt-oss-20b:free', name:'🆓 OpenAI: gpt-oss-20b (free) (128K)', p:'FREE'},
+    {id:'nvidia/nemotron-3.5-content-safety:free', name:'🆓 NVIDIA: Nemotron 3.5 Content Safety (free) (125K)', p:'FREE'},
+    {id:'nvidia/nemotron-nano-12b-v2-vl:free', name:'🆓 NVIDIA: Nemotron Nano 12B 2 VL (free) (125K)', p:'FREE'},
+    {id:'nvidia/nemotron-nano-9b-v2:free', name:'🆓 NVIDIA: Nemotron Nano 9B V2 (free) (125K)', p:'FREE'},
+    {id:'openrouter/auto-beta', name:'Auto Router (Beta) (2M)', p:'$-1000000.0000/$-1000000.0000'},
+    {id:'openrouter/pareto-code', name:'Pareto Code Router (2M)', p:'$-1000000.0000/$-1000000.0000'},
+    {id:'x-ai/grok-4.20-multi-agent', name:'xAI: Grok 4.20 Multi-Agent (2M)', p:'$1.25/$2.50'},
+    {id:'x-ai/grok-4.20', name:'xAI: Grok 4.20 (2M)', p:'$1.25/$2.50'},
+    {id:'openrouter/auto', name:'Auto Router (2M)', p:'$-1000000.0000/$-1000000.0000'},
+    {id:'meta-llama/llama-4-scout', name:'Meta: Llama 4 Scout (1M)', p:'$0.100/$0.300'},
+    {id:'openai/gpt-5.6-luna-pro', name:'OpenAI: GPT-5.6 Luna Pro (1M)', p:'$0.100/$0.600'},
+    {id:'openai/gpt-5.6-luna', name:'OpenAI: GPT-5.6 Luna (1M)', p:'$0.100/$0.600'},
+    {id:'openai/gpt-5.6-terra-pro', name:'OpenAI: GPT-5.6 Terra Pro (1M)', p:'$1.00/$6.00'},
+    {id:'openai/gpt-5.6-terra', name:'OpenAI: GPT-5.6 Terra (1M)', p:'$1.00/$6.00'},
+    {id:'openai/gpt-5.6-sol-pro', name:'OpenAI: GPT-5.6 Sol Pro (1M)', p:'$5.00/$30.00'},
+    {id:'openai/gpt-5.6-sol', name:'OpenAI: GPT-5.6 Sol (1M)', p:'$5.00/$30.00'},
+    {id:'~openai/gpt-latest', name:'OpenAI GPT Latest (1M)', p:'$5.00/$30.00'},
+    {id:'openai/gpt-5.5-pro', name:'OpenAI: GPT-5.5 Pro (1M)', p:'$30.00/$180.00'},
+    {id:'openai/gpt-5.5', name:'OpenAI: GPT-5.5 (1M)', p:'$5.00/$30.00'},
+    {id:'openai/gpt-5.5:batch', name:'OpenAI: GPT-5.5 (batch) (1M)', p:'$2.50/$15.00'},
+    {id:'xiaomi/mimo-v2.5-pro', name:'Xiaomi: MiMo-V2.5-Pro (1M)', p:'$0.435/$0.870'},
+    {id:'xiaomi/mimo-v2.5', name:'Xiaomi: MiMo-V2.5 (1M)', p:'$0.140/$0.280'},
+    {id:'openai/gpt-5.4-pro', name:'OpenAI: GPT-5.4 Pro (1M)', p:'$30.00/$180.00'},
+    {id:'openai/gpt-5.4', name:'OpenAI: GPT-5.4 (1M)', p:'$2.50/$15.00'},
+    {id:'openai/gpt-5.4:batch', name:'OpenAI: GPT-5.4 (batch) (1M)', p:'$1.25/$7.50'},
+    {id:'meituan/longcat-2.0', name:'Meituan: LongCat 2.0 (1M)', p:'$0.300/$1.20'},
+    {id:'poolside/laguna-s-2.1', name:'Poolside: Laguna S 2.1 (1M)', p:'$0.100/$0.200'},
   ]},
   neuralwatt:{label:'NeuralWatt',badge:'badge-neuralwatt',usageUrl:'https://portal.neuralwatt.com',url:'https://api.neuralwatt.com/v1',models:[
     {id:'glm-5.2',            name:'GLM-5.2 — Reasoning ★ (1M ctx)',     p:'$1.45/$4.50'},
@@ -2698,32 +3004,30 @@ function loadSectionState() {
 // re-merges existing web search settings so that saveSettings() (called by
 // slider/textarea oninput handlers) never accidentally clobbers them.
 function saveSettings() {
-  const existing = JSON.parse(localStorage.getItem('mc_settings') || '{}');
-  const s = {
-    // Preserve web search settings so saveSettings() doesn't clobber them
-    webSearchEnabled: existing.webSearchEnabled || false,
-    webSearchProvider: existing.webSearchProvider || 'tavily',
-    webSearchMode: existing.webSearchMode || 'auto',
-    systemPrompt: document.getElementById('system-prompt').value,
-    temperature: parseFloat(document.getElementById('temp-range').value),
-    maxTokens: parseInt(document.getElementById('maxtok-range').value),
-    topP: parseFloat(document.getElementById('topp-range').value),
-    neuralwattFlexEnabled: document.getElementById('nw-flex-enabled')?.checked || false,
-  };
-  localStorage.setItem('mc_settings', JSON.stringify(s));
+  try {
+    const existing = JSON.parse(localStorage.getItem('mc_settings') || '{}');
+    const s = {
+      ...existing,
+      systemPrompt: document.getElementById('system-prompt').value,
+      temperature: parseFloat(document.getElementById('temp-range').value),
+      maxTokens: parseInt(document.getElementById('maxtok-range').value),
+      topP: parseFloat(document.getElementById('topp-range').value),
+      neuralwattFlexEnabled: document.getElementById('nw-flex-enabled')?.checked || false,
+    };
+    localStorage.setItem('mc_settings', JSON.stringify(s));
+  } catch(e) {
+    console.warn('[MultiChat] Failed to save settings:', e);
+  }
 }
-// Restores all settings sliders, system prompt textarea, and web search config
-// from localStorage. Falls back silently to defaults if the key is absent or
-// the JSON is malformed, so first-time users see sensible initial values.
 function loadSettings() {
   try {
     const s = JSON.parse(localStorage.getItem('mc_settings') || '{}');
-    if (s.systemPrompt) document.getElementById('system-prompt').value = s.systemPrompt;
+    if (s.systemPrompt != null) document.getElementById('system-prompt').value = s.systemPrompt;
     if (s.temperature != null) {
       document.getElementById('temp-range').value = s.temperature;
       document.getElementById('temp-val').textContent = s.temperature.toFixed(2);
     }
-    if (s.maxTokens) {
+    if (s.maxTokens != null) {
       document.getElementById('maxtok-range').value = s.maxTokens;
       document.getElementById('maxtok-val').textContent = parseInt(s.maxTokens).toLocaleString();
     }
@@ -2735,13 +3039,14 @@ function loadSettings() {
       const flexEl = document.getElementById('nw-flex-enabled');
       if (flexEl) flexEl.checked = s.neuralwattFlexEnabled;
     }
-  } catch(e) {}
+  } catch(e) {
+    console.warn('[MultiChat] Failed to load settings:', e);
+  }
   loadWebSearchSettings();
   updateFlexVisibility();
 }
-// Resets all settings controls to their hardcoded defaults, clears mc_settings
-// from localStorage, and resets the web search UI. Does not clear API keys.
 function resetSettings() {
+  if (!confirm('Reset all settings to defaults? API keys will be preserved.')) return;
   document.getElementById('system-prompt').value = '';
   document.getElementById('temp-range').value = 0.7; document.getElementById('temp-val').textContent = '0.70';
   document.getElementById('maxtok-range').value = 4096; document.getElementById('maxtok-val').textContent = '4,096';
@@ -2762,6 +3067,7 @@ function resetSettings() {
   localStorage.removeItem('mc_settings');
   updateSearchIndicator();
   resetCloudSettings();
+  loadCloudSettings();
   // Reset UI scale to defaults
   localStorage.removeItem('mc_ui_scale_desktop');
   localStorage.removeItem('mc_ui_scale_mobile');
@@ -3189,27 +3495,35 @@ async function populateModels(p) {
   // Fall back to static list
   if (!models) models = PROVIDERS[p]?.models || [];
 
-  // Populate hidden <select> so all existing JS (.value reads) continue to work
-  sel.innerHTML = models.map(m =>
-    `<option value="${m.id}" data-price="${m.p||''}" title="${m.id}">${m.name}</option>`
-  ).join('');
-
-  // Populate the custom visible dropdown list
-  const ddList = document.getElementById('model-dd-list');
-  if (ddList) {
-    ddList.innerHTML = models.map(m =>
-      `<div class="model-dd-item" data-id="${esc(m.id)}" data-name="${esc(m.name)}" data-price="${esc(m.p||'')}"
-            onclick="selectModel('${esc(m.id)}','${esc(m.name)}','${esc(m.p||'')}')"
-            role="option">${esc(m.name)}</div>`
-    ).join('');
-  }
-
-  // Show first model as selected in trigger label; mark it in the list
-  const first = models[0];
-  if (first) {
+  if (!models.length) {
+    sel.innerHTML = `<option disabled>No models available</option>`;
+    const ddList = document.getElementById('model-dd-list');
+    if (ddList) ddList.innerHTML = `<div class="model-dd-item" style="color:var(--red);cursor:default;">No models available — check API key</div>`;
     const label = document.getElementById('model-dd-label');
-    if (label) label.textContent = first.name;
-    ddList?.querySelector('.model-dd-item')?.classList.add('selected');
+    if (label) label.textContent = 'No models available';
+  } else {
+    // Populate hidden <select> so all existing JS (.value reads) continue to work
+    sel.innerHTML = models.map(m =>
+      `<option value="${m.id}" data-price="${m.p||''}" title="${m.id}">${m.name}</option>`
+    ).join('');
+
+    // Populate the custom visible dropdown list
+    const ddList = document.getElementById('model-dd-list');
+    if (ddList) {
+      ddList.innerHTML = models.map(m =>
+        `<div class="model-dd-item" data-id="${esc(m.id)}" data-name="${esc(m.name)}" data-price="${esc(m.p||'')}"
+              onclick="selectModel('${esc(m.id)}','${esc(m.name)}','${esc(m.p||'')}')"
+              role="option">${esc(m.name)}</div>`
+      ).join('');
+    }
+
+    // Show first model as selected in trigger label; mark it in the list
+    const first = models[0];
+    if (first) {
+      const label = document.getElementById('model-dd-label');
+      if (label) label.textContent = first.name;
+      ddList?.querySelector('.model-dd-item')?.classList.add('selected');
+    }
   }
 
   // Clear search input on provider switch so list resets
@@ -3504,9 +3818,12 @@ function updatePricePill() {
   if (pill) {
     if (pr) {
       const suffix = isFlex ? ' (Flex)' : '';
-      pill.textContent = `in:${pr.split('/')[0]}  out:${pr.split('/')[1]}/M${suffix}`;
+      const parts = pr.split('/');
+      pill.textContent = `${parts[0]}/${parts[1]}${suffix}`;
+      pill.title = `Input: ${parts[0]} per 1M tokens · Output: ${parts[1]} per 1M tokens${suffix}`;
     } else {
       pill.textContent = '';
+      pill.title = '';
     }
   }
   // Sync model info card
@@ -3552,8 +3869,9 @@ function updateThinkLabel() {
 // CHAT MANAGEMENT
 // ══════════════════════════════════════════
 function newChat() {
+  _confirmDeleteId = null;
   const id = 'c' + Date.now();
-  conversations[id] = {title:'New conversation', messages:[], createdAt: Date.now(), updatedAt: Date.now(), pinned: false};
+  conversations[id] = {title:'New conversation', messages:[], createdAt: Date.now(), updatedAt: Date.now(), pinned: false, totalTokens: 0, totalCost: 0};
   currentChatId = id;
   saveChats();
   renderChatList();
@@ -3563,6 +3881,7 @@ function newChat() {
   resetFooterStats();
 }
 function loadChat(id) {
+  _confirmDeleteId = null;
   currentChatId = id;
   renderChatList();
   renderMessages();
@@ -3574,17 +3893,27 @@ function loadChat(id) {
     resetFooterStats();
   }
 }
-function saveChats() { try { localStorage.setItem('mc_chats', JSON.stringify(conversations)); } catch(e) {} debouncedPushSync(); }
+function saveChats() {
+  try {
+    localStorage.setItem('mc_chats', JSON.stringify(conversations));
+    debouncedPushSync();
+  } catch(e) {
+    console.warn('[MultiChat] Failed to save chats to localStorage:', e);
+    if (e.name === 'QuotaExceededError' || e.code === 22) {
+      showToast('⚠️ Storage full — clear old chats to save new ones', 'err');
+    } else {
+      showToast('⚠️ Could not save conversation history', 'err');
+    }
+  }
+}
 function loadChats() {
   try {
     const s = localStorage.getItem('mc_chats');
     if (s) {
       conversations = JSON.parse(s);
-      // Migration: ensure createdAt and pinned exist on legacy chats
       let migrated = false;
       for (const [id, chat] of Object.entries(conversations)) {
         if (!chat.createdAt) {
-          // Derive from chat ID ('c' + timestamp) or fall back to updatedAt
           const derived = id.startsWith('c') ? parseInt(id.slice(1)) : (chat.updatedAt || Date.now());
           chat.createdAt = derived;
           migrated = true;
@@ -3593,10 +3922,15 @@ function loadChats() {
           chat.pinned = false;
           migrated = true;
         }
+        if (chat.totalTokens === undefined) chat.totalTokens = 0;
+        if (chat.totalCost === undefined) chat.totalCost = 0;
       }
       if (migrated) saveChats();
     }
-  } catch(e) {}
+  } catch(e) {
+    console.error('[MultiChat] Failed to load/parse conversations:', e);
+    showToast('⚠️ Failed to load conversations (corrupted storage data)', 'err');
+  }
   renderChatList();
 }
 let _chatFilterQuery = '';
@@ -3785,18 +4119,20 @@ function renderChatInfoBar(chatId) {
   const chat = conversations[chatId];
   if (!chat || !chat.messages.length) return;
   const msgs = document.getElementById('messages');
+  if (!msgs) return;
   const msgCount = chat.messages.length;
   const lastMsg = chat.messages[chat.messages.length - 1];
   const lastTime = lastMsg?.timestamp || chat.updatedAt || chat.createdAt || Date.now();
   const infoText = `Started ${fmtRelativeDate(chat.createdAt)} ${fmtTime(chat.createdAt)} · Last message ${timeAgo(lastTime)} · ${msgCount} message${msgCount===1?'':'s'}`;
-  const bar = document.createElement('div');
-  bar.className = 'chat-info-bar';
-  bar.textContent = infoText;
-  // Insert as first child if not already present
-  if (msgs.firstChild && !msgs.firstChild.classList?.contains('chat-info-bar')) {
+  
+  let bar = msgs.querySelector('.chat-stats-bar');
+  if (bar) {
+    bar.textContent = infoText;
+  } else {
+    bar = document.createElement('div');
+    bar.className = 'chat-stats-bar';
+    bar.textContent = infoText;
     msgs.insertBefore(bar, msgs.firstChild);
-  } else if (!msgs.firstChild) {
-    msgs.appendChild(bar);
   }
 }
 
@@ -4038,18 +4374,51 @@ function startEditMessage(msgIndex) {
 // ══════════════════════════════════════════
 // SEND MESSAGE
 // ══════════════════════════════════════════
+let _streamController = null;
+
+function stopStreaming() {
+  if (_streamController) {
+    _streamController.abort();
+    _streamController = null;
+  }
+}
+
+function updateSendButtonState(streaming) {
+  const btn = document.getElementById('send-btn');
+  if (!btn) return;
+  if (streaming) {
+    btn.disabled = false;
+    btn.onclick = stopStreaming;
+    btn.title = 'Stop generation';
+    btn.setAttribute('aria-label', 'Stop generation');
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>`;
+  } else {
+    btn.disabled = false;
+    btn.onclick = sendMessage;
+    btn.title = 'Send';
+    btn.setAttribute('aria-label', 'Send message');
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`;
+  }
+}
+
 async function sendMessage() {
   const input = document.getElementById('chat-input');
   const text = input.value.trim();
   if (!text && !attachedFiles.length) return;
   if (isStreaming) return;
 
-  // Guard: wait for any still-extracting files (polling with auto-retry)
+  // Guard: wait for any still-extracting files (polling with max retries)
   if (attachedFiles.some(f => f._extracting)) {
     showToast('⏳ Extracting files…');
     document.getElementById('send-btn').disabled = true;
+    let retries = 0;
     const checkDone = () => {
       if (attachedFiles.some(f => f._extracting)) {
+        if (++retries > 100) { // 30s timeout guard
+          document.getElementById('send-btn').disabled = false;
+          showToast('⚠️ File extraction timed out', 'err');
+          return;
+        }
         setTimeout(checkDone, 300);
       } else {
         document.getElementById('send-btn').disabled = false;
@@ -4067,7 +4436,7 @@ async function sendMessage() {
 
   if (!currentChatId) {
     const id = 'c' + Date.now();
-    conversations[id] = {title: (text||attachedFiles[0]?.name||'Chat').slice(0,42), messages:[], updatedAt: Date.now()};
+    conversations[id] = {title: (text||attachedFiles[0]?.name||'Chat').slice(0,42), messages:[], createdAt: Date.now(), updatedAt: Date.now(), pinned: false, totalTokens: 0, totalCost: 0};
     currentChatId = id;
   }
   const chat = conversations[currentChatId];
@@ -4100,9 +4469,11 @@ async function sendMessage() {
   appendTypingIndicator();
 
   isStreaming = true;
-  document.getElementById('send-btn').disabled = true;
+  _streamController = new AbortController();
+  updateSendButtonState(true);
 
   const settings = getSettings();
+  let aiMsg = null;
 
   // ── Pre-flight web search (two-phase: LLM plans queries → parallel search) ──
   lastSearchMeta = null;
@@ -4198,10 +4569,10 @@ async function sendMessage() {
     ...(isFlex ? { service_tier: 'flex' } : {})
   };
 
-
   try {
     const resp = await fetch(PROVIDERS[provider].url + '/chat/completions', {
       method:'POST',
+      signal: _streamController ? _streamController.signal : undefined,
       headers: proxyHeaders({
         'Content-Type':'application/json',
         'Authorization':`Bearer ${apiKey}`
@@ -4215,7 +4586,7 @@ async function sendMessage() {
     }
 
     removeTypingIndicator();
-    const aiMsg = {role:'assistant', content:'', thinking:'', model, provider};
+    aiMsg = {role:'assistant', content:'', thinking:'', model, provider};
     chat.messages.push(aiMsg);
     chat.updatedAt = Date.now();
     appendStreamRow(aiMsg);
@@ -4244,7 +4615,9 @@ async function sendMessage() {
           if(thDelta) aiMsg.thinking += thDelta;
           if(txtDelta) aiMsg.content += txtDelta;
           updateStreamRow(aiMsg);
-        } catch(e) {}
+        } catch(e) {
+          // Silent parse fallback for non-JSON stream chunks
+        }
       }
     }
 
@@ -4270,7 +4643,6 @@ async function sendMessage() {
       chat.totalCost = (chat.totalCost || 0) + queryCost;
       updateFooterStats(promptTok + compTok, queryCost, chat.totalTokens, chat.totalCost);
     } else {
-      // No usage data from provider — estimate from response text length
       const estTok = Math.ceil((aiMsg.content || '').length / 4) + Math.ceil(((aiMsg.thinking || '')).length / 4);
       if (estTok > 0) {
         chat.totalTokens = (chat.totalTokens || 0) + estTok;
@@ -4284,14 +4656,28 @@ async function sendMessage() {
   } catch(err) {
     removeTypingIndicator();
     removePipelineBlocks();
-    showToast('❌ ' + (err.message||'Request failed'),'err');
-    chat.messages.pop();
-    renderMessages(true);
-    input.value = text;
-    autoResize(input);
+    if (err.name === 'AbortError') {
+      if (aiMsg && (aiMsg.content || aiMsg.thinking)) {
+        aiMsg.content = stripThink(aiMsg.content);
+        aiMsg.thinking = (aiMsg.thinking + extractThink(aiMsg.content)).trim();
+        saveChats();
+        renderMessages(true);
+      } else {
+        chat.messages.pop();
+        renderMessages(true);
+      }
+      showToast('⏹ Generation stopped');
+    } else {
+      showToast('❌ ' + (err.message||'Request failed'),'err');
+      chat.messages.pop();
+      renderMessages(true);
+      input.value = text;
+      autoResize(input);
+    }
   } finally {
     isStreaming = false;
-    document.getElementById('send-btn').disabled = false;
+    _streamController = null;
+    updateSendButtonState(false);
   }
 }
 
@@ -4407,16 +4793,26 @@ function appendStreamRow(msg) {
   streamThinkEl = document.getElementById('sth-body');
   streamThinkBlock = document.getElementById('sth-block');
 }
+let _streamUpdateScheduled = false;
+let _pendingStreamMsg = null;
+
 function updateStreamRow(msg) {
-  if (!streamTextEl) return;
-  const showThink = document.getElementById('show-think').checked;
-  if (msg.thinking && streamThinkBlock) {
-    streamThinkBlock.style.display = showThink ? 'block' : 'none';
-    if (streamThinkEl) { streamThinkEl.textContent = msg.thinking; }
-    const wc = document.getElementById('sth-wc');
-    if (wc) wc.textContent = wordCount(msg.thinking) + ' words';
-  }
-  streamTextEl.innerHTML = fmtText(stripThink(msg.content));
+  _pendingStreamMsg = msg;
+  if (_streamUpdateScheduled) return;
+  _streamUpdateScheduled = true;
+  requestAnimationFrame(() => {
+    _streamUpdateScheduled = false;
+    if (!_pendingStreamMsg || !streamTextEl) return;
+    const m = _pendingStreamMsg;
+    const showThink = document.getElementById('show-think')?.checked;
+    if (m.thinking && streamThinkBlock) {
+      streamThinkBlock.style.display = showThink ? 'block' : 'none';
+      if (streamThinkEl) { streamThinkEl.textContent = m.thinking; }
+      const wc = document.getElementById('sth-wc');
+      if (wc) wc.textContent = wordCount(m.thinking) + ' words';
+    }
+    streamTextEl.innerHTML = fmtText(stripThink(m.content));
+  });
 }
 
 // ══════════════════════════════════════════
@@ -4430,25 +4826,37 @@ function stripThink(t) {
 }
 
 // ══════════════════════════════════════════
-// TEXT FORMAT (markdown-lite)
+// TEXT FORMAT (markdown-lite & XSS-safe)
 // ══════════════════════════════════════════
 function fmtText(text, searchMeta) {
   if (!text) return '';
-  text = text.replace(/```(\w*)\n?([\s\S]*?)```/g, (_,l,c) => `<pre><code>${esc(c.trim())}</code></pre>`);
-  text = text.replace(/`([^`\n]+)`/g, (_,c) => `<code>${esc(c)}</code>`);
-  text = text.replace(/^### (.+)$/gm,'<h3>$1</h3>');
-  text = text.replace(/^## (.+)$/gm,'<h2>$1</h2>');
-  text = text.replace(/^# (.+)$/gm,'<h1>$1</h1>');
-  text = text.replace(/\*\*\*(.+?)\*\*\*/g,'<strong><em>$1</em></strong>');
-  text = text.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
-  text = text.replace(/\*(.+?)\*/g,'<em>$1</em>');
-  text = text.replace(/^> (.+)$/gm,'<blockquote>$1</blockquote>');
+  const blocks = [];
+  text = text.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, l, c) => {
+    const idx = blocks.length;
+    blocks.push(`<pre><code>${esc(c.trim())}</code></pre>`);
+    return `___CODE_BLOCK_${idx}___`;
+  });
+  text = text.replace(/`([^`\n]+)`/g, (_, c) => {
+    const idx = blocks.length;
+    blocks.push(`<code>${esc(c)}</code>`);
+    return `___CODE_BLOCK_${idx}___`;
+  });
+
+  text = esc(text);
+
+  text = text.replace(/^### (.+)$/gm, (_, c) => `<h3>${c}</h3>`);
+  text = text.replace(/^## (.+)$/gm, (_, c) => `<h2>${c}</h2>`);
+  text = text.replace(/^# (.+)$/gm, (_, c) => `<h1>${c}</h1>`);
+  text = text.replace(/\*\*\*(.+?)\*\*\*/g, (_, c) => `<strong><em>${c}</em></strong>`);
+  text = text.replace(/\*\*(.+?)\*\*/g, (_, c) => `<strong>${c}</strong>`);
+  text = text.replace(/\*(.+?)\*/g, (_, c) => `<em>${c}</em>`);
+  text = text.replace(/^> (.+)$/gm, (_, c) => `<blockquote>${c}</blockquote>`);
   text = text.replace(/((?:^[-*] .+\n?)+)/gm, m => {
-    const items = m.trim().split('\n').map(l=>`<li>${l.replace(/^[-*] /,'')}</li>`).join('');
+    const items = m.trim().split('\n').map(l => `<li>${l.replace(/^[-*] /, '')}</li>`).join('');
     return `<ul>${items}</ul>`;
   });
   text = text.replace(/((?:^\d+\. .+\n?)+)/gm, m => {
-    const items = m.trim().split('\n').map(l=>`<li>${l.replace(/^\d+\. /,'')}</li>`).join('');
+    const items = m.trim().split('\n').map(l => `<li>${l.replace(/^\d+\. /, '')}</li>`).join('');
     return `<ol>${items}</ol>`;
   });
   if (searchMeta?.results?.length) {
@@ -4460,20 +4868,18 @@ function fmtText(text, searchMeta) {
         : match;
     });
   }
-  text = text.replace(/\n/g,'<br>');
+  text = text.replace(/\n/g, '<br>');
+  text = text.replace(/___CODE_BLOCK_(\d+)___/g, (_, idx) => blocks[parseInt(idx)]);
   return text;
 }
 
 // ══════════════════════════════════════════
-// PWA + MOBILE
+// PWA + MOBILE + NETWORK
 // ══════════════════════════════════════════
 
 // Service Worker registration
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    // Cache-bust the SW so the browser fetches the latest sw.js after every deploy.
-    // Without this, the browser may serve a stale sw.js from HTTP cache, which then
-    // serves the old index.html shell from the Cache API.
     navigator.serviceWorker.register('./sw.js?v=' + Date.now())
       .then(r => console.log('SW registered:', r.scope))
       .catch(e => console.warn('SW failed:', e));
@@ -4506,31 +4912,39 @@ window.addEventListener('appinstalled', () => {
   localStorage.setItem('mc_pwa_dismissed', '1');
 });
 
+// Offline / Online listeners
+window.addEventListener('offline', () => {
+  const inp = document.getElementById('chat-input');
+  if (inp) inp.placeholder = 'Offline — reconnect to send messages…';
+  showToast('⚡ Offline mode (cached chats available)', 'err');
+});
+window.addEventListener('online', () => {
+  const inp = document.getElementById('chat-input');
+  if (inp) inp.placeholder = 'Message MultiChat…';
+  showToast('🌐 Reconnected');
+});
+
 // Sidebar toggle for mobile
 function toggleSidebar() {
   const sb = document.getElementById('sidebar');
   if (window.innerWidth <= 700) {
     const ov = document.getElementById('sidebar-overlay');
     sb.classList.toggle('open');
-    ov.classList.toggle('show');
+    ov?.classList.toggle('show');
   } else {
     toggleSidebarCollapse();
   }
 }
 function closeSidebar() {
   const sb = document.getElementById('sidebar');
+  if (!sb) return;
   if (window.innerWidth <= 700) {
     sb.classList.remove('open');
-    document.getElementById('sidebar-overlay').classList.remove('show');
-  } else {
-    sb.classList.remove('collapsed');
-    const btn = sb.querySelector('.sidebar-collapse-btn');
-    if (btn) btn.textContent = '◀';
+    document.getElementById('sidebar-overlay')?.classList.remove('show');
   }
 }
 // Close sidebar when a chat is selected on mobile
 const _origLoadChat = loadChat;
-// patch loadChat to close sidebar on mobile
 window.loadChat = function(id) {
   _origLoadChat(id);
   if (window.innerWidth <= 700) closeSidebar();
@@ -4552,8 +4966,7 @@ window.setTheme = function(t) {
   _origSetTheme(t);
   const meta = document.getElementById('theme-meta');
   if (meta) meta.content = THEME_COLORS[t] || '#c96b2f';
-  // Also update manifest theme_color dynamically
-  document.querySelector('meta[name="theme-color"]').setAttribute('content', THEME_COLORS[t] || '#c96b2f');
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', THEME_COLORS[t] || '#c96b2f');
 };
 
 // Handle ?new=1 shortcut (PWA shortcut link)
@@ -4561,10 +4974,12 @@ if (new URLSearchParams(location.search).get('new') === '1') {
   window.addEventListener('load', () => setTimeout(newChat, 200));
 }
 
-// Prevent pull-to-refresh on the messages area (common mobile annoyance)
+// Prevent pull-to-refresh on the messages area when at top of scroll
 document.addEventListener('touchmove', e => {
   const msgs = document.getElementById('messages');
-  if (msgs && msgs.contains(e.target) && msgs.scrollTop > 0) return;
+  if (msgs && msgs.contains(e.target) && msgs.scrollTop <= 0) {
+    e.preventDefault();
+  }
 }, { passive: false });
 
 function copyMsg(msgIndex) {
@@ -4586,7 +5001,7 @@ function resetFooterStats() {
   _lastStats = { queryTok: 0, queryCost: 0, totalTok: 0, totalCost: 0, updated: Date.now() };
 }
 
-function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function wordCount(t) { return (t||'').trim().split(/\s+/).filter(Boolean).length; }
 function fmtSize(b) { return b>1024*1024?(b/1024/1024).toFixed(1)+'MB':b>1024?(b/1024).toFixed(0)+'KB':b+'B'; }
 function fileIcon(name) {
@@ -4595,12 +5010,15 @@ function fileIcon(name) {
   return map[ext] || '📄';
 }
 function handleKey(e) {
-  // Enter always inserts a newline — submit only via the send button
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+    e.preventDefault();
+    sendMessage();
+    return;
+  }
   updateTokCount(document.getElementById('chat-input').value);
 }
 function autoResize(el) { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,200)+'px'; updateTokCount(el.value); }
 function updateTokCount(t) { _lastTokCount = Math.ceil((t||'').length/4); }
-function useSug(t) { const inp=document.getElementById('chat-input'); inp.value=t; autoResize(inp); sendMessage(); }
 function showToast(msg, type='') {
   const t = document.getElementById('toast');
   t.textContent = msg; t.className = type==='err'?'err':'';
@@ -4611,14 +5029,10 @@ function showToast(msg, type='') {
 // Info popup functions
 function openInfoPopup() {
   const popup = document.getElementById('info-popup');
-
-  // Get current chat model from the hidden select
   const modelSelect = document.getElementById('model-sel');
   const currentModel = modelSelect ? modelSelect.value : 'Unknown';
 
-  // Get stats from global _lastStats (set by updateFooterStats in current session)
   let s = _lastStats || {};
-  // Fallback: read usage from the last AI message (persisted across devices)
   if (!s.queryTok && currentChatId && conversations[currentChatId]) {
     const msgs = conversations[currentChatId].messages || [];
     for (let i = msgs.length - 1; i >= 0; i--) {
@@ -4643,24 +5057,26 @@ function openInfoPopup() {
     : '—';
   const timeStr = s.updated ? new Date(s.updated).toLocaleString() : new Date().toLocaleString();
 
-  // Populate popup fields
   document.getElementById('info-model').textContent = currentModel || 'Unknown';
   document.getElementById('info-query-stats').textContent = queryStr;
   document.getElementById('info-conv-stats').textContent = convStr;
   document.getElementById('info-timestamp').textContent = timeStr;
 
-  // Show popup
   popup.classList.remove('hidden');
 }
 
 function closeInfoPopup() {
-  document.getElementById('info-popup').classList.add('hidden');
+  document.getElementById('info-popup')?.classList.add('hidden');
 }
 
-// Close popup when pressing Escape key
+// Close popup / confirmation on Escape key
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     closeInfoPopup();
+    if (_confirmDeleteId) {
+      _confirmDeleteId = null;
+      renderChatList();
+    }
   }
 });
 </script>

@@ -1,4 +1,4 @@
-const CACHE = 'multichat-v27';
+const CACHE = 'multichat-v28';
 const SHELL = [
   './',
   './index.html',

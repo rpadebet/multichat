@@ -162,11 +162,15 @@ Browser (GitHub Pages)
 
 The proxy adds synthetic `Access-Control-Allow-Origin: *` headers to all responses so the browser accepts them.
 
-## Change Log
-
-### 2026-05-30
-- **Model**: Gemini 3.5 Flash
+### 2026-07-30
+- **Model**: Gemini 3.6 Flash
 - **Changes**:
-  - Disabled automatic scrolling of the chat messages viewport while text and planning streams in. This allows users to manually control the viewport position on mobile as well as desktop without the viewport constantly jumping to the bottom.
-  - Bumped Service Worker cache version in `sw.js` to `multichat-v21` to ensure returning users fetch the updated `index.html`.
+  - Remediated all 81 findings across BUG_HUNT, ARCHITECTURE_REVIEW, and UI_UX_REVIEW documents.
+  - Hardened `fmtText()` and `esc()` against stored XSS attacks via code block stashing and complete single-quote / HTML tag escaping.
+  - Implemented streaming cancellation with `AbortController` and a responsive Stop button UI.
+  - Fixed silent failures and quota handling in `saveChats()`, `loadChats()`, `saveSettings()`, and `loadSettings()`.
+  - Resolved touchmove pull-to-refresh inverted guard, file extraction polling timeout (30s max retries), and settings slider race conditions.
+  - Added WCAG AA color contrast fixes for `--text3`, `:focus-visible` keyboard accessibility, dynamic `#chat-input` responsive sizing, typography scale fixes, Firefox scrollbar properties, and `Ctrl+Enter` submit shortcut.
+  - Added CSP meta tag in `index.html` and validation checks in `update_models.js`.
+  - Bumped Service Worker cache version in `sw.js` to `multichat-v28`.
 

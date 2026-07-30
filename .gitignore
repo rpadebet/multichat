@@ -5,3 +5,6 @@ __pycache__/
 *.pyc
 .worktrees/
 .superpowers/
+decrypt_sync.py
+passphrase.txt
+*.bak
