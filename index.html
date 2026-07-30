@@ -2314,7 +2314,11 @@ async function searchSerper(query, apiKey) {
     headers: { 'Content-Type': 'application/json', 'X-API-KEY': apiKey },
     body: JSON.stringify({ q: query, num: 5 })
   });
-  if (!resp.ok) throw new Error(`Serper HTTP ${resp.status}`);
+  if (!resp.ok) {
+    const errText = await resp.text().catch(() => '');
+    const errMsg = errText.trim() ? errText.slice(0, 100).replace(/\n/g, ' ') : '';
+    throw new Error(`Serper HTTP ${resp.status}${errMsg ? ` (${errMsg})` : ''}`);
+  }
   const data = await resp.json();
   const results = [];
   if (data.answerBox?.answer || data.answerBox?.snippet) {
@@ -2354,7 +2358,8 @@ async function searchSearXNG(query, baseUrl) {
     if (!resp.ok) {
       const errText = await resp.text().catch(() => '');
       console.error('[MultiChat] searchSearXNG — HTTP error body:', errText.slice(0, 500));
-      throw new Error(`SearXNG HTTP ${resp.status}`);
+      const errMsg = errText.trim() ? errText.slice(0, 100).replace(/\n/g, ' ') : '';
+      throw new Error(`SearXNG HTTP ${resp.status}${errMsg ? ` (${errMsg})` : ''}`);
     }
     const data = await resp.json();
     console.log('[MultiChat] searchSearXNG — results count:', (data.results || []).length);
