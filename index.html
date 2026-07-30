@@ -3341,7 +3341,7 @@ async function fetchLiveModels(provider) {
     const res = await fetch(url, {
       method: 'GET',
       headers: proxyHeaders({
-        'Authorization': `Bearer ${key}`,
+        ...(provider !== 'neuralwatt' && key ? { 'Authorization': `Bearer ${key}` } : {}),
         'Content-Type': 'application/json',
         ...(provider === 'openrouter'
           ? {'HTTP-Referer': location.origin, 'X-Title': 'MultiChat'}
