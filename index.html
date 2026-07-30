@@ -4794,7 +4794,7 @@ function fileIcon(name) {
   return map[ext] || '📄';
 }
 function handleKey(e) {
-  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
     e.preventDefault();
     sendMessage();
     return;
