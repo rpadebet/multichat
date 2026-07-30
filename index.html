@@ -584,7 +584,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
 .msg-text strong{font-weight:600;}
 .msg-text em{font-style:italic;color:var(--text2);}
 .msg-text h1,.msg-text h2,.msg-text h3{font-family:var(--font-head);font-weight:600;margin:12px 0 5px;color:var(--text);}
-.msg-text h1{font-size:18px;} .msg-text h2{font-size:16px;} .msg-text h3{font-size:14px;}
+
 .msg-text code{font-family:var(--font-mono);font-size:12px;background:var(--bg3);padding:2px 5px;border-radius:4px;color:var(--accent);border:1px solid var(--border);}
 .msg-text pre{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:13px 15px;overflow-x:auto;margin:9px 0;}
 .msg-text pre code{background:none;border:none;padding:0;color:var(--text2);font-size:12px;}
@@ -728,7 +728,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
 .att-chip-del:hover{color:var(--red);}
 
 .input-row{display:flex;align-items:flex-end;gap:6px;width:100%;}
-#chat-input{flex:1 1 auto;width:100%;min-width:680px;padding:12px 14px;background:var(--user-bg);border:1px solid var(--border);border-radius:var(--radius-lg);color:var(--text);font-family:var(--font-body);font-size:14px;line-height:1.6;resize:none;outline:none;transition:border-color 0.17s,box-shadow 0.17s;min-height:50px;max-height:200px;overflow-y:auto;box-shadow:0 1px 4px var(--shadow);}
+
 #chat-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg);}
 #chat-input::placeholder{color:var(--text3);}
 .input-actions{display:flex;flex-direction:row;gap:4px;flex:0 0 auto;align-items:flex-end;}
@@ -813,7 +813,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
    Fixed, horizontally centred above the input area (bottom:72px clears it).
    z-index:300 keeps it above all panels. The .err variant uses red tones;
    dark themes get their own override so the red stays readable on dark surfaces. */
-#toast{position:fixed;bottom:72px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);color:var(--text2);padding:8px 16px;border-radius:var(--radius);font-size:13px;display:none;z-index:300;max-width:480px;text-align:center;box-shadow:0 4px 14px var(--shadow);}
+
 #toast.err{background:#fef2f2;border-color:#fecaca;color:#b91c1c;}
 [data-theme="chatgpt"] #toast.err,[data-theme="gemini"] #toast.err,[data-theme="dark"] #toast.err,[data-theme="duo"] #toast.err{background:#3b1515;border-color:#7f1d1d;color:#fca5a5;}
 
@@ -885,7 +885,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
 }
 
 .popup-close:hover {
-  color: var(--text1);
+  color:var(--text);
 }
 
 .popup-body {
@@ -1710,7 +1710,6 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
 
 <!-- Toast notification container — content and visibility controlled entirely -->
 <div id="toast"></div>
-<input type="file" id="attach-input-dup" style="display:none" multiple/>
 
 <!-- Info popup for chat details — shows model, tokens, timestamp overlay -->
 <div id="info-popup" class="popup hidden">
@@ -1817,7 +1816,7 @@ const PROVIDERS = {
     {id:'openai/gpt-5.4', name:'OpenAI: GPT-5.4 (1M)', p:'$2.50/$15.00'},
     {id:'openai/gpt-5.4:batch', name:'OpenAI: GPT-5.4 (batch) (1M)', p:'$1.25/$7.50'},
     {id:'meituan/longcat-2.0', name:'Meituan: LongCat 2.0 (1M)', p:'$0.300/$1.20'},
-    {id:'poolside/laguna-s-2.1', name:'Poolside: Laguna S 2.1 (1M)', p:'$0.100/$0.200'},
+    {id:'poolside/laguna-s-2.1', name:'Poolside: Laguna S 2.1 (1M)', p:'$0.090/$0.180'},
   ]},
   neuralwatt:{label:'NeuralWatt',badge:'badge-neuralwatt',usageUrl:'https://portal.neuralwatt.com',url:'https://api.neuralwatt.com/v1',models:[
     {id:'glm-5.2',            name:'GLM-5.2 — Reasoning ★ (1M ctx)',     p:'$1.45/$4.50'},
@@ -1851,10 +1850,6 @@ let lastSearchMeta = null; // {queries[], provider, results[], grouped[]} for th
 
 // ══════════════════════════════════════════
 // WEB SEARCH
-// SEARCH_PROVIDERS maps provider IDs to display labels, localStorage key names
-// for their API keys, and cost/signup notes shown in the settings panel.
-// Keeping keys separate from mc_settings lets each provider's key persist
-// independently when the user switches between Tavily and Serper.
 // ══════════════════════════════════════════
 const SEARCH_PROVIDERS = {
   tavily: {
@@ -1875,14 +1870,11 @@ const SEARCH_PROVIDERS = {
   }
 };
 
-// Retrieves the stored API key for the given search provider from localStorage.
 function getSearchKey(provider) {
   const keyName = SEARCH_PROVIDERS[provider]?.keyName;
   return keyName ? (localStorage.getItem(keyName) || '') : '';
 }
 
-// Persists the search API key for whichever provider is currently selected in
-// the settings dropdown. Removes the key if the input is cleared.
 function saveSearchKey(value) {
   const provider = document.getElementById('ws-provider')?.value;
   if (!provider) return;
@@ -1892,8 +1884,6 @@ function saveSearchKey(value) {
   else localStorage.removeItem(keyName);
 }
 
-// Persists web search settings (enabled, provider, mode) into mc_settings while
-// preserving all other settings already stored there (temperature, prompt, etc.).
 function saveWebSearchSettings() {
   const existing = JSON.parse(localStorage.getItem('mc_settings') || '{}');
   existing.webSearchEnabled = document.getElementById('ws-enabled')?.checked || false;
@@ -1903,8 +1893,6 @@ function saveWebSearchSettings() {
   updateSearchIndicator();
 }
 
-// Restores web search UI state from localStorage on page load. Called from
-// loadSettings() so search config is always in sync with the stored settings.
 function loadWebSearchSettings() {
   try {
     const s = JSON.parse(localStorage.getItem('mc_settings') || '{}');
@@ -1927,7 +1915,6 @@ function loadWebSearchSettings() {
     updateSearchKeyRow(provider);
     updateSearchCostNote(provider);
 
-    // Restore saved key for current provider
     const keyName = SEARCH_PROVIDERS[provider]?.keyName;
     if (keyName) {
       const k = localStorage.getItem(keyName);
@@ -1935,17 +1922,16 @@ function loadWebSearchSettings() {
       if (kInput && k) kInput.value = k;
     }
 
-    // Restore saved SearXNG URL
     const url = localStorage.getItem('mc_search_url');
     const urlInput = document.getElementById('ws-url-input');
     if (urlInput && url) urlInput.value = url;
 
     updateSearchIndicator();
-  } catch(e) {}
+  } catch(e) {
+    console.warn('[MultiChat] Failed to load web search settings:', e);
+  }
 }
 
-// Shows/hides the #ws-config sub-section when the master web search toggle
-// is flipped, then persists the new state immediately.
 function onWebSearchToggle() {
   const enabled = document.getElementById('ws-enabled').checked;
   const cfg = document.getElementById('ws-config');
@@ -1953,23 +1939,18 @@ function onWebSearchToggle() {
   saveWebSearchSettings();
 }
 
-// Handles switching between search providers: updates the key row + URL row visibility,
-// cost note text, and loads the saved key/URL for the newly selected provider.
 function onWebSearchProviderChange() {
   const provider = document.getElementById('ws-provider').value;
   updateSearchKeyRow(provider);
   updateSearchCostNote(provider);
-  // Load saved key for newly selected provider
   const keyName = SEARCH_PROVIDERS[provider]?.keyName;
   const kInput = document.getElementById('ws-key-input');
   if (kInput) kInput.value = keyName ? (localStorage.getItem(keyName) || '') : '';
-  // Load saved URL for SearXNG
   const urlInput = document.getElementById('ws-url-input');
   if (urlInput) urlInput.value = provider === 'searxng' ? (localStorage.getItem('mc_search_url') || '') : '';
   saveWebSearchSettings();
 }
 
-// Shows the API key row for key-based providers, URL row for SearXNG.
 function updateSearchKeyRow(provider) {
   const keyRow = document.getElementById('ws-key-row');
   const urlRow = document.getElementById('ws-url-row');
@@ -1977,16 +1958,11 @@ function updateSearchKeyRow(provider) {
   if (urlRow) urlRow.style.display = provider === 'searxng' ? 'block' : 'none';
 }
 
-// Updates the cost/signup info note below the provider selector with the
-// pricing text defined in SEARCH_PROVIDERS for the selected provider.
 function updateSearchCostNote(provider) {
   const note = document.getElementById('ws-cost-note');
   if (note) note.textContent = SEARCH_PROVIDERS[provider]?.costNote || '';
 }
 
-// Updates the footer search indicator pill in the input bar. Shows the active
-// mode (Auto/Always) and provider name when web search is enabled, hides it
-// when disabled so the indicator only appears when search is actually active.
 function updateSearchIndicator() {
   const ind = document.getElementById('search-indicator');
   if (!ind) return;
@@ -2997,7 +2973,9 @@ function loadSectionState() {
       const isOpen = states.hasOwnProperty(key) ? states[key] : (key === 'keys');
       s.classList.toggle('collapsed', !isOpen);
     });
-  } catch(e) {}
+  } catch(e) {
+    console.warn('[MultiChat] Failed to load section states:', e);
+  }
 }
 
 // Persists UI parameters to mc_settings in localStorage. Explicitly reads and
