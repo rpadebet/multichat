@@ -2237,27 +2237,46 @@ async function searchSerper(query, apiKey) {
 }
 
 async function searchSearXNG(query, baseUrl) {
+  console.log('[MultiChat] searchSearXNG called — baseUrl:', baseUrl, 'query:', query);
   let url;
   try {
     url = new URL(baseUrl.trim());
   } catch (e) {
+    console.error('[MultiChat] searchSearXNG — invalid URL:', baseUrl.trim(), e);
     throw new Error('Invalid SearXNG URL. Expected something like https://searx.example.com/search');
   }
   url.searchParams.set('q', query);
   url.searchParams.set('format', 'json');
 
-  // Route localhost/private-network SearXNG through the CORS proxy
-  const isLocalhost = /^(localhost|127\.0\.0\.1|\[::1\])$/i.test(url.hostname);
-  const fetchUrl = isLocalhost
+  // Route localhost/private-network SearXNG through the CORS proxy.
+  // Covers Docker hostnames (host.docker.internal, container names) and all local variants.
+  const privateHostnames = /^(localhost|127\.\d+\.\d+\.\d+|\[::1\]|host\.docker\.internal|0\.0\.0\.0)$/i;
+  const isLocal = privateHostnames.test(url.hostname)
+    || url.hostname === 'host.docker.internal'
+    || !url.hostname.includes('.');  // bare hostname like "searxng" (Docker container name) or "mylocal"
+  console.log('[MultiChat] searchSearXNG — hostname:', url.hostname, 'isLocal:', isLocal);
+  const fetchUrl = isLocal
     ? 'https://proxy.opencodechat.dpdns.org/proxy?url=' + encodeURIComponent(url.toString())
     : url.toString();
+  console.log('[MultiChat] searchSearXNG — fetchUrl:', fetchUrl);
 
-  const resp = await fetch(fetchUrl, { headers: isLocalhost ? proxyHeaders({}, true) : {} });
-  if (!resp.ok) throw new Error(`SearXNG HTTP ${resp.status}`);
-  const data = await resp.json();
-  return (data.results || []).map(r => ({
-    title: r.title || '', url: r.url || '', snippet: (r.content || r.snippet || '').slice(0, 800)
-  }));
+  try {
+    const resp = await fetch(fetchUrl, { headers: isLocal ? proxyHeaders({}, true) : {} });
+    console.log('[MultiChat] searchSearXNG — response status:', resp.status, 'ok:', resp.ok);
+    if (!resp.ok) {
+      const errText = await resp.text().catch(() => '');
+      console.error('[MultiChat] searchSearXNG — HTTP error body:', errText.slice(0, 500));
+      throw new Error(`SearXNG HTTP ${resp.status}`);
+    }
+    const data = await resp.json();
+    console.log('[MultiChat] searchSearXNG — results count:', (data.results || []).length);
+    return (data.results || []).map(r => ({
+      title: r.title || '', url: r.url || '', snippet: (r.content || r.snippet || '').slice(0, 800)
+    }));
+  } catch (e) {
+    console.error('[MultiChat] searchSearXNG — fetch/parse error:', e.message, e);
+    throw e;
+  }
 }
 
 function getSearchUrl() { return localStorage.getItem('mc_search_url') || ''; }
