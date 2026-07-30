@@ -3266,7 +3266,7 @@ async function populateModels(p) {
   let models = null;
 
   // Try live fetch if provider supports it
-  const canFetchLive = LIVE_PROVIDERS.has(p) && (getKey(p) || p === 'openrouter');
+  const canFetchLive = LIVE_PROVIDERS.has(p) && (getKey(p) || p === 'openrouter' || p === 'neuralwatt');
   if (canFetchLive) {
     if (modelCache[p]) {
       models = modelCache[p];
@@ -3328,7 +3328,7 @@ async function populateModels(p) {
 async function fetchLiveModels(provider) {
   const key = getKey(provider);
   // OpenRouter endpoints are public, no key required to list models
-  if (!key && provider !== 'openrouter') return null;
+  if (!key && provider !== 'openrouter' && provider !== 'neuralwatt') return null;
 
   // ── Primary: direct provider API ──
   try {
