@@ -343,6 +343,28 @@ async function runAll() {
   });
 
   // ══════════════════════════════════════════
+  // fmtChatItemDate() — compact sidebar timestamps
+  // ══════════════════════════════════════════
+  await runTest('fmtChatItemDate() should show time only for today and yesterday', () => {
+    const NOW = new Date(2026, 6, 15, 12, 0, 0).getTime(); // Jul 15 2026 12:00 local
+    assert.strictEqual(window.fmtChatItemDate(NOW, NOW), window.fmtTime(NOW));
+    assert.strictEqual(window.fmtChatItemDate(NOW - 86400000, NOW), window.fmtTime(NOW - 86400000));
+    assert.ok(!window.fmtChatItemDate(NOW, NOW).includes('·'));
+  });
+  await runTest('fmtChatItemDate() should show short date + time for older same-year items', () => {
+    const NOW = new Date(2026, 6, 15, 12, 0, 0).getTime();
+    const older = new Date(2026, 5, 13, 10, 30, 0).getTime(); // Jun 13 2026
+    const expectedDate = new Date(older).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    assert.strictEqual(window.fmtChatItemDate(older, NOW), expectedDate + ' · ' + window.fmtTime(older));
+  });
+  await runTest('fmtChatItemDate() should include the year when it differs', () => {
+    const NOW = new Date(2026, 6, 15, 12, 0, 0).getTime();
+    const old = new Date(2025, 5, 13, 10, 30, 0).getTime(); // Jun 13 2025
+    const expectedDate = new Date(old).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    assert.strictEqual(window.fmtChatItemDate(old, NOW), expectedDate + ' · ' + window.fmtTime(old));
+  });
+
+  // ══════════════════════════════════════════
   // fmtPrice()
   // ══════════════════════════════════════════
   await runTest('fmtPrice() should pick precision by magnitude', () => {

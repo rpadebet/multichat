@@ -143,7 +143,7 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:
    the new-chat button. Border-bottom visually separates it from the list. */
 .sidebar-header{padding:16px 16px 12px;border-bottom:1px solid var(--border);}
 .logo{display:flex;align-items:center;gap:9px;margin-bottom:12px;}
-.logo-mark{width:28px;height:28px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;color:white;font-size:14px;flex-shrink:0;}
+.logo-mark{width:28px;height:28px;background:var(--accent);clip-path:polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);flex-shrink:0;}
 .logo-name{font-family:var(--font-head);font-weight:600;font-size:16px;color:var(--text);}
 
 /* Full-width button that creates a new chat session and resets the message area. */
@@ -226,6 +226,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
   .msg-row { animation: none !important; }
   .phase-badge { animation: none !important; opacity: 1 !important; }
   .tdot { animation: none !important; opacity: 0.8 !important; }
+  .tog.loading .tog-track { animation: none !important; }
   .search-chev, .think-chev { transition: none !important; }
 }
 
@@ -320,9 +321,6 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
 .chat-confirm-delete{background:var(--red);color:white;border-color:var(--red);}
 .chat-confirm-delete:hover{background:#a93226;}
 
-/* ── Chat info bar (message area) ── */
-.chat-info-bar{max-width:2400px;margin:0 auto;padding:8px 22px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text3);text-align:center;}
-
 /* ── API Keys panel ── */
 .api-panel{border-top:1px solid var(--border);padding:12px 12px 14px;}
 .panel-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.9px;color:var(--text3);margin-bottom:8px;}
@@ -401,12 +399,19 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
 .hdr-divider{width:1px;height:18px;background:var(--border);}
 .think-wrap{display:flex;align-items:center;gap:6px;}
 .think-lbl{font-size:12px;color:var(--text2);cursor:pointer;user-select:none;}
+/* Hide the think label on narrow windows so the never-wrapping header stays compact */
+@media (max-width: 900px) {
+  .think-lbl{display:none;}
+}
 .tog{position:relative;width:32px;height:17px;cursor:pointer;}
 .tog input{display:none;}
 .tog-track{position:absolute;inset:0;background:var(--border);border-radius:17px;transition:background 0.18s;}
 .tog-thumb{position:absolute;top:2px;left:2px;width:13px;height:13px;background:white;border-radius:50%;transition:transform 0.18s;box-shadow:0 1px 3px rgba(0,0,0,0.2);}
 .tog input:checked+.tog-track{background:var(--accent);}
 .tog input:checked~.tog-thumb{transform:translateX(15px);}
+/* Loading state: subtle pulse while an associated async op is in flight */
+.tog.loading .tog-track{animation:togPulse 1.2s ease-in-out infinite;}
+@keyframes togPulse{0%,100%{opacity:1;}50%{opacity:0.45;}}
 .hdr-right{display:flex;align-items:center;gap:7px;}
 .price-pill{font-size:11px;font-family:var(--font-mono);color:var(--text3);background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:2px 7px;}
 .prov-badge{padding:3px 8px;border-radius:20px;font-size:11px;font-family:var(--font-mono);}
@@ -447,7 +452,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
 .sp-section.collapsed .sp-chevron{transform:rotate(-90deg);}
 .sp-section-content{padding:0 12px 12px;display:flex;flex-direction:column;gap:10px;transition:max-height 0.25s ease-out,opacity 0.2s,padding 0.2s;max-height:2000px;opacity:1;overflow:hidden;}
 .sp-section.collapsed .sp-section-content{max-height:0;opacity:0;padding:0 12px;}
-.sp-section-actions{display:flex;gap:6px;padding-bottom:8px;}
+.sp-section-actions{display:flex;gap:6px;padding-bottom:8px;border-bottom:1px solid var(--border);margin-bottom:10px;}
 .sp-section-actions button{flex:1;padding:4px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text3);font-size:11px;cursor:pointer;font-family:var(--font-body);transition:all 0.15s;}
 .sp-section-actions button:hover{background:var(--border);color:var(--text2);}
 .sp-label{font-size:12px;font-weight:500;color:var(--text2);margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;}
@@ -667,6 +672,14 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
 .wlc-icon{width:50px;height:50px;background:var(--accent);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;color:white;margin-bottom:18px;box-shadow:0 4px 20px var(--accent-bg);}
 .wlc-title{font-family:var(--font-head);font-size:25px;font-weight:600;color:var(--text);margin-bottom:7px;}
 .wlc-sub{font-size:14px;color:var(--text2);line-height:1.6;max-width:400px;margin-bottom:28px;}
+/* Suggestion chips under the model info card — populate the input on click */
+.suggs{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;max-width:540px;width:100%;margin-top:22px;}
+.sug-card{padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);cursor:pointer;text-align:left;transition:all 0.17s;font-family:var(--font-body);}
+.sug-card:hover{border-color:var(--accent);box-shadow:0 2px 12px var(--accent-bg);}
+.sug-card:active{transform:scale(0.98);}
+.sug-icon{font-size:15px;margin-bottom:6px;display:block;}
+.sug-title{font-weight:600;font-size:13px;color:var(--text);margin-bottom:3px;display:block;}
+.sug-desc{font-size:11px;color:var(--text3);line-height:1.4;display:block;}
 
 /* ── Model info card (replaces suggestion grid on welcome screen) ── */
 .model-info-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:22px 28px;max-width:420px;width:100%;display:flex;flex-direction:column;align-items:center;gap:14px;margin-top:4px;}
@@ -687,12 +700,13 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
 /* ── Input area ── */
 /* Chat info bar sits between messages and input, visible only when a conversation
    is loaded. Contains the info (ⓘ) button that opens the stats popup. */
-#chat-info-bar{width:100%;max-width:2400px;margin:0 auto;padding:0 22px 4px;display:flex;justify-content:space-between;align-items:center;}
+#chat-info-bar{width:100%;max-width:2400px;margin:0 auto;padding:0 22px 4px;display:flex;justify-content:flex-start;align-items:center;}
 #info-btn{width:26px;height:26px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg2);cursor:pointer;color:var(--text3);font-size:13px;padding:0;transition:all 0.15s;}
 #info-btn:hover{background:var(--bg3);color:var(--text);}
-#chat-info-bar .attach-btn{width:26px;height:26px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;}
 
 #input-area{flex:0 1 auto;padding:12px 22px 16px;border-top:1px solid var(--border);background:var(--surface);display:flex;flex-direction:column;}
+/* File drag-and-drop target: dashed outline + accent tint while dragging */
+#input-area.drag-over{outline:2px dashed var(--accent);outline-offset:-6px;background:var(--accent-bg);}
 .input-wrap{max-width:2400px;margin:0 auto;position:relative;}
 
 /* File preview strip above textarea */
@@ -905,7 +919,6 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
 
   #chat-info-bar{padding:0 12px 4px;}
   #info-btn{width:30px;height:30px;font-size:14px;}
-  #chat-info-bar .attach-btn{width:30px;height:30px;font-size:14px;}
 
   .input-footer{margin-top:4px;}
 }
@@ -1026,7 +1039,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
   <!-- Logo row: mark + name + collapse toggle button -->
   <div class="sidebar-header">
     <div class="logo">
-      <div class="logo-mark">◆</div>
+      <div class="logo-mark"></div>
       <span class="logo-name">MultiChat</span>
       <button class="sidebar-collapse-btn" onclick="toggleSidebarCollapse()" title="Collapse sidebar">◀</button>
     </div>
@@ -1094,6 +1107,10 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
     </div>
     <div class="hdr-right">
       <span class="price-pill" id="price-pill"></span>
+      <div class="think-wrap">
+        <label class="tog"><input type="checkbox" id="show-think" onchange="updateThinkLabel()"><div class="tog-track"></div><div class="tog-thumb"></div></label>
+        <span class="think-lbl" id="think-lbl">Hide thinking</span>
+      </div>
       <button class="icon-btn" id="settings-toggle" onclick="toggleSettings()" title="Model settings">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       </button>
@@ -1133,6 +1150,20 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
           <a id="mic-usage-link" href="#" target="_blank" rel="noopener" class="mic-usage-link" style="display:none;">📊 View Usage & Billing →</a>
         </div>
       </div>
+      <div class="suggs">
+        <button class="sug-card" onclick="useSuggestion('Summarize this conversation so far')">
+          <span class="sug-icon">📝</span><span class="sug-title">Summarize</span><span class="sug-desc">Catch up on the key points</span>
+        </button>
+        <button class="sug-card" onclick="useSuggestion('Write a Python script that does web scraping and explain how it works')">
+          <span class="sug-icon">💻</span><span class="sug-title">Write code</span><span class="sug-desc">Scripts with explanations</span>
+        </button>
+        <button class="sug-card" onclick="useSuggestion('Search the web for the latest news and summarize what you find')">
+          <span class="sug-icon">🔍</span><span class="sug-title">Web search</span><span class="sug-desc">Live results with citations</span>
+        </button>
+        <button class="sug-card" onclick="useSuggestion('Brainstorm ideas for a side project with an AI assistant')">
+          <span class="sug-icon">💡</span><span class="sug-title">Brainstorm</span><span class="sug-desc">Explore ideas together</span>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -1140,13 +1171,6 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
        the info (ⓘ) button. Hidden when no conversation is loaded. -->
   <div id="chat-info-bar">
     <button id="info-btn" onclick="openInfoPopup()" title="Chat Info">ⓘ</button>
-    <button class="attach-btn" onclick="document.getElementById('attach-input').click()" title="Attach file">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-    </button>
-    <div class="think-wrap">
-      <label class="tog"><input type="checkbox" id="show-think" onchange="updateThinkLabel()"><div class="tog-track"></div><div class="tog-thumb"></div></label>
-      <span class="think-lbl" id="think-lbl">Hide thinking</span>
-    </div>
   </div>
 
   <!-- ── Input area ──
@@ -1164,6 +1188,9 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
         <textarea id="chat-input" placeholder="Message MultiChat…" rows="1"
           onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
         <div class="input-actions">
+          <button class="attach-btn" onclick="document.getElementById('attach-input').click()" title="Attach file">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+          </button>
           <button id="send-btn" onclick="sendMessage()" title="Send">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
           </button>
@@ -1801,6 +1828,10 @@ function updateSyncStatus(status, message) {
   const iconEl = document.getElementById('sync-status-icon');
   const btn = document.getElementById('sync-now-btn');
   if (!el || !iconEl) return;
+
+  // Pulse the cloud-sync toggle while a sync is in flight
+  const tog = document.getElementById('cs-enabled')?.closest('.tog');
+  if (tog) tog.classList.toggle('loading', status === 'syncing');
 
   const icons = {
     disabled: '⚪',
@@ -3563,7 +3594,7 @@ function renderChatList() {
       const isActive = id === currentChatId;
       const isConfirming = _confirmDeleteId === id;
       const ts = chat.updatedAt || chat.createdAt || Date.now();
-      const dateText = fmtRelativeDate(ts) + ' · ' + fmtTime(ts);
+      const dateText = fmtChatItemDate(ts);
 
       if (isConfirming) {
         html += `<div class="chat-confirm-strip">
@@ -3596,6 +3627,7 @@ function renderChatList() {
 }
 
 function togglePin(id) {
+  _confirmDeleteId = null; // cancel any pending delete confirmation
   const chat = conversations[id];
   if (!chat) return;
   chat.pinned = !chat.pinned;
@@ -3708,6 +3740,21 @@ function fmtRelativeDate(ts) {
   if (ts >= weekStart) return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()];
   if (ts >= monthStart) return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+// Compact per-chat-item timestamp: the sidebar group header already says
+// Today/Yesterday, so items in those buckets show time only. Older items show
+// "Sep 15 · 2:34 PM" (year only when it differs) to avoid truncation.
+function fmtChatItemDate(ts, nowTs = Date.now()) {
+  const now = new Date(nowTs);
+  const d = new Date(ts);
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  if (ts >= todayStart - 86400000) return fmtTime(ts);
+  const sameYear = d.getFullYear() === now.getFullYear();
+  const date = sameYear
+    ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return date + ' · ' + fmtTime(ts);
 }
 
 function fmtTime(ts) {
@@ -4355,7 +4402,7 @@ function appendTypingIndicator() {
 }
 function removeTypingIndicator() { document.getElementById('typing-row')?.remove(); }
 
-let streamTextEl = null, streamThinkEl = null, streamThinkBlock = null;
+let streamTextEl = null, streamThinkEl = null, streamThinkBlock = null, streamThinkWcEl = null;
 function appendStreamRow(msg) {
   const msgs = document.getElementById('messages');
   const row = document.createElement('div');
@@ -4386,6 +4433,7 @@ function appendStreamRow(msg) {
   streamTextEl = document.getElementById('sth-text');
   streamThinkEl = document.getElementById('sth-body');
   streamThinkBlock = document.getElementById('sth-block');
+  streamThinkWcEl = document.getElementById('sth-wc');
 }
 let _streamUpdateScheduled = false;
 let _pendingStreamMsg = null;
@@ -4402,8 +4450,7 @@ function updateStreamRow(msg) {
     if (m.thinking && streamThinkBlock) {
       streamThinkBlock.style.display = showThink ? 'block' : 'none';
       if (streamThinkEl) { streamThinkEl.textContent = m.thinking; }
-      const wc = document.getElementById('sth-wc');
-      if (wc) wc.textContent = wordCount(m.thinking) + ' words';
+      if (streamThinkWcEl) streamThinkWcEl.textContent = wordCount(m.thinking) + ' words';
     }
     streamTextEl.innerHTML = fmtText(stripThink(m.content));
   });
@@ -4576,6 +4623,23 @@ document.addEventListener('touchmove', e => {
   }
 }, { passive: false });
 
+// Drag-and-drop file attachment into the chat input area
+(function() {
+  const inputArea = document.getElementById('input-area');
+  if (!inputArea) return;
+  inputArea.addEventListener('dragover', e => {
+    if (!e.dataTransfer?.types?.includes('Files')) return;
+    e.preventDefault();
+    inputArea.classList.add('drag-over');
+  });
+  inputArea.addEventListener('dragleave', () => inputArea.classList.remove('drag-over'));
+  inputArea.addEventListener('drop', e => {
+    e.preventDefault();
+    inputArea.classList.remove('drag-over');
+    if (e.dataTransfer?.files?.length) handleFileAttach(e.dataTransfer.files);
+  });
+})();
+
 function copyMsg(msgIndex) {
   const chat = currentChatId && conversations[currentChatId];
   if (!chat) return;
@@ -4612,6 +4676,13 @@ function handleKey(e) {
   updateTokCount(document.getElementById('chat-input').value);
 }
 function autoResize(el) { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,200)+'px'; updateTokCount(el.value); }
+function useSuggestion(text) {
+  const inp = document.getElementById('chat-input');
+  if (!inp) return;
+  inp.value = text;
+  autoResize(inp);
+  inp.focus();
+}
 function updateTokCount(t) { _lastTokCount = Math.ceil((t||'').length/4); }
 function showToast(msg, type='') {
   const t = document.getElementById('toast');
@@ -4663,7 +4734,7 @@ function closeInfoPopup() {
   document.getElementById('info-popup')?.classList.add('hidden');
 }
 
-// Close popup / confirmation on Escape key
+// Close popup / confirmation on Escape, confirm delete on Enter
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     closeInfoPopup();
@@ -4671,6 +4742,9 @@ document.addEventListener('keydown', (e) => {
       _confirmDeleteId = null;
       renderChatList();
     }
+  }
+  if (e.key === 'Enter' && _confirmDeleteId) {
+    confirmDelete(_confirmDeleteId, true);
   }
 });
 </script>
