@@ -194,3 +194,13 @@ The proxy adds synthetic `Access-Control-Allow-Origin: *` headers to all respons
   - Added CSP meta tag in `index.html` and validation checks in `update_models.js`.
   - Bumped Service Worker cache version in `sw.js` to `multichat-v28`.
 
+### 2026-07-31
+- **Changes**:
+  - Completed the audit remediation: removed duplicate CSS blocks (fixing the `#send-btn:hover` scale regression and old 8px popup radius), escaped live model data in the hidden `<select>`, and fixed blockquote rendering in `fmtText()` (broken by escape-first markdown).
+  - Extracted the static model registry into `models.js` (`window.PROVIDERS`); `update_models.js` now mutates `models.js` and throws on regex mismatch.
+  - Added random per-user PBKDF2 salt for cloud sync (`salt:iv:cipher` payload format with legacy `iv:cipher` read fallback).
+  - Replaced silent stream-parse catches with throttled `console.warn`, converted async `forEach` file processing to `Promise.allSettled`, and added an empty-queries fallback in `renderSearchPanel`.
+  - Expanded the jsdom test suite (`test.js`) from 5 to 50 tests: full `fmtText()` markdown + XSS matrix, `renderSearchPanel`, `stripThink`/`extractThink`, `fmtPrice`, `providerFromModel`, real WebCrypto `encryptSync`/`decryptSync` round-trips, plus failure guards (fatal on script errors, 15s timeout).
+  - Updated AGENTS.md to match the two-file runtime (index.html + models.js); `node_modules/` added to `.gitignore`.
+  - Bumped Service Worker cache version in `sw.js` to `multichat-v36`.
+
