@@ -1,0 +1,27 @@
+{
+  "name": "multichat",
+  "version": "1.0.0",
+  "description": "A Claude-style AI chat interface as a **single-file Progressive Web App (PWA)** — no backend, no build tools, no server infrastructure. Host it anywhere (GitHub Pages, Netlify, S3) and it works instantly.",
+  "main": "proxy.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "node test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rpadebet/multichat.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/rpadebet/multichat/issues"
+  },
+  "homepage": "https://github.com/rpadebet/multichat#readme",
+  "dependencies": {
+    "jsdom": "^29.1.1"
+  }
+}

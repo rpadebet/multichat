@@ -12,6 +12,7 @@
 <meta name="description" content="Chat with frontier AI models — Groq, OpenCode Go, OpenRouter">
 <link rel="manifest" href="manifest.json" id="manifest-link">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
+<script src="./models.js"></script>
 <script>
   document.getElementById('manifest-link').href += '?v=' + Date.now();
   const savedTheme = localStorage.getItem('mc_theme');
@@ -580,31 +581,11 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
    allowing word wrapping. The fmtText() JS function converts markdown-lite
    syntax to HTML tags which these rules style — headings use the serif/display
    font for visual hierarchy, code uses mono with accent colour for scannability. */
-.msg-text{font-family:var(--font-body);font-size:14.5px;line-height:1.75;color:var(--text);white-space:pre-wrap;word-break:break-word;}
-.msg-text strong{font-weight:600;}
-.msg-text em{font-style:italic;color:var(--text2);}
-.msg-text h1,.msg-text h2,.msg-text h3{font-family:var(--font-head);font-weight:600;margin:12px 0 5px;color:var(--text);}
-
-.msg-text code{font-family:var(--font-mono);font-size:12px;background:var(--bg3);padding:2px 5px;border-radius:4px;color:var(--accent);border:1px solid var(--border);}
-.msg-text pre{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:13px 15px;overflow-x:auto;margin:9px 0;}
-.msg-text pre code{background:none;border:none;padding:0;color:var(--text2);font-size:12px;}
-.msg-text ul,.msg-text ol{padding-left:20px;margin:5px 0;}
-.msg-text li{margin-bottom:3px;}
-.msg-text blockquote{border-left:3px solid var(--border2);padding-left:13px;color:var(--text2);margin:7px 0;}
-.msg-text a{color:var(--accent);text-decoration:underline;}
-.msg-sep{height:1px;background:var(--border);max-width:2400px;margin:2px auto;opacity:0.4;}
 
 /* ── Message edit button ──
    Hidden (opacity:0) until the parent .msg-row is hovered, keeping the UI
    uncluttered during reading. Only shown on user messages so the user can
    truncate the history and resubmit an edited prompt. */
-.msg-edit-btn{
-  background:none;border:none;cursor:pointer;padding:1px 4px;margin-left:5px;
-  font-size:13px;opacity:0;transition:opacity 0.15s;line-height:1;
-  color:var(--text3);vertical-align:middle;
-}
-.msg-row:hover .msg-edit-btn{opacity:1;}
-.msg-edit-btn:hover{opacity:1!important;color:var(--accent);}
 
 /* ── Copy pill on AI messages ──
    Also hidden until hover to avoid visual noise. Pill shape (border-radius:20px)
@@ -686,12 +667,6 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
 .wlc-icon{width:50px;height:50px;background:var(--accent);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;color:white;margin-bottom:18px;box-shadow:0 4px 20px var(--accent-bg);}
 .wlc-title{font-family:var(--font-head);font-size:25px;font-weight:600;color:var(--text);margin-bottom:7px;}
 .wlc-sub{font-size:14px;color:var(--text2);line-height:1.6;max-width:400px;margin-bottom:28px;}
-.suggs{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;max-width:540px;width:100%;}
-.sug-card{padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);cursor:pointer;text-align:left;transition:all 0.17s;}
-.sug-card:hover{border-color:var(--accent);box-shadow:0 2px 12px var(--accent-bg);}
-.sug-icon{font-size:15px;margin-bottom:6px;}
-.sug-title{font-weight:600;font-size:13px;color:var(--text);margin-bottom:3px;}
-.sug-desc{font-size:11px;color:var(--text3);line-height:1.4;}
 
 /* ── Model info card (replaces suggestion grid on welcome screen) ── */
 .model-info-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:22px 28px;max-width:420px;width:100%;display:flex;flex-direction:column;align-items:center;gap:14px;margin-top:4px;}
@@ -727,16 +702,6 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
 .att-chip-del{background:none;border:none;cursor:pointer;color:var(--text3);font-size:12px;line-height:1;padding:0 1px;margin-left:2px;}
 .att-chip-del:hover{color:var(--red);}
 
-.input-row{display:flex;align-items:flex-end;gap:6px;width:100%;}
-
-#chat-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg);}
-#chat-input::placeholder{color:var(--text3);}
-.input-actions{display:flex;flex-direction:row;gap:4px;flex:0 0 auto;align-items:flex-end;}
-#send-btn{width:34px;height:34px;background:var(--accent);border:none;border-radius:var(--radius);cursor:pointer;display:flex;align-items:center;justify-content:center;color:white;transition:all 0.17s;}
-#send-btn:hover{opacity:0.85;transform:scale(1.04);}
-#send-btn:disabled{background:var(--border2);cursor:not-allowed;transform:none;}
-.attach-btn{width:34px;height:34px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2);transition:all 0.15s;}
-.attach-btn:hover{background:var(--bg3);color:var(--text);}
 .input-footer{max-width:2400px;margin:6px auto 0;display:flex;align-items:center;justify-content:flex-end;}
 #search-indicator{font-size:11px;color:var(--accent);display:none;}
 
@@ -814,79 +779,11 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
    z-index:300 keeps it above all panels. The .err variant uses red tones;
    dark themes get their own override so the red stays readable on dark surfaces. */
 
-#toast.err{background:#fef2f2;border-color:#fecaca;color:#b91c1c;}
-[data-theme="chatgpt"] #toast.err,[data-theme="gemini"] #toast.err,[data-theme="dark"] #toast.err,[data-theme="duo"] #toast.err{background:#3b1515;border-color:#7f1d1d;color:#fca5a5;}
 
-/* hidden file input for attachment */
-#attach-input{display:none;}
 
 /* ── Info popup for chat details ──
    Overlay popup showing model, tokens, and timestamp. Centered on screen with
    semi-transparent dark background. Closes on button click, overlay click, or Escape. */
-#info-popup {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-#info-popup.hidden {
-  display: none;
-}
-
-.popup-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  cursor: pointer;
-}
-
-.popup-content {
-  position: relative;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 16px;
-  max-width: 90%;
-  max-height: 80vh;
-  overflow-y: auto;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.popup-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 8px;
-}
-
-.popup-header h3 {
-  margin: 0;
-  font-size: 16px;
-}
-
-.popup-close {
-  background: none;
-  border: none;
-  font-size: 20px;
-  cursor: pointer;
-  padding: 0;
-  color: var(--text2);
-}
-
-.popup-close:hover {
-  color:var(--text);
-}
 
 .popup-body {
   display: flex;
@@ -972,7 +869,6 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
   .chat-confirm-actions{width:100%;justify-content:stretch;}
   .chat-confirm-btn{flex:1;padding:8px;font-size:13px;}
   .chat-search{font-size:16px;padding:8px 10px 8px 28px;}
-  .sug-card{padding:14px;}
 
   /* Header wrapping + safe-area-inset-top so content clears the browser chrome.
      flex:0 0 auto lets the header grow vertically when wrapping to 2 rows. */
@@ -1209,8 +1105,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
        (or new chat) the #welcome screen is shown in its place. renderMessages()
        and showWelcome() both write directly into this element's innerHTML. -->
   <div id="messages">
-    <!-- Welcome / empty-state screen shown when no messages exist yet.
-         Suggestion cards call useSug() which populates the input and auto-sends. -->
+    <!-- Welcome / empty-state screen shown when no messages exist yet. -->
     <div id="welcome">
       <div class="wlc-icon">◆</div>
       <div class="wlc-title">MultiChat</div>
@@ -1547,97 +1442,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
 </div>
 
 <script>
-const PROVIDERS = {
-  groq:{label:'Groq LPU',badge:'badge-groq',url:'https://api.groq.com/openai/v1',models:[
-    {id:'openai/gpt-oss-120b',           name:'GPT-OSS 120B — Reasoning ★',         p:'$0.15/$0.60'},
-    {id:'openai/gpt-oss-20b',            name:'GPT-OSS 20B — Fast (1000 TPS)',       p:'$0.075/$0.30'},
-    {id:'moonshotai/kimi-k2-instruct-0905',name:'Kimi K2 0905 — Moonshot (262K)',    p:'$1.00/$3.00'},
-    {id:'qwen/qwen3-32b',                name:'Qwen3 32B — Alibaba (Reasoning)',     p:'$0.29/$0.59'},
-    {id:'meta-llama/llama-4-scout-17b-16e-instruct',name:'Llama 4 Scout 17B (Vision)',p:'$0.11/$0.34'},
-    {id:'llama-3.3-70b-versatile',       name:'Llama 3.3 70B Versatile',            p:'$0.59/$0.79'},
-    {id:'llama-3.1-8b-instant',          name:'Llama 3.1 8B Instant (cheapest)',    p:'$0.05/$0.08'},
-  ]},
-  opencode:{label:'OpenCode Go',badge:'badge-opencode',usageUrl:'https://opencode.ai/workspace/wrk_01KQA49DFKK6FNKT2MX99WVGQH/usage',url:'https://proxy.opencodechat.dpdns.org/zen/go/v1',models:[
-    {id:'minimax-m3', name:'minimax-m3', p:''},
-    {id:'minimax-m2.7', name:'MiniMax M2.7', p:'$0.30/$1.20'},
-    {id:'minimax-m2.5', name:'MiniMax M2.5', p:'$0.27/$0.95'},
-    {id:'kimi-k3', name:'kimi-k3', p:''},
-    {id:'kimi-k2.7-code', name:'kimi-k2.7-code', p:''},
-    {id:'kimi-k2.6', name:'Kimi K2.6', p:'$0.50/$2.50'},
-    {id:'kimi-k2.5', name:'Kimi K2.5', p:'$0.45/$2.25'},
-    {id:'glm-5.2', name:'glm-5.2', p:''},
-    {id:'glm-5.1', name:'GLM 5.1', p:'$0.95/$3.15'},
-    {id:'glm-5', name:'GLM 5', p:'$0.80/$2.56'},
-    {id:'deepseek-v4-pro', name:'DeepSeek V4 Pro', p:'$0.50/$2.00'},
-    {id:'deepseek-v4-flash', name:'DeepSeek V4 Flash', p:'$0.15/$0.60'},
-    {id:'qwen3.7-max', name:'qwen3.7-max', p:''},
-    {id:'qwen3.7-plus', name:'qwen3.7-plus', p:''},
-    {id:'qwen3.6-plus', name:'Qwen 3.6 Plus', p:'$0.30/$0.90'},
-    {id:'qwen3.5-plus', name:'Qwen 3.5 Plus', p:'$0.26/$1.56'},
-    {id:'mimo-v2-pro', name:'MiMo V2 Pro', p:'$1.00/$3.00'},
-    {id:'mimo-v2-omni', name:'MiMo V2 Omni', p:'$0.40/$2.00'},
-    {id:'mimo-v2.5-pro', name:'MiMo V2.5 Pro', p:'$0.80/$2.50'},
-    {id:'mimo-v2.5', name:'MiMo V2.5', p:'$0.30/$1.50'},
-    {id:'hy3', name:'hy3', p:''},
-    {id:'hy3-preview', name:'hy3-preview', p:''},
-    {id:'grok-4.5', name:'grok-4.5', p:''},
-  ]},
-  openrouter:{label:'OpenRouter',badge:'badge-openrouter',usageUrl:'https://openrouter.ai/activity',url:'https://openrouter.ai/api/v1',models:[
-    {id:'google/lyria-3-pro-preview', name:'🆓 Google: Lyria 3 Pro Preview (1M)', p:'FREE'},
-    {id:'google/lyria-3-clip-preview', name:'🆓 Google: Lyria 3 Clip Preview (1M)', p:'FREE'},
-    {id:'nvidia/nemotron-3-ultra-550b-a55b:free', name:'🆓 NVIDIA: Nemotron 3 Ultra (free) (1M)', p:'FREE'},
-    {id:'inclusionai/ling-3.0-flash:free', name:'🆓 Ling-3.0-flash (free) (256K)', p:'FREE'},
-    {id:'poolside/laguna-s-2.1:free', name:'🆓 Poolside: Laguna S 2.1 (free) (256K)', p:'FREE'},
-    {id:'poolside/laguna-xs-2.1:free', name:'🆓 Poolside: Laguna XS 2.1 (free) (256K)', p:'FREE'},
-    {id:'google/gemma-4-26b-a4b-it:free', name:'🆓 Google: Gemma 4 26B A4B  (free) (256K)', p:'FREE'},
-    {id:'google/gemma-4-31b-it:free', name:'🆓 Google: Gemma 4 31B (free) (256K)', p:'FREE'},
-    {id:'nvidia/nemotron-3-super-120b-a12b:free', name:'🆓 NVIDIA: Nemotron 3 Super (free) (256K)', p:'FREE'},
-    {id:'cohere/north-mini-code:free', name:'🆓 Cohere: North Mini Code (free) (250K)', p:'FREE'},
-    {id:'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free', name:'🆓 NVIDIA: Nemotron 3 Nano Omni (free) (250K)', p:'FREE'},
-    {id:'nvidia/nemotron-3-nano-30b-a3b:free', name:'🆓 NVIDIA: Nemotron 3 Nano 30B A3B (free) (250K)', p:'FREE'},
-    {id:'openrouter/free', name:'🆓 Free Models Router (195K)', p:'FREE'},
-    {id:'openai/gpt-oss-20b:free', name:'🆓 OpenAI: gpt-oss-20b (free) (128K)', p:'FREE'},
-    {id:'nvidia/nemotron-3.5-content-safety:free', name:'🆓 NVIDIA: Nemotron 3.5 Content Safety (free) (125K)', p:'FREE'},
-    {id:'nvidia/nemotron-nano-12b-v2-vl:free', name:'🆓 NVIDIA: Nemotron Nano 12B 2 VL (free) (125K)', p:'FREE'},
-    {id:'nvidia/nemotron-nano-9b-v2:free', name:'🆓 NVIDIA: Nemotron Nano 9B V2 (free) (125K)', p:'FREE'},
-    {id:'openrouter/auto-beta', name:'Auto Router (Beta) (2M)', p:'$-1000000.0000/$-1000000.0000'},
-    {id:'openrouter/pareto-code', name:'Pareto Code Router (2M)', p:'$-1000000.0000/$-1000000.0000'},
-    {id:'x-ai/grok-4.20-multi-agent', name:'xAI: Grok 4.20 Multi-Agent (2M)', p:'$1.25/$2.50'},
-    {id:'x-ai/grok-4.20', name:'xAI: Grok 4.20 (2M)', p:'$1.25/$2.50'},
-    {id:'openrouter/auto', name:'Auto Router (2M)', p:'$-1000000.0000/$-1000000.0000'},
-    {id:'meta-llama/llama-4-scout', name:'Meta: Llama 4 Scout (1M)', p:'$0.100/$0.300'},
-    {id:'openai/gpt-5.6-luna-pro', name:'OpenAI: GPT-5.6 Luna Pro (1M)', p:'$0.100/$0.600'},
-    {id:'openai/gpt-5.6-luna', name:'OpenAI: GPT-5.6 Luna (1M)', p:'$0.100/$0.600'},
-    {id:'openai/gpt-5.6-terra-pro', name:'OpenAI: GPT-5.6 Terra Pro (1M)', p:'$1.00/$6.00'},
-    {id:'openai/gpt-5.6-terra', name:'OpenAI: GPT-5.6 Terra (1M)', p:'$1.00/$6.00'},
-    {id:'openai/gpt-5.6-sol-pro', name:'OpenAI: GPT-5.6 Sol Pro (1M)', p:'$5.00/$30.00'},
-    {id:'openai/gpt-5.6-sol', name:'OpenAI: GPT-5.6 Sol (1M)', p:'$5.00/$30.00'},
-    {id:'~openai/gpt-latest', name:'OpenAI GPT Latest (1M)', p:'$5.00/$30.00'},
-    {id:'openai/gpt-5.5-pro', name:'OpenAI: GPT-5.5 Pro (1M)', p:'$30.00/$180.00'},
-    {id:'openai/gpt-5.5', name:'OpenAI: GPT-5.5 (1M)', p:'$5.00/$30.00'},
-    {id:'openai/gpt-5.5:batch', name:'OpenAI: GPT-5.5 (batch) (1M)', p:'$2.50/$15.00'},
-    {id:'xiaomi/mimo-v2.5-pro', name:'Xiaomi: MiMo-V2.5-Pro (1M)', p:'$0.435/$0.870'},
-    {id:'xiaomi/mimo-v2.5', name:'Xiaomi: MiMo-V2.5 (1M)', p:'$0.140/$0.280'},
-    {id:'openai/gpt-5.4-pro', name:'OpenAI: GPT-5.4 Pro (1M)', p:'$30.00/$180.00'},
-    {id:'openai/gpt-5.4', name:'OpenAI: GPT-5.4 (1M)', p:'$2.50/$15.00'},
-    {id:'openai/gpt-5.4:batch', name:'OpenAI: GPT-5.4 (batch) (1M)', p:'$1.25/$7.50'},
-    {id:'meituan/longcat-2.0', name:'Meituan: LongCat 2.0 (1M)', p:'$0.300/$1.20'},
-    {id:'poolside/laguna-s-2.1', name:'Poolside: Laguna S 2.1 (1M)', p:'$0.090/$0.180'},
-  ]},
-  neuralwatt:{label:'NeuralWatt',badge:'badge-neuralwatt',usageUrl:'https://portal.neuralwatt.com',url:'https://api.neuralwatt.com/v1',models:[
-    {id:'glm-5.2',            name:'GLM-5.2 — Reasoning ★ (1M ctx)',     p:'$1.45/$4.50'},
-    {id:'glm-5.2-fast',       name:'GLM-5.2 Fast (non-thinking)',        p:'$1.45/$4.50'},
-    {id:'glm-5.2-short',      name:'GLM-5.2 Short (200K ctx)',           p:'$1.45/$4.50'},
-    {id:'glm-5.2-short-fast', name:'GLM-5.2 Short Fast',                 p:'$1.45/$4.50'},
-    {id:'kimi-k2.7-code',     name:'Kimi K2.7 Code — Moonshot (Vision)', p:'$0.95/$4.00'},
-    {id:'kimi-k2.6',          name:'Kimi K2.6 — Moonshot (262K)',        p:'$0.69/$3.22'},
-    {id:'kimi-k2.6-fast',     name:'Kimi K2.6 Fast',                     p:'$0.69/$3.22'},
-    {id:'qwen3.5-397b',       name:'Qwen3.5 397B — Alibaba',             p:'$0.69/$4.14'},
-    {id:'qwen3.5-397b-fast',  name:'Qwen3.5 397B Fast',                  p:'$0.69/$4.14'},
-    {id:'qwen3.6-35b',        name:'Qwen3.6 35B',                        p:'$0.29/$1.15'},
-    {id:'qwen3.6-35b-fast',   name:'Qwen3.6 35B Fast (cheapest)',        p:'$0.29/$1.15'},
-  ]},
-};
+
 
 // ══════════════════════════════════════════
 // STATE
@@ -1796,10 +1601,10 @@ async function hashPassphrase(passphrase) {
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-async function deriveKey(passphrase) {
+async function deriveKey(passphrase, saltBuffer = null) {
   const enc = new TextEncoder();
   const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(passphrase), 'PBKDF2', false, ['deriveKey']);
-  const salt = enc.encode('multichat-sync-salt-v1');
+  const salt = saltBuffer || enc.encode('multichat-sync-salt-v1');
   return crypto.subtle.deriveKey(
     { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
     keyMaterial,
@@ -1810,8 +1615,8 @@ async function deriveKey(passphrase) {
 }
 
 function arrayBufferToBase64(buffer) {
-  const bytes = new Uint8Array(buffer);
   let binary = '';
+  const bytes = new Uint8Array(buffer);
   for (let i = 0; i < bytes.byteLength; i++) {
     binary += String.fromCharCode(bytes[i]);
   }
@@ -1828,19 +1633,34 @@ function base64ToArrayBuffer(base64) {
 }
 
 async function encryptSync(plaintext, passphrase) {
-  const key = await deriveKey(passphrase);
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const key = await deriveKey(passphrase, salt);
   const enc = new TextEncoder();
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(plaintext));
+  const saltB64 = arrayBufferToBase64(salt);
   const ivB64 = arrayBufferToBase64(iv);
   const cipherB64 = arrayBufferToBase64(ciphertext);
-  return `${ivB64}:${cipherB64}`;
+  return `${saltB64}:${ivB64}:${cipherB64}`;
 }
 
 async function decryptSync(ciphertext, passphrase) {
-  const key = await deriveKey(passphrase);
-  const [ivB64, cipherB64] = ciphertext.split(':');
-  if (!ivB64 || !cipherB64) throw new Error('Invalid encrypted payload format');
+  const parts = ciphertext.split(':');
+  let saltBuffer = null, ivB64, cipherB64;
+  if (parts.length === 3) {
+    // New format: salt:iv:cipher
+    saltBuffer = base64ToArrayBuffer(parts[0]);
+    ivB64 = parts[1];
+    cipherB64 = parts[2];
+  } else if (parts.length === 2) {
+    // Legacy format: iv:cipher (uses hardcoded salt)
+    ivB64 = parts[0];
+    cipherB64 = parts[1];
+  } else {
+    throw new Error('Invalid encrypted payload format');
+  }
+  
+  const key = await deriveKey(passphrase, saltBuffer);
   const iv = base64ToArrayBuffer(ivB64);
   const cipher = base64ToArrayBuffer(cipherB64);
   const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, cipher);
@@ -2037,7 +1857,9 @@ function loadCloudSettings() {
     if (cfg) cfg.style.display = s.enabled ? 'flex' : 'none';
 
     updateSyncStatus(s.enabled ? 'synced' : 'disabled', s.enabled ? 'Cloud sync on' : 'Cloud sync off');
-  } catch(e) {}
+  } catch(e) {
+    console.warn('[MultiChat] Failed to load cloud settings:', e);
+  }
 }
 
 function onCloudToggle() {
@@ -2459,7 +2281,9 @@ You MUST output ONLY a raw JSON object. No markdown. No explanation. No code fen
           if (!d) continue;
           const txtDelta = d.content || '';
           if (txtDelta) { fullContent += txtDelta; if (onToken) onToken(txtDelta); }
-        } catch (e) {}
+        } catch (e) {
+          console.warn('[MultiChat] Planner stream parse error (non-fatal):', data.slice(0, 80), e.message);
+        }
       }
     }
 
@@ -2531,7 +2355,7 @@ function renderSearchPanel(searchMeta) {
   const queryList = Array.isArray(queries) ? queries : [queries].filter(Boolean);
   const queryDisplay = queryList.length > 1
     ? queryList.map(q => `"${q}"`).join(' · ')
-    : `"${queryList[0] || ''}"`;
+    : (queryList[0] ? `"${queryList[0]}"` : 'Search results');
 
   const sourcesHTML = results.map((r, i) => {
     const urlHtml = r.url
@@ -2898,7 +2722,7 @@ function handleRagDrop(e) {
   handleRagFiles(e.dataTransfer.files);
 }
 function handleRagFiles(fileList) {
-  Array.from(fileList).forEach(async f => {
+  Promise.allSettled(Array.from(fileList).map(async f => {
     const chipId = 'rag-' + Date.now() + '-' + Math.random().toString(36).slice(2,6);
     ragFiles.push({name: f.name, content: '', size: f.size, type: 'text', chunks: null, _extracting: true, _chipId: chipId});
     renderRagFileList();
@@ -2929,7 +2753,7 @@ function handleRagFiles(fileList) {
     }
     renderRagFileList();
     updateCtxPreview();
-  });
+  }));
   document.getElementById('rag-input').value = '';
 }
 function removeRagFile(i) {
@@ -3134,7 +2958,7 @@ function injectChunks(chunks, maxTokens, query) {
 // chunked into ~4K token pieces, and injected context-aware at send time.
 // ══════════════════════════════════════════
 function handleFileAttach(fileList) {
-  Array.from(fileList).forEach(async f => {
+  Promise.allSettled(Array.from(fileList).map(async f => {
     const chipId = 'att-' + Date.now() + '-' + Math.random().toString(36).slice(2,6);
     attachedFiles.push({name: f.name, content: '', size: f.size, type: 'text', chunks: null, _extracting: true, _chipId: chipId});
     renderAttachedFiles();
@@ -3163,7 +2987,7 @@ function handleFileAttach(fileList) {
       }
     }
     renderAttachedFiles();
-  });
+  }));
   document.getElementById('attach-input').value = '';
 }
 function removeAttached(i) {
@@ -3293,7 +3117,7 @@ async function populateModels(p) {
   } else {
     // Populate hidden <select> so all existing JS (.value reads) continue to work
     sel.innerHTML = models.map(m =>
-      `<option value="${m.id}" data-price="${m.p||''}" title="${m.id}">${m.name}</option>`
+      `<option value="${esc(m.id)}" data-price="${esc(m.p||'')}" title="${esc(m.id)}">${esc(m.name)}</option>`
     ).join('');
 
     // Populate the custom visible dropdown list
@@ -3658,6 +3482,7 @@ function updateThinkLabel() {
 // CHAT MANAGEMENT
 // ══════════════════════════════════════════
 function newChat() {
+  if (window.innerWidth <= 700) closeSidebar();
   _confirmDeleteId = null;
   const id = 'c' + Date.now();
   conversations[id] = {title:'New conversation', messages:[], createdAt: Date.now(), updatedAt: Date.now(), pinned: false, totalTokens: 0, totalCost: 0};
@@ -3670,6 +3495,7 @@ function newChat() {
   resetFooterStats();
 }
 function loadChat(id) {
+  if (window.innerWidth <= 700) closeSidebar();
   _confirmDeleteId = null;
   currentChatId = id;
   renderChatList();
@@ -4014,69 +3840,48 @@ function getModelContextSize(modelId) {
   return 131072; // default conservative: 128K
 }
 
-function renderMessages(preserveScroll = false) {
-  const chat = currentChatId && conversations[currentChatId];
-  if (!chat || !chat.messages.length) { showWelcome(); return; }
+function renderMessagesArray(messages, preserveScroll = false) {
   const msgs = document.getElementById('messages');
+  if (!messages || !messages.length) { showWelcome(); return; }
   const prevScrollTop = msgs.scrollTop;
   const wasAtBottom = msgs.scrollHeight - msgs.scrollTop - msgs.clientHeight < 50;
 
   let lastModel = null;
-  let html = '';
-  chat.messages.forEach((m, i, arr) => {
-    // Insert model-switch divider when AI model changes
-    if (m.role === 'assistant' && m.model && m.model !== lastModel && lastModel !== null) {
-      const pid = providerFromModel(m.model);
-      html += `<div class="model-switch-divider">
-        <span class="model-switch-label">${providerIcon(pid)} Switched to ${shortModelName(m.model)}</span>
-      </div>`;
-    }
-    if (m.role === 'assistant' && m.model) lastModel = m.model;
-    html += buildMsgHTML(m, i);
-    if (i < arr.length - 1) html += '<div class="msg-sep"></div>';
-  });
-  msgs.innerHTML = html;
-  renderChatInfoBar(currentChatId);
-  if (preserveScroll) {
-    if (wasAtBottom) {
-      msgs.scrollTop = msgs.scrollHeight;
-    } else {
-      msgs.scrollTop = prevScrollTop;
-    }
-  } else {
-    msgs.scrollTop = msgs.scrollHeight;
-  }
-}
-function renderMsgsFromArr(messages, preserveScroll = false) {
-  const msgs = document.getElementById('messages');
-  if (!messages.length) { showWelcome(); return; }
-  const prevScrollTop = msgs.scrollTop;
-  const wasAtBottom = msgs.scrollHeight - msgs.scrollTop - msgs.clientHeight < 50;
-
-  let lastModel = null;
-  let html = '';
+  let htmlStr = '';
   messages.forEach((m, i, arr) => {
     if (m.role === 'assistant' && m.model && m.model !== lastModel && lastModel !== null) {
       const pid = providerFromModel(m.model);
-      html += `<div class="model-switch-divider">
+      htmlStr += `<div class="model-switch-divider">
         <span class="model-switch-label">${providerIcon(pid)} Switched to ${shortModelName(m.model)}</span>
       </div>`;
     }
     if (m.role === 'assistant' && m.model) lastModel = m.model;
-    html += buildMsgHTML(m, i);
-    if (i < arr.length - 1) html += '<div class="msg-sep"></div>';
+    htmlStr += buildMsgHTML(m, i);
+    if (i < arr.length - 1) htmlStr += '<div class="msg-sep"></div>';
   });
-  msgs.innerHTML = html;
+  // Temporarily disable smooth scroll to prevent animated jumps when innerHTML is replaced
+  const oldBehavior = msgs.style.scrollBehavior;
+  msgs.style.scrollBehavior = 'auto';
+
+  msgs.innerHTML = htmlStr;
   renderChatInfoBar(currentChatId);
   if (preserveScroll) {
-    if (wasAtBottom) {
-      msgs.scrollTop = msgs.scrollHeight;
-    } else {
-      msgs.scrollTop = prevScrollTop;
-    }
+    if (wasAtBottom) msgs.scrollTop = msgs.scrollHeight;
+    else msgs.scrollTop = prevScrollTop;
   } else {
     msgs.scrollTop = msgs.scrollHeight;
   }
+
+  // Restore smooth scroll in the next microtask/frame
+  setTimeout(() => {
+    msgs.style.scrollBehavior = oldBehavior;
+  }, 0);
+}
+
+function renderMessages(preserveScroll = false) {
+  const chat = currentChatId && conversations[currentChatId];
+  if (!chat) return showWelcome();
+  renderMessagesArray(chat.messages, preserveScroll);
 }
 function buildMsgHTML(m, msgIndex) {
   const isUser = m.role === 'user';
@@ -4250,7 +4055,7 @@ async function sendMessage() {
   updateTokCount('');
   saveChats();
   renderChatList();
-  renderMsgsFromArr(chat.messages);
+  renderMessagesArray(chat.messages);
   // Scroll to the new user question (last row) instead of the bottom
   const _msgsEl = document.getElementById('messages');
   const _rows = _msgsEl.querySelectorAll('.msg-row');
@@ -4405,7 +4210,7 @@ async function sendMessage() {
           if(txtDelta) aiMsg.content += txtDelta;
           updateStreamRow(aiMsg);
         } catch(e) {
-          // Silent parse fallback for non-JSON stream chunks
+          console.warn('[MultiChat] Stream parse error (non-fatal):', data.slice(0, 80), e.message);
         }
       }
     }
@@ -4639,7 +4444,7 @@ function fmtText(text, searchMeta) {
   text = text.replace(/\*\*\*(.+?)\*\*\*/g, (_, c) => `<strong><em>${c}</em></strong>`);
   text = text.replace(/\*\*(.+?)\*\*/g, (_, c) => `<strong>${c}</strong>`);
   text = text.replace(/\*(.+?)\*/g, (_, c) => `<em>${c}</em>`);
-  text = text.replace(/^> (.+)$/gm, (_, c) => `<blockquote>${c}</blockquote>`);
+  text = text.replace(/^&gt; (.+)$/gm, (_, c) => `<blockquote>${c}</blockquote>`);
   text = text.replace(/((?:^[-*] .+\n?)+)/gm, m => {
     const items = m.trim().split('\n').map(l => `<li>${l.replace(/^[-*] /, '')}</li>`).join('');
     return `<ul>${items}</ul>`;
@@ -4658,7 +4463,7 @@ function fmtText(text, searchMeta) {
     });
   }
   text = text.replace(/\n/g, '<br>');
-  text = text.replace(/___CODE_BLOCK_(\d+)___/g, (_, idx) => blocks[parseInt(idx)]);
+  text = text.replace(/___CODE_BLOCK_(\d+)___/g, (m, idx) => blocks[parseInt(idx)] !== undefined ? blocks[parseInt(idx)] : m);
   return text;
 }
 

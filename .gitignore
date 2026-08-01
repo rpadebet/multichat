@@ -8,3 +8,4 @@ __pycache__/
 decrypt_sync.py
 passphrase.txt
 *.bak
+node_modules/

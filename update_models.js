@@ -57,8 +57,8 @@ async function run() {
     return { id: m.id, name: cleanName, p: priceStr };
   });
 
-  // Read index.html (relative to script, in repo root)
-  const indexPath = __dirname + '/index.html';
+  // Read models.js (relative to script, in repo root)
+  const indexPath = __dirname + '/models.js';
   let indexHtml = fs.readFileSync(indexPath, 'utf8');
 
   // Extract static model names/prices from current opencode entry for fallback display names
@@ -96,7 +96,7 @@ async function run() {
   // Replace OpenRouter
   const orRegex = /openrouter:\{label:'OpenRouter',badge:'badge-openrouter',usageUrl:'[^']+',url:'[^']+',models:\[[\s\S]*?\n\s*\]\},?/;
   if (!orRegex.test(indexHtml)) {
-    throw new Error('OpenRouter regex failed to match PROVIDERS in index.html');
+    throw new Error('OpenRouter regex failed to match PROVIDERS in models.js');
   }
   let newOrText = formattedOr.map(m => `    {id:'${m.id}', name:'${m.name}', p:'${m.p}'},`).join('\n');
   indexHtml = indexHtml.replace(orRegex, () => `openrouter:{label:'OpenRouter',badge:'badge-openrouter',usageUrl:'https://openrouter.ai/activity',url:'https://openrouter.ai/api/v1',models:[\n${newOrText}\n  ]},`);
@@ -104,13 +104,13 @@ async function run() {
   // Replace OpenCode Go
   const ocRegex = /opencode:\{label:'OpenCode Go',badge:'badge-opencode',usageUrl:'[^']+',url:'[^']+',models:\[[\s\S]*?\n\s*\]\},?/;
   if (!ocRegex.test(indexHtml)) {
-    throw new Error('OpenCode Go regex failed to match PROVIDERS in index.html');
+    throw new Error('OpenCode Go regex failed to match PROVIDERS in models.js');
   }
   let newOcText = formattedOc.map(m => `    {id:'${m.id}', name:'${m.name}', p:'${m.p}'},`).join('\n');
   indexHtml = indexHtml.replace(ocRegex, () => `opencode:{label:'OpenCode Go',badge:'badge-opencode',usageUrl:'https://opencode.ai/workspace/wrk_01KQA49DFKK6FNKT2MX99WVGQH/usage',url:'https://proxy.opencodechat.dpdns.org/zen/go/v1',models:[\n${newOcText}\n  ]},`);
 
   fs.writeFileSync(indexPath, indexHtml);
-  console.log(`Successfully updated index.html — OpenRouter: ${formattedOr.length} models, OpenCode Go: ${formattedOc.length} models`);
+  console.log(`Successfully updated models.js — OpenRouter: ${formattedOr.length} models, OpenCode Go: ${formattedOc.length} models`);
 }
 
 run().catch(console.error);
