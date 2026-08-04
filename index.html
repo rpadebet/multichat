@@ -1443,7 +1443,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
         <div class="storage-meter">
           <div class="storage-bar"><div class="storage-fill" id="storage-fill"></div></div>
           <div class="storage-text" id="storage-text">—</div>
-          <div class="storage-note">Chats live in this browser (~5 MB cap). Cloud sync keeps an encrypted backup but does not raise this limit.</div>
+          <div class="storage-note" id="storage-note">Checking storage…</div>
         </div>
         <button onclick="compactStorage()" style="width:100%;padding:8px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text2);font-size:13px;cursor:pointer;font-family:var(--font-body);margin-bottom:7px;">🗜 Compact storage</button>
         <button onclick="resetSettings()" style="width:100%;padding:8px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text2);font-size:13px;cursor:pointer;font-family:var(--font-body);">↺ Reset to defaults</button>
@@ -1732,6 +1732,18 @@ function getSupabaseClient() {
   return supabase.createClient(url, settings.key.trim());
 }
 
+// Cloud sync upserts the ENTIRE chat map as one encrypted row on every change,
+// so its practical ceiling is much lower than local IndexedDB capacity. 8MB is
+// a conservative bound for a PostgREST upsert on Supabase's free tier; beyond
+// it, chats keep saving locally and only the upload is skipped.
+const SYNC_PAYLOAD_LIMIT = 8 * 1024 * 1024;
+let _syncSizeWarned = false;
+
+// Exposed as a function (not the bare const) so it is reachable outside this
+// script's top-level scope — classic-script `const` never lands on `window`.
+function syncPayloadLimit() { return SYNC_PAYLOAD_LIMIT; }
+function syncPayloadTooLarge(convos) { return chatsByteSize(convos) > SYNC_PAYLOAD_LIMIT; }
+
 let _pushDebounceTimer = null;
 function debouncedPushSync() {
   if (!isCloudSyncEnabled()) return;
@@ -1746,6 +1758,21 @@ async function pushSync() {
   const settings = getCloudSettings();
   const passphrase = settings.passphrase;
   const userHash = await hashPassphrase(passphrase);
+
+  // Local capacity (IndexedDB) is now far larger than what is sensible to push
+  // as a single encrypted row on every change. Guard the upload rather than
+  // retrying a doomed multi-megabyte request every few seconds: the whole chat
+  // map goes up as one blob, so cost scales with total history, not the edit.
+  const payloadBytes = chatsByteSize(conversations);
+  if (syncPayloadTooLarge(conversations)) {
+    updateSyncStatus('error', `History too large to sync (${fmtSize(payloadBytes)})`);
+    if (!_syncSizeWarned) {
+      _syncSizeWarned = true;
+      showToast(`⚠️ History is ${fmtSize(payloadBytes)} — too large for cloud sync (limit ${fmtSize(SYNC_PAYLOAD_LIMIT)}). Chats are still saved locally. Run Settings → Compact storage or delete old chats to resume syncing.`, 'err');
+    }
+    return;
+  }
+  _syncSizeWarned = false;
 
   updateSyncStatus('syncing', 'Syncing…');
 
@@ -1825,9 +1852,9 @@ async function pullSync() {
       conversations = merged;
       // A peer device on an older build may still be uploading full attachment
       // text and duplicated search snippets — strip them before they land in
-      // this device's localStorage and eat the quota all over again.
+      // this device's store and eat the quota all over again.
       compactChats(conversations);
-      localStorage.setItem('mc_chats', JSON.stringify(conversations));
+      await persistChats(conversations);
       localStorage.setItem('mc_synced_at', remoteTime.toString());
       renderChatList();
       if (currentChatId && conversations[currentChatId]) {
@@ -2453,7 +2480,8 @@ function toggleSearch(hdr) {
 window.onload = async () => {
   loadKeys();
   loadCloudSettings();
-  loadChats();
+  requestPersistentStorage();  // fire-and-forget; nothing below depends on it
+  await loadChats();
   loadSettings();
   if (isCloudSyncEnabled()) {
     await pullSync();
@@ -2628,38 +2656,57 @@ function toggleSettings() {
 }
 
 // ── Storage usage meter (Settings → Actions) ──
-// Browsers cap localStorage at roughly 5MB per origin and expose no API to read
-// the real limit, so the bar is drawn against that nominal budget and labelled
-// as approximate. Cloud sync does NOT raise this ceiling — it mirrors the same
-// blob to Supabase — which is exactly the confusion this meter exists to clear.
+// With chats on IndexedDB the meaningful budget is the origin quota, which
+// navigator.storage.estimate() reports directly (usage covers IndexedDB, Cache
+// API and localStorage together). Where that API is missing we fall back to
+// counting localStorage against its ~5MB cap, which is all that applies then.
 const LS_NOMINAL_LIMIT = 5 * 1024 * 1024;
 
-function renderStorageMeter() {
+async function renderStorageMeter() {
   const fill = document.getElementById('storage-fill');
   const text = document.getElementById('storage-text');
+  const note = document.getElementById('storage-note');
   if (!fill || !text) return;
-  const total = localStorageBytes();
-  const chats = localStorageBytes('mc_chats');
-  const pct = Math.min(100, Math.round((total / LS_NOMINAL_LIMIT) * 100));
-  fill.style.width = pct + '%';
+
+  let used = 0, quota = LS_NOMINAL_LIMIT, estimated = false;
+  try {
+    if (navigator.storage && navigator.storage.estimate) {
+      const est = await navigator.storage.estimate();
+      if (est && est.quota) { used = est.usage || 0; quota = est.quota; estimated = true; }
+    }
+  } catch(e) { /* fall through to the localStorage count */ }
+  if (!estimated) used = localStorageBytes();
+
+  const pct = quota ? Math.min(100, Math.round((used / quota) * 100)) : 0;
+  fill.style.width = Math.max(pct, used > 0 ? 1 : 0) + '%';
   fill.classList.toggle('warn', pct >= 70 && pct < 90);
   fill.classList.toggle('crit', pct >= 90);
+
   const chatCount = Object.keys(conversations || {}).length;
-  text.textContent = `${fmtSize(total)} of ~5 MB used (${pct}%) · ${chatCount} chat${chatCount===1?'':'s'} = ${fmtSize(chats)}`;
+  const chatBytes = chatsByteSize(conversations);
+  text.textContent = `${fmtSize(used)} of ${fmtSize(quota)} used (${pct}%) · ${chatCount} chat${chatCount===1?'':'s'} ≈ ${fmtSize(chatBytes)}`;
+
+  if (note) {
+    let persisted = false;
+    try { persisted = !!(navigator.storage && navigator.storage.persisted && await navigator.storage.persisted()); } catch(e) {}
+    note.textContent = chatStoreBackend() === 'IndexedDB'
+      ? `Chats are stored in IndexedDB${persisted ? ' (persistent — protected from eviction)' : ' (best-effort — the browser may evict under disk pressure)'}. Cloud sync keeps an encrypted backup, capped at ${fmtSize(SYNC_PAYLOAD_LIMIT)} per upload.`
+      : `IndexedDB is unavailable, so chats fall back to localStorage (~5 MB cap). Cloud sync keeps an encrypted backup but does not raise this limit.`;
+  }
 }
 
 // User-invoked reclaim. Same pass saveChats() runs automatically on quota
 // failure, surfaced as a button so it can be run before hitting the wall.
-function compactStorage() {
-  const before = localStorageBytes('mc_chats');
+async function compactStorage() {
+  const before = chatsByteSize(conversations);
   const changed = compactChats(conversations);
   if (!changed) {
     renderStorageMeter();
     showToast('✓ Storage already compact — nothing to reclaim');
     return;
   }
-  saveChats();
-  const freed = before - localStorageBytes('mc_chats');
+  await saveChats();
+  const freed = before - chatsByteSize(conversations);
   renderStorageMeter();
   showToast(freed > 0
     ? `🗜 Reclaimed ${fmtSize(freed)} from stored attachments and search results`
@@ -3694,12 +3741,159 @@ function localStorageBytes(prefix) {
   return total;
 }
 
-function saveChats() {
+// Serialized size of the chat map, in bytes (UTF-16, matching localStorage
+// accounting). Used to report compaction savings and to gate the sync payload.
+function chatsByteSize(convos) {
+  try { return JSON.stringify(convos || {}).length * 2; } catch(e) { return 0; }
+}
+
+// ══════════════════════════════════════════
+// CHAT STORE — IndexedDB primary, localStorage fallback
+// localStorage is hard-capped at ~5MB per origin and there is no API to raise
+// it; that ceiling is set by the browser, not by us. IndexedDB draws on the
+// origin's real storage quota instead — typically a large share of free disk
+// (hundreds of MB to several GB), reported by navigator.storage.estimate() —
+// so chat history is stored there and localStorage becomes a fallback only.
+//
+// Records go in as live objects via structured clone (no JSON.stringify), so
+// large histories are also cheaper to write than they were before.
+//
+// Everything degrades gracefully: if IndexedDB is unavailable (private mode,
+// blocked by policy, jsdom under test), _idbUnavailable latches true and every
+// path silently falls back to the original localStorage behaviour.
+// ══════════════════════════════════════════
+const IDB_NAME = 'multichat';
+const IDB_STORE = 'kv';
+const IDB_VERSION = 1;
+const CHATS_KEY = 'chats';
+
+let _idbPromise = null;
+let _idbUnavailable = false;
+let _chatStoreBackend = 'localStorage'; // updated after the first successful IDB op
+
+// Which backend chats are currently persisted to: 'IndexedDB' or 'localStorage'.
+function chatStoreBackend() { return _chatStoreBackend; }
+
+function openChatDb() {
+  if (_idbUnavailable) return Promise.resolve(null);
+  if (_idbPromise) return _idbPromise;
+  _idbPromise = new Promise(resolve => {
+    let req;
+    try {
+      if (typeof indexedDB === 'undefined' || !indexedDB) throw new Error('no indexedDB');
+      req = indexedDB.open(IDB_NAME, IDB_VERSION);
+    } catch(e) {
+      _idbUnavailable = true;
+      return resolve(null);
+    }
+    const fail = () => { _idbUnavailable = true; resolve(null); };
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE);
+    };
+    req.onsuccess = () => { _chatStoreBackend = 'IndexedDB'; resolve(req.result); };
+    req.onerror = fail;
+    req.onblocked = fail;
+  });
+  return _idbPromise;
+}
+
+function idbRequest(mode, fn) {
+  return openChatDb().then(db => {
+    if (!db) return Promise.reject(new Error('IndexedDB unavailable'));
+    return new Promise((resolve, reject) => {
+      let tx;
+      try { tx = db.transaction(IDB_STORE, mode); }
+      catch(e) { return reject(e); }
+      const req = fn(tx.objectStore(IDB_STORE));
+      // Resolve on the request, but let a failing transaction (quota, abort)
+      // surface as the rejection so saveChats() can act on QuotaExceededError.
+      tx.onabort = () => reject(tx.error || new Error('IndexedDB transaction aborted'));
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  });
+}
+
+const idbGet = key => idbRequest('readonly', s => s.get(key));
+const idbSet = (key, value) => idbRequest('readwrite', s => s.put(value, key));
+
+// Writes the chat map to the best available backend. Returns the backend used.
+async function persistChats(convos) {
+  if (!_idbUnavailable) {
+    try {
+      // Structured clone rejects anything non-cloneable; conversations is plain
+      // data, but a JSON round-trip guarantees it and drops any stray undefined.
+      await idbSet(CHATS_KEY, JSON.parse(JSON.stringify(convos)));
+      _chatStoreBackend = 'IndexedDB';
+      return 'IndexedDB';
+    } catch(e) {
+      if (e && (e.name === 'QuotaExceededError' || e.code === 22)) throw e;
+      console.warn('[MultiChat] IndexedDB write failed, falling back to localStorage:', e);
+      _idbUnavailable = true;
+    }
+  }
+  localStorage.setItem('mc_chats', JSON.stringify(convos));
+  _chatStoreBackend = 'localStorage';
+  return 'localStorage';
+}
+
+// Reads chats from IndexedDB, migrating a legacy localStorage history on first
+// run. The localStorage copy is only dropped after the IDB write is confirmed,
+// so an interrupted migration can never lose history — worst case it re-runs.
+async function readPersistedChats() {
+  if (!_idbUnavailable) {
+    try {
+      const stored = await idbGet(CHATS_KEY);
+      // An EMPTY IndexedDB record must never shadow a legacy history: a fresh
+      // install writes `{}` on its first save, and treating that as authoritative
+      // would discard the localStorage copy we are here to rescue. Only a
+      // non-empty record wins outright.
+      const hasStored = stored && typeof stored === 'object' && Object.keys(stored).length > 0;
+      if (hasStored) {
+        // The legacy copy is now definitively stale — reclaim its space.
+        if (localStorage.getItem('mc_chats')) localStorage.removeItem('mc_chats');
+        return stored;
+      }
+      const legacy = localStorage.getItem('mc_chats');
+      if (legacy) {
+        const parsed = JSON.parse(legacy);
+        if (parsed && Object.keys(parsed).length) {
+          // Drop the localStorage copy only after the IDB write is confirmed,
+          // so an interrupted migration re-runs rather than losing history.
+          await idbSet(CHATS_KEY, parsed);
+          localStorage.removeItem('mc_chats');
+          console.info('[MultiChat] Migrated chat history from localStorage to IndexedDB');
+          return parsed;
+        }
+        localStorage.removeItem('mc_chats');  // empty legacy record, nothing to migrate
+      }
+      return hasStored ? stored : {};
+    } catch(e) {
+      console.warn('[MultiChat] IndexedDB read failed, falling back to localStorage:', e);
+      _idbUnavailable = true;
+    }
+  }
+  const s = localStorage.getItem('mc_chats');
+  return s ? JSON.parse(s) : {};
+}
+
+// Asks the browser not to evict this origin under storage pressure. Without it
+// IndexedDB is "best effort" and can be cleared when the disk gets tight.
+async function requestPersistentStorage() {
   try {
-    localStorage.setItem('mc_chats', JSON.stringify(conversations));
+    if (!navigator.storage || !navigator.storage.persist) return false;
+    if (await navigator.storage.persisted()) return true;
+    return await navigator.storage.persist();
+  } catch(e) { return false; }
+}
+
+async function saveChats() {
+  try {
+    await persistChats(conversations);
     debouncedPushSync();
   } catch(e) {
-    console.warn('[MultiChat] Failed to save chats to localStorage:', e);
+    console.warn('[MultiChat] Failed to save chats:', e);
     if (e.name !== 'QuotaExceededError' && e.code !== 22) {
       showToast('⚠️ Could not save conversation history', 'err');
       return;
@@ -3709,7 +3903,7 @@ function saveChats() {
     // usually frees several megabytes.
     if (compactChats(conversations)) {
       try {
-        localStorage.setItem('mc_chats', JSON.stringify(conversations));
+        await persistChats(conversations);
         debouncedPushSync();
         showToast('🗜 Storage was full — reclaimed space from old attachments');
         return;
@@ -3717,21 +3911,21 @@ function saveChats() {
         console.warn('[MultiChat] Still over quota after compaction:', e2);
       }
     }
-    // Genuinely out of local room. If cloud sync is on, push anyway so the
-    // message survives rather than being lost to a failed local write.
+    // Genuinely out of room. If cloud sync is on, push anyway so the message
+    // survives rather than being lost to a failed local write.
     if (isCloudSyncEnabled()) {
       pushSync();
       showToast('⚠️ Local storage full — saved to cloud only. Delete old chats to restore local saving.', 'err');
     } else {
-      showToast(`⚠️ Storage full (${fmtSize(localStorageBytes())} used) — delete old chats to save new ones`, 'err');
+      showToast('⚠️ Storage full — delete old chats, or free up disk space for this site', 'err');
     }
   }
 }
-function loadChats() {
+async function loadChats() {
   try {
-    const s = localStorage.getItem('mc_chats');
-    if (s) {
-      conversations = JSON.parse(s);
+    const stored = await readPersistedChats();
+    if (stored && Object.keys(stored).length) {
+      conversations = stored;
       let migrated = false;
       for (const [id, chat] of Object.entries(conversations)) {
         if (!chat.createdAt) {
@@ -3747,16 +3941,16 @@ function loadChats() {
         if (chat.totalCost === undefined) chat.totalCost = 0;
       }
       // One-time reclaim for histories written by builds that persisted full
-      // attachment text and duplicated search snippets.
-      const before = migrated ? 0 : localStorageBytes('mc_chats');
+      // attachment text and duplicated search snippets. Still worth doing on
+      // IndexedDB: the stripped fields are never read, and a lean history keeps
+      // the cloud-sync payload small.
+      const before = chatsByteSize(conversations);
       if (compactChats(conversations)) {
         migrated = true;
-        const freed = before - JSON.stringify(conversations).length * 2;
-        if (before && freed > 262144) {
-          console.info(`[MultiChat] Compacted chat storage, freed ~${fmtSize(freed)}`);
-        }
+        const freed = before - chatsByteSize(conversations);
+        if (freed > 262144) console.info(`[MultiChat] Compacted chat storage, freed ~${fmtSize(freed)}`);
       }
-      if (migrated) saveChats();
+      if (migrated) await saveChats();
     }
   } catch(e) {
     console.error('[MultiChat] Failed to load/parse conversations:', e);

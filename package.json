@@ -7,7 +7,7 @@
     "doc": "docs"
   },
   "scripts": {
-    "test": "node test.js"
+    "test": "node test.js && node test.js --no-idb"
   },
   "repository": {
     "type": "git",
@@ -23,5 +23,8 @@
   "homepage": "https://github.com/rpadebet/multichat#readme",
   "dependencies": {
     "jsdom": "^29.1.1"
+  },
+  "devDependencies": {
+    "fake-indexeddb": "^6.2.5"
   }
 }

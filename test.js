@@ -5,6 +5,12 @@ const { JSDOM, VirtualConsole } = jsdom;
 
 const html = fs.readFileSync('index.html', 'utf8');
 
+// `--no-idb` re-runs the whole suite against the localStorage fallback, which
+// is the path a real browser takes in private mode or when IDB is blocked.
+const NO_IDB = process.argv.includes('--no-idb');
+const MODE = NO_IDB ? 'localStorage fallback' : 'IndexedDB';
+console.log(`\n── Storage backend under test: ${MODE} ──`);
+
 // ══════════════════════════════════════════
 // FAILURE GUARDS
 // If the inline script in index.html throws while parsing/executing, the
@@ -73,6 +79,15 @@ const dom = new JSDOM(html, {
     }
     if (!window.crypto || !window.crypto.subtle) {
       window.crypto = { subtle: { importKey: async () => {}, deriveKey: async () => {}, encrypt: async () => {}, decrypt: async () => {} }, getRandomValues: (arr) => arr };
+    }
+    // Chats are stored in IndexedDB, with localStorage as the fallback for
+    // private mode / blocked-by-policy. jsdom implements neither, so the suite
+    // is run twice (see package.json): once with a fake IndexedDB to cover the
+    // primary path, once with --no-idb to cover the degraded path.
+    if (!NO_IDB) {
+      const fakeIdb = require('fake-indexeddb');
+      window.indexedDB = fakeIdb.indexedDB;
+      window.IDBKeyRange = fakeIdb.IDBKeyRange;
     }
     window.matchMedia = () => ({ matches: false });
     window.scrollTo = () => {};
@@ -684,6 +699,103 @@ async function runAll() {
     const after = JSON.stringify(convos).length;
     assert.ok(before > 1000000, 'fixture should start over 1MB');
     assert.ok(after < before * 0.001, `expected >99.9% reclaimed, got ${before} -> ${after}`);
+  });
+
+  // ══════════════════════════════════════════
+  // CHAT STORE (running against: MODE)
+  // The suite runs twice — once with a fake IndexedDB (primary path) and once
+  // with --no-idb (the degraded path used in private mode / blocked-by-policy).
+  // ══════════════════════════════════════════
+  await runTest(`chat store should select the ${MODE} backend`, async () => {
+    assert.strictEqual(typeof window.indexedDB === 'undefined', NO_IDB);
+    await window.persistChats({});
+    assert.strictEqual(window.chatStoreBackend(), NO_IDB ? 'localStorage' : 'IndexedDB');
+  });
+
+  await runTest(`persistChats() should report the ${MODE} backend it used`, async () => {
+    const backend = await window.persistChats({ c1: { title: 'T', messages: [] } });
+    assert.strictEqual(backend, NO_IDB ? 'localStorage' : 'IndexedDB');
+  });
+
+  await runTest('readPersistedChats() should round-trip a stored history', async () => {
+    const convos = { c1: { title: 'Round trip', messages: [{ role: 'user', content: 'hi' }] } };
+    await window.persistChats(convos);
+    const back = await window.readPersistedChats();
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(back)), convos);
+  });
+
+  await runTest('readPersistedChats() should return {} when nothing is stored', async () => {
+    await window.persistChats({});
+    window.localStorage.removeItem('mc_chats');
+    const back = await window.readPersistedChats();
+    assert.strictEqual(Object.keys(back).length, 0);
+  });
+
+  await runTest('persistChats() should drop undefined fields via the clone round-trip', async () => {
+    await window.persistChats({ c1: { title: 'T', messages: [{ role: 'user', content: 'x', attachments: undefined }] } });
+    const back = await window.readPersistedChats();
+    assert.ok(!Object.prototype.hasOwnProperty.call(back.c1.messages[0], 'attachments'),
+      'undefined attachments should not survive the round-trip');
+  });
+
+  if (!NO_IDB) {
+    await runTest('readPersistedChats() should migrate a legacy localStorage history into IndexedDB', async () => {
+      // Simulate a user upgrading from a build that stored chats in localStorage.
+      const legacy = { old1: { title: 'Legacy chat', messages: [{ role: 'user', content: 'from localStorage' }] } };
+      await window.persistChats({});                                  // clear IDB
+      await new Promise(r => setTimeout(r, 0));
+      window.localStorage.setItem('mc_chats', JSON.stringify(legacy));
+      const back = await window.readPersistedChats();
+      assert.deepStrictEqual(JSON.parse(JSON.stringify(back)), legacy, 'legacy history should be recovered');
+      assert.strictEqual(window.localStorage.getItem('mc_chats'), null,
+        'the legacy localStorage copy should be reclaimed after a confirmed IDB write');
+      // And it must now come back from IndexedDB, not from localStorage.
+      const again = await window.readPersistedChats();
+      assert.deepStrictEqual(JSON.parse(JSON.stringify(again)), legacy);
+    });
+
+    await runTest('a non-empty IndexedDB record should win over a stale localStorage copy', async () => {
+      const current = { live: { title: 'Current', messages: [] } };
+      await window.persistChats(current);
+      window.localStorage.setItem('mc_chats', JSON.stringify({ stale: { title: 'Stale', messages: [] } }));
+      const back = await window.readPersistedChats();
+      assert.deepStrictEqual(JSON.parse(JSON.stringify(back)), current, 'IndexedDB should be authoritative');
+      assert.strictEqual(window.localStorage.getItem('mc_chats'), null, 'stale copy should be reclaimed');
+    });
+
+    await runTest('IndexedDB should hold a history far larger than the 5MB localStorage cap', async () => {
+      const big = { c1: { title: 'Big', messages: [{ role: 'user', content: 'x'.repeat(12 * 1024 * 1024) }] } };
+      assert.ok(window.chatsByteSize(big) > 20 * 1024 * 1024, 'fixture should exceed 20MB UTF-16');
+      const backend = await window.persistChats(big);
+      assert.strictEqual(backend, 'IndexedDB');
+      const back = await window.readPersistedChats();
+      assert.strictEqual(back.c1.messages[0].content.length, 12 * 1024 * 1024);
+      await window.persistChats({});  // don't leave 12MB in the fake DB
+    });
+  }
+
+  await runTest('requestPersistentStorage() should resolve false when the API is missing', async () => {
+    assert.strictEqual(await window.requestPersistentStorage(), false);
+  });
+
+  await runTest('chatsByteSize() should measure the serialized map as UTF-16', () => {
+    assert.strictEqual(window.chatsByteSize({}), 4);              // "{}"  → 2 chars
+    assert.strictEqual(window.chatsByteSize(null), 4);            // treated as {}
+    const convos = { c1: { messages: [] } };
+    assert.strictEqual(window.chatsByteSize(convos), JSON.stringify(convos).length * 2);
+    // Circular structures must not throw — the size gate has to stay safe.
+    const circular = { a: {} }; circular.a.self = circular;
+    assert.strictEqual(window.chatsByteSize(circular), 0);
+  });
+
+  await runTest('syncPayloadTooLarge() should gate uploads well under local capacity', () => {
+    assert.strictEqual(window.syncPayloadLimit(), 8 * 1024 * 1024);
+    assert.strictEqual(window.syncPayloadTooLarge({}), false);
+    assert.strictEqual(window.syncPayloadTooLarge({ c1: { messages: [{ role: 'user', content: 'hi' }] } }), false);
+    // A history that fits comfortably in IndexedDB can still be too big to
+    // upsert as a single encrypted row — that is the case this gate exists for.
+    const big = { c1: { messages: [{ role: 'user', content: 'x'.repeat(5 * 1024 * 1024) }] } };
+    assert.strictEqual(window.syncPayloadTooLarge(big), true);
   });
 
   // ══════════════════════════════════════════

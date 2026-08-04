@@ -33,7 +33,12 @@ It edits the `openrouter.models` and `opencode.models` arrays inside `models.js`
 - **Custom model dropdown**: A hidden native `<select id="model-sel">` holds the real selected value; the visible dropdown is a custom DOM panel with inline search. `selectModel()` syncs both.
 - **Live vs static model lists**: `LIVE_PROVIDERS = new Set(['groq','opencode','openrouter','neuralwatt'])`. On provider change, the app tries a live `/models` fetch (cached per session in `modelCache`). Falls back to the static `PROVIDERS` registry if CORS/network fails. Groq has a special OpenRouter proxy fallback (`fetchGroqViaOpenRouter`) because direct Groq CORS is often blocked.
 - **Web search is two-phase**: (1) a streaming LLM call plans whether search is needed and decomposes queries; (2) queries execute in parallel via Tavily, Serper, or SearXNG. If the planner fails, it silently falls back to regex heuristics (`detectSearchNeeded`).
-- **Cloud sync is a backup, not a backing store**: Supabase-backed, client-side AES-GCM encrypted with a user passphrase. Chats are merged by `updatedAt` timestamp on pull. Crucially, `localStorage` remains the **primary** store — `pushSync()` uploads an encrypted copy of the same `mc_chats` blob. Enabling sync does **not** relieve the ~5MB localStorage cap, which is the constraint behind the "Storage full" toast.
+- **Chats live in IndexedDB, not localStorage**: `localStorage` is hard-capped at ~5MB per origin with **no API to raise it** — that ceiling is the browser's, not ours. Chat history is therefore stored in IndexedDB (`multichat` DB → `kv` store → key `chats`), which draws on the origin's real storage quota (typically a large share of free disk, reported by `navigator.storage.estimate()`). Records go in as live objects via structured clone, so no `JSON.stringify` on the write path.
+  - `persistChats()` / `readPersistedChats()` are the only entry points. Never touch `localStorage.mc_chats` directly.
+  - **Fallback**: if IndexedDB is unavailable (private mode, blocked by policy, jsdom), `_idbUnavailable` latches true and every path degrades to the original localStorage behaviour. `chatStoreBackend()` reports which is live.
+  - **Migration**: a legacy `mc_chats` localStorage history is imported on first read, and the localStorage key is removed **only after the IDB write is confirmed** — an interrupted migration re-runs rather than losing data. An **empty** IDB record must never shadow a legacy history (a fresh install writes `{}` on first save); only a non-empty record is authoritative. There is a regression test for exactly this.
+  - `requestPersistentStorage()` calls `navigator.storage.persist()` at init so the origin isn't evicted under disk pressure.
+- **Cloud sync is a backup, not a backing store**: Supabase-backed, client-side AES-GCM encrypted with a user passphrase. Chats are merged by `updatedAt` timestamp on pull. `pushSync()` uploads an encrypted copy of the **entire** chat map as one row on every change, so its practical ceiling is far below local IndexedDB capacity. `syncPayloadTooLarge()` gates uploads at `SYNC_PAYLOAD_LIMIT` (8MB); past that, chats keep saving locally and only the upload is skipped, with a one-shot toast. Enabling sync never relieves local storage pressure.
 - **Storage compaction (`compactChats`)**: Persisted chats must never carry file payloads. Two things are stripped, both of which are write-only dead weight:
   - Inline attachments persist as `{name, size, words?, chunkCount?}` via `leanAttachment()`. The full `content`/`chunks` stay in the live `snapAttach` copy for the outbound API call only; history rendering reads `name`/`size`.
   - `searchMeta` keeps `grouped` and drops `results` — they alias the same items in memory but `JSON.stringify` serializes every snippet twice. Read them back through `searchResultsOf(sm)`, never `sm.results` directly.
@@ -79,7 +84,7 @@ It edits the `openrouter.models` and `opencode.models` arrays inside `models.js`
 - **Model switch divider**: Visual "Switched to ModelX" divider when model changes mid-conversation.
 - **PWA install banner**: `beforeinstallprompt` handled with dismissible banner (`mc_pwa_dismissed`). `?new=1` shortcut auto-creates a new chat.
 - **Reset to defaults**: Button in Settings → Actions resets system prompt, gen params, web search config, UI scale. Does NOT clear API keys.
-- **Storage meter + Compact storage**: Settings → Actions shows localStorage usage against the ~5MB nominal cap (bar turns amber at 70%, red at 90%) and the `mc_chats` share of it. Refreshed by `renderStorageMeter()` whenever the panel opens. The **Compact storage** button runs `compactChats()` on demand and toasts the bytes reclaimed.
+- **Storage meter + Compact storage**: Settings → Actions shows origin storage usage against the real quota from `navigator.storage.estimate()` (bar turns amber at 70%, red at 90%), the chat map's serialized size, which backend is active, and whether storage is persistent. Falls back to counting localStorage against ~5MB when the estimate API is missing. Refreshed by `renderStorageMeter()` whenever the panel opens. The **Compact storage** button runs `compactChats()` on demand and toasts the bytes reclaimed.
 - **Keyboard shortcuts**: `Enter` sends the message; `Shift+Enter` inserts a newline (`handleKey()` also ignores IME composition via `e.isComposing`). `Escape` closes info popup.
 
 ## Testing / verifying changes
@@ -87,11 +92,18 @@ It edits the `openrouter.models` and `opencode.models` arrays inside `models.js`
 There is a small unit test suite. Run it with:
 
 ```bash
-npm install   # first time only — installs jsdom
-npm test      # runs `node test.js`
+npm install   # first time only — installs jsdom + fake-indexeddb
+npm test      # runs `node test.js && node test.js --no-idb`
 ```
 
-`test.js` boots `index.html` inside jsdom (`runScripts: "dangerously"`, with stubs for `localStorage`, `crypto`, `matchMedia`, `ResizeObserver`, `IntersectionObserver`, and `window.PROVIDERS`) and asserts on the pure helpers: `esc()` escaping, `fmtText()` markdown rendering + XSS hardening, `chunkText()` chunking, and `detectSearchNeeded()` heuristics. It exits non-zero on failure. It is not a build step and does not cover UI behaviour.
+`test.js` boots `index.html` inside jsdom (`runScripts: "dangerously"`, with stubs for `localStorage`, `crypto`, `matchMedia`, `ResizeObserver`, `IntersectionObserver`, and `window.PROVIDERS`) and asserts on the pure helpers: `esc()` escaping, `fmtText()` markdown rendering + XSS hardening, `chunkText()` chunking, `detectSearchNeeded()` heuristics, and the storage/compaction layer. It exits non-zero on failure. It is not a build step and does not cover UI behaviour.
+
+**The suite runs twice, and both runs must pass.** jsdom implements no IndexedDB, so the default run injects `fake-indexeddb` to cover the primary storage path, and `--no-idb` re-runs everything against the localStorage fallback (private mode / blocked by policy). A change that only passes one mode is broken.
+
+Two harness gotchas worth knowing before adding tests:
+
+- **`const`/`let` at the top level of `index.html`'s inline script do NOT land on `window`** — only `function` declarations and `var` do. To assert on a constant, expose an accessor function (see `syncPayloadLimit()`, `chatStoreBackend()`).
+- **`assert.deepStrictEqual` fails on objects built inside jsdom** — they have a different `Object.prototype`, so it reports "same structure but not reference-equal". Compare via a `JSON.parse(JSON.stringify(...))` round-trip or on extracted primitives.
 
 Manual browser verification is still the primary check:
 
@@ -220,5 +232,11 @@ The proxy adds synthetic `Access-Control-Allow-Origin: *` headers to all respons
   - `saveChats()` now still calls `pushSync()` when the local write fails and cloud sync is enabled, so a message survives a full localStorage instead of being lost.
   - Added a storage usage meter (accent → amber at 70% → red at 90%) and a **Compact storage** button to Settings → Actions, plus `localStorageBytes(prefix?)` using the standard `length`/`key(i)` Storage API.
   - Expanded the test suite from 50 to 65 tests covering compaction, idempotence, malformed input, searchMeta normalization, render parity between legacy and compacted shapes, and byte accounting. Test harness `localStorage` stub is now spec-shaped (`length`/`key`).
-  - Bumped Service Worker cache version in `sw.js` to `multichat-v37`.
+  - **Moved chat storage from localStorage to IndexedDB**, raising capacity from the browser's fixed ~5MB localStorage cap (which no API can increase) to the origin's real storage quota — typically hundreds of MB to several GB. New `persistChats()`/`readPersistedChats()` store layer, with automatic migration of legacy localStorage histories and a full localStorage fallback for private mode.
+  - Added `requestPersistentStorage()` (`navigator.storage.persist()`) at init so the origin resists eviction under disk pressure.
+  - Added `syncPayloadTooLarge()` / `SYNC_PAYLOAD_LIMIT` (8MB) gating `pushSync()`. Cloud sync upserts the whole chat map as one row per change, so local capacity now exceeds what is sensible to upload; past the limit chats keep saving locally and only the upload is skipped.
+  - Storage meter now reports real usage/quota via `navigator.storage.estimate()`, plus the active backend and whether storage is persistent.
+  - Fixed a data-loss bug found by the new migration test: an empty IndexedDB record (written by a fresh install's first save) shadowed a legacy localStorage history and then deleted it. Only a non-empty IDB record is authoritative.
+  - `npm test` now runs the suite **twice** — once against a fake IndexedDB (primary path) and once with `--no-idb` (fallback path): 76 + 73 tests. Added `fake-indexeddb` as the first devDependency.
+  - Bumped Service Worker cache version in `sw.js` to `multichat-v38`.
 
