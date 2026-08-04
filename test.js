@@ -56,7 +56,16 @@ const dom = new JSDOM(html, {
   runScripts: "dangerously",
   virtualConsole,
   beforeParse(window) {
-    window.localStorage = { store: {}, getItem(k) { return this.store[k] || null; }, setItem(k, v) { this.store[k] = String(v); }, removeItem(k) { delete this.store[k]; } };
+    // Spec-shaped Storage stub: localStorageBytes() walks the standard
+    // length/key(i) index API, so the stub must expose it too.
+    window.localStorage = {
+      store: {},
+      getItem(k) { return Object.prototype.hasOwnProperty.call(this.store, k) ? this.store[k] : null; },
+      setItem(k, v) { this.store[k] = String(v); },
+      removeItem(k) { delete this.store[k]; },
+      key(i) { const ks = Object.keys(this.store); return i < ks.length ? ks[i] : null; },
+      get length() { return Object.keys(this.store).length; }
+    };
     if (nodeCrypto) {
       // jsdom's window.crypto is a getter-only accessor; defineProperty is required.
       try { Object.defineProperty(window, 'crypto', { value: nodeCrypto, configurable: true, writable: true }); }
@@ -551,6 +560,131 @@ async function runAll() {
       await assert.rejects(() => window.decryptSync(out, 'wrong'));
     });
   }
+
+  // ══════════════════════════════════════════
+  // STORAGE COMPACTION
+  // ══════════════════════════════════════════
+  await runTest('leanAttachment() should keep only render-visible fields', () => {
+    const lean = window.leanAttachment({
+      name: 'report.pdf', size: 12345, content: 'x'.repeat(50000),
+      chunks: ['a', 'b', 'c'], words: 800, type: 'text', _chipId: 'att-1', _extracting: false
+    });
+    // JSON round-trip: objects built inside the jsdom realm have a different
+    // Object.prototype, which deepStrictEqual treats as unequal.
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(lean)), { name: 'report.pdf', size: 12345, words: 800, chunkCount: 3 });
+    assert.strictEqual(lean.content, undefined);
+    assert.strictEqual(lean.chunks, undefined);
+  });
+
+  await runTest('leanAttachment() should carry chunkCount forward on re-compaction', () => {
+    const once = window.leanAttachment({ name: 'a.txt', size: 10, chunks: ['x', 'y'] });
+    assert.strictEqual(window.leanAttachment(once).chunkCount, 2);
+  });
+
+  await runTest('compactChats() should strip attachment payloads and report the change', () => {
+    const convos = { c1: { messages: [
+      { role: 'user', content: 'hi', attachments: [{ name: 'big.pdf', size: 99, content: 'y'.repeat(100000), chunks: ['y'.repeat(50000)] }] }
+    ] } };
+    assert.strictEqual(window.compactChats(convos), true);
+    const att = convos.c1.messages[0].attachments[0];
+    assert.strictEqual(att.name, 'big.pdf');
+    assert.strictEqual(att.size, 99);
+    assert.strictEqual(att.content, undefined);
+    assert.strictEqual(att.chunks, undefined);
+    assert.ok(JSON.stringify(convos).length < 200, 'compacted chat should be tiny');
+  });
+
+  await runTest('compactChats() should be idempotent (second pass is a no-op)', () => {
+    const convos = { c1: { messages: [
+      { role: 'user', content: 'hi', attachments: [{ name: 'a.txt', size: 5, content: 'hello' }] }
+    ] } };
+    assert.strictEqual(window.compactChats(convos), true);
+    assert.strictEqual(window.compactChats(convos), false);
+  });
+
+  await runTest('compactChats() should drop the duplicated searchMeta.results when grouped exists', () => {
+    const items = [{ title: 'T', url: 'https://e.com', snippet: 's'.repeat(800) }];
+    const convos = { c1: { messages: [
+      { role: 'assistant', content: 'a', searchMeta: { queries: ['q'], provider: 'tavily', results: items, grouped: [{ query: 'q', items }] } }
+    ] } };
+    const before = JSON.stringify(convos).length;
+    assert.strictEqual(window.compactChats(convos), true);
+    const sm = convos.c1.messages[0].searchMeta;
+    assert.strictEqual(sm.results, undefined);
+    assert.strictEqual(sm.grouped.length, 1);
+    assert.ok(JSON.stringify(convos).length < before / 1.8, 'dropping the duplicate should roughly halve it');
+  });
+
+  await runTest('compactChats() should leave legacy results-only searchMeta intact', () => {
+    const convos = { c1: { messages: [
+      { role: 'assistant', content: 'a', searchMeta: { query: 'q', results: [{ title: 'T', url: 'u', snippet: 's' }] } }
+    ] } };
+    assert.strictEqual(window.compactChats(convos), false);
+    assert.strictEqual(convos.c1.messages[0].searchMeta.results.length, 1);
+  });
+
+  await runTest('compactChats() should tolerate malformed chats without throwing', () => {
+    assert.strictEqual(window.compactChats(null), false);
+    assert.strictEqual(window.compactChats({}), false);
+    assert.strictEqual(window.compactChats({ a: null, b: {}, c: { messages: 'nope' }, d: { messages: [null] } }), false);
+  });
+
+  await runTest('searchResultsOf() should normalize all three searchMeta shapes', () => {
+    const r = [{ title: 'A' }, { title: 'B' }];
+    const titles = sm => window.searchResultsOf(sm).map(x => x.title);
+    assert.deepStrictEqual(titles({ results: r }), ['A', 'B']);                           // legacy
+    assert.deepStrictEqual(titles({ grouped: [{ query: 'q', items: r }] }), ['A', 'B']);  // compacted
+    assert.deepStrictEqual(titles({ results: r, grouped: [{ items: [] }] }), ['A', 'B']); // both → results wins
+    assert.deepStrictEqual(titles({ grouped: [{ items: [r[0]] }, { items: [r[1]] }] }), ['A', 'B']);
+    assert.strictEqual(window.searchResultsOf(null).length, 0);
+    assert.strictEqual(window.searchResultsOf({}).length, 0);
+    assert.strictEqual(window.searchResultsOf({ grouped: [null, {}] }).length, 0);
+  });
+
+  await runTest('renderSearchPanel() should render compacted (grouped-only) searchMeta identically', () => {
+    const items = [{ title: 'Result One', url: 'https://example.com/a', snippet: 'snip' }];
+    const legacy   = window.renderSearchPanel({ queries: ['q'], provider: 'tavily', results: items, grouped: [{ query: 'q', items }] });
+    const compacted = window.renderSearchPanel({ queries: ['q'], provider: 'tavily', grouped: [{ query: 'q', items }] });
+    assert.strictEqual(compacted, legacy);
+    assert.ok(compacted.includes('Result One'));
+    assert.ok(compacted.includes('1 source'));
+  });
+
+  await runTest('fmtText() should still build citation links from compacted searchMeta', () => {
+    const items = [{ title: 'A', url: 'https://example.com/a', snippet: 's' }];
+    const out = window.fmtText('See [1] here', { grouped: [{ query: 'q', items }] });
+    assert.ok(out.includes('class="citation-link"'));
+    assert.ok(out.includes('https://example.com/a'));
+  });
+
+  await runTest('localStorageBytes() should account for keys as UTF-16 and track add/remove', () => {
+    // Delta-based so it holds regardless of what the app already persisted.
+    const ls = window.localStorage;
+    const baseline = window.localStorageBytes();
+    ls.setItem('__probe__', 'abcde');                    // (9 + 5) * 2 = 28
+    assert.strictEqual(window.localStorageBytes('__probe__'), 28);
+    assert.strictEqual(window.localStorageBytes() - baseline, 28);
+    ls.setItem('__probe__', 'abcdefghij');               // (9 + 10) * 2 = 38
+    assert.strictEqual(window.localStorageBytes() - baseline, 38);
+    assert.strictEqual(window.localStorageBytes('nope'), 0);
+    ls.removeItem('__probe__');
+    assert.strictEqual(window.localStorageBytes(), baseline, 'removal should restore the baseline');
+  });
+
+  await runTest('compaction should reclaim the bulk of an attachment-heavy history', () => {
+    const convos = {};
+    for (let i = 0; i < 5; i++) {
+      convos['c' + i] = { messages: [{
+        role: 'user', content: 'q',
+        attachments: [{ name: `f${i}.pdf`, size: 300000, content: 'z'.repeat(150000), chunks: ['z'.repeat(75000), 'z'.repeat(75000)] }]
+      }] };
+    }
+    const before = JSON.stringify(convos).length;
+    window.compactChats(convos);
+    const after = JSON.stringify(convos).length;
+    assert.ok(before > 1000000, 'fixture should start over 1MB');
+    assert.ok(after < before * 0.001, `expected >99.9% reclaimed, got ${before} -> ${after}`);
+  });
 
   // ══════════════════════════════════════════
   finished = true;

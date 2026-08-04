@@ -346,6 +346,17 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
 .sync-btn{width:100%;padding:5px 8px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);color:var(--text2);font-size:11px;cursor:pointer;margin-top:6px;font-family:var(--font-body);transition:all 0.15s;}
 .sync-btn:hover{background:var(--bg3);color:var(--text);}
 
+/* ── Storage usage meter (Settings → Actions) ──
+   Fill colour escalates with pressure: accent → amber at 70% → red at 90%,
+   so the bar reads as a warning before the quota actually blows. */
+.storage-meter{margin-bottom:9px;}
+.storage-bar{height:6px;background:var(--bg3);border:1px solid var(--border);border-radius:99px;overflow:hidden;}
+.storage-fill{height:100%;width:0;background:var(--accent);border-radius:99px;transition:width 0.3s ease,background 0.3s ease;}
+.storage-fill.warn{background:#d99a2b;}
+.storage-fill.crit{background:#d9534f;}
+.storage-text{font-size:11px;color:var(--text2);margin-top:5px;font-family:var(--font-mono);}
+.storage-note{font-size:11px;color:var(--text3);line-height:1.5;margin-top:5px;}
+
 /* ── Sidebar collapse toggle ──
    Small icon-only button at the right of the logo row. margin-left:auto pushes
    it flush to the right without needing absolute positioning. */
@@ -1428,6 +1439,13 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
         <span class="sp-chevron">▼</span>
       </div>
       <div class="sp-section-content">
+        <div class="sp-label">Local storage</div>
+        <div class="storage-meter">
+          <div class="storage-bar"><div class="storage-fill" id="storage-fill"></div></div>
+          <div class="storage-text" id="storage-text">—</div>
+          <div class="storage-note">Chats live in this browser (~5 MB cap). Cloud sync keeps an encrypted backup but does not raise this limit.</div>
+        </div>
+        <button onclick="compactStorage()" style="width:100%;padding:8px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text2);font-size:13px;cursor:pointer;font-family:var(--font-body);margin-bottom:7px;">🗜 Compact storage</button>
         <button onclick="resetSettings()" style="width:100%;padding:8px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text2);font-size:13px;cursor:pointer;font-family:var(--font-body);">↺ Reset to defaults</button>
       </div>
     </div>
@@ -1805,6 +1823,10 @@ async function pullSync() {
         }
       }
       conversations = merged;
+      // A peer device on an older build may still be uploading full attachment
+      // text and duplicated search snippets — strip them before they land in
+      // this device's localStorage and eat the quota all over again.
+      compactChats(conversations);
       localStorage.setItem('mc_chats', JSON.stringify(conversations));
       localStorage.setItem('mc_synced_at', remoteTime.toString());
       renderChatList();
@@ -2378,8 +2400,9 @@ INSTRUCTIONS:
 // response. Handles both the new grouped format (queries array + grouped results)
 // and the legacy format (single query string) stored in older chat history entries.
 function renderSearchPanel(searchMeta) {
-  if (!searchMeta?.results?.length) return '';
-  const { provider, results } = searchMeta;
+  const results = searchResultsOf(searchMeta);
+  if (!results.length) return '';
+  const { provider } = searchMeta;
   // Handle both new format (queries array) and old history format (query string)
   const queries = searchMeta.queries || (searchMeta.query ? [searchMeta.query] : []);
   const provLabel = SEARCH_PROVIDERS[provider]?.label || provider;
@@ -2601,6 +2624,46 @@ function toggleSettings() {
   const btn = document.getElementById('settings-toggle');
   panel.classList.toggle('open');
   btn.classList.toggle('active');
+  if (panel.classList.contains('open')) renderStorageMeter();
+}
+
+// ── Storage usage meter (Settings → Actions) ──
+// Browsers cap localStorage at roughly 5MB per origin and expose no API to read
+// the real limit, so the bar is drawn against that nominal budget and labelled
+// as approximate. Cloud sync does NOT raise this ceiling — it mirrors the same
+// blob to Supabase — which is exactly the confusion this meter exists to clear.
+const LS_NOMINAL_LIMIT = 5 * 1024 * 1024;
+
+function renderStorageMeter() {
+  const fill = document.getElementById('storage-fill');
+  const text = document.getElementById('storage-text');
+  if (!fill || !text) return;
+  const total = localStorageBytes();
+  const chats = localStorageBytes('mc_chats');
+  const pct = Math.min(100, Math.round((total / LS_NOMINAL_LIMIT) * 100));
+  fill.style.width = pct + '%';
+  fill.classList.toggle('warn', pct >= 70 && pct < 90);
+  fill.classList.toggle('crit', pct >= 90);
+  const chatCount = Object.keys(conversations || {}).length;
+  text.textContent = `${fmtSize(total)} of ~5 MB used (${pct}%) · ${chatCount} chat${chatCount===1?'':'s'} = ${fmtSize(chats)}`;
+}
+
+// User-invoked reclaim. Same pass saveChats() runs automatically on quota
+// failure, surfaced as a button so it can be run before hitting the wall.
+function compactStorage() {
+  const before = localStorageBytes('mc_chats');
+  const changed = compactChats(conversations);
+  if (!changed) {
+    renderStorageMeter();
+    showToast('✓ Storage already compact — nothing to reclaim');
+    return;
+  }
+  saveChats();
+  const freed = before - localStorageBytes('mc_chats');
+  renderStorageMeter();
+  showToast(freed > 0
+    ? `🗜 Reclaimed ${fmtSize(freed)} from stored attachments and search results`
+    : '✓ Storage compacted');
 }
 function toggleSidebarCollapse() {
   const sb = document.getElementById('sidebar');
@@ -3539,16 +3602,128 @@ function loadChat(id) {
     resetFooterStats();
   }
 }
+// ══════════════════════════════════════════
+// STORAGE COMPACTION
+// localStorage is the PRIMARY store for `mc_chats` and is capped at ~5MB per
+// origin. Cloud sync mirrors that same blob to Supabase — it is a backup, not
+// a backing store, so it does nothing to relieve the local cap. Two things
+// used to dominate the persisted payload, neither of which is ever read back:
+//
+//   1. Inline attachments were persisted whole (`[...attachedFiles]`), keeping
+//      `content` (the full extracted file text) AND `chunks` (that same text
+//      again, split for injection). Rendering only reads `name`/`size`, and the
+//      outbound API call uses a separate live copy (`snapAttach`) — so a single
+//      300KB PDF burned ~600KB of quota forever for zero benefit.
+//   2. `searchMeta` stored both `results` and `grouped`. In memory they share
+//      the same item objects, but JSON.stringify has no notion of identity and
+//      serializes every snippet twice.
+//
+// compactChats() strips both in place and returns whether anything changed.
+// It runs on load (one-time reclaim of already-wasted space), after a cloud
+// pull (a peer device may still be on an older build), and as a last-ditch
+// retry inside saveChats() when the quota is already blown.
+// ══════════════════════════════════════════
+
+// Reduces a persisted attachment to the fields the UI actually renders.
+// `chunkCount` is kept so history can still show how the file was split.
+function leanAttachment(a) {
+  const out = {name: a.name, size: a.size};
+  if (a.words) out.words = a.words;
+  if (a.chunks && a.chunks.length) out.chunkCount = a.chunks.length;
+  else if (a.chunkCount) out.chunkCount = a.chunkCount;
+  return out;
+}
+
+// True when the attachment still carries payload/scratch fields worth dropping.
+function isFatAttachment(a) {
+  return !!a && (a.content || a.chunks || a.type !== undefined ||
+                 a._chipId !== undefined || a._extracting !== undefined ||
+                 a._error !== undefined || a._page !== undefined ||
+                 a._totalPages !== undefined);
+}
+
+function compactChats(convos) {
+  let changed = false;
+  for (const chat of Object.values(convos || {})) {
+    if (!chat || !Array.isArray(chat.messages)) continue;
+    for (const m of chat.messages) {
+      if (!m) continue;
+      if (Array.isArray(m.attachments)) {
+        for (let i = 0; i < m.attachments.length; i++) {
+          if (isFatAttachment(m.attachments[i])) {
+            m.attachments[i] = leanAttachment(m.attachments[i]);
+            changed = true;
+          }
+        }
+      }
+      // `grouped` is the richer form (it retains the per-query grouping that
+      // history re-injection needs), so it wins and the flat duplicate goes.
+      const sm = m.searchMeta;
+      if (sm && Array.isArray(sm.grouped) && Array.isArray(sm.results)) {
+        delete sm.results;
+        changed = true;
+      }
+    }
+  }
+  return changed;
+}
+
+// Normalizes either searchMeta shape to a flat result list. Handles the legacy
+// `results`-only format, the compacted `grouped`-only format, and both.
+function searchResultsOf(sm) {
+  if (!sm) return [];
+  if (Array.isArray(sm.results)) return sm.results;
+  if (Array.isArray(sm.grouped)) return sm.grouped.flatMap(g => (g && g.items) || []);
+  return [];
+}
+
+// Total bytes held in localStorage. Uses the standard Web Storage index API
+// (length/key) so it works against any spec-compliant implementation. Values
+// are UTF-16 in practice, hence the ×2.
+function localStorageBytes(prefix) {
+  let total = 0;
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k == null) continue;
+      if (prefix && k !== prefix) continue;
+      const v = localStorage.getItem(k);
+      if (typeof v === 'string') total += (k.length + v.length) * 2;
+    }
+  } catch(e) { /* storage disabled/partitioned — report what we have */ }
+  return total;
+}
+
 function saveChats() {
   try {
     localStorage.setItem('mc_chats', JSON.stringify(conversations));
     debouncedPushSync();
   } catch(e) {
     console.warn('[MultiChat] Failed to save chats to localStorage:', e);
-    if (e.name === 'QuotaExceededError' || e.code === 22) {
-      showToast('⚠️ Storage full — clear old chats to save new ones', 'err');
-    } else {
+    if (e.name !== 'QuotaExceededError' && e.code !== 22) {
       showToast('⚠️ Could not save conversation history', 'err');
+      return;
+    }
+    // Quota blown. Drop dead weight and retry before telling the user to
+    // delete anything — on a history full of old attachments this alone
+    // usually frees several megabytes.
+    if (compactChats(conversations)) {
+      try {
+        localStorage.setItem('mc_chats', JSON.stringify(conversations));
+        debouncedPushSync();
+        showToast('🗜 Storage was full — reclaimed space from old attachments');
+        return;
+      } catch(e2) {
+        console.warn('[MultiChat] Still over quota after compaction:', e2);
+      }
+    }
+    // Genuinely out of local room. If cloud sync is on, push anyway so the
+    // message survives rather than being lost to a failed local write.
+    if (isCloudSyncEnabled()) {
+      pushSync();
+      showToast('⚠️ Local storage full — saved to cloud only. Delete old chats to restore local saving.', 'err');
+    } else {
+      showToast(`⚠️ Storage full (${fmtSize(localStorageBytes())} used) — delete old chats to save new ones`, 'err');
     }
   }
 }
@@ -3570,6 +3745,16 @@ function loadChats() {
         }
         if (chat.totalTokens === undefined) chat.totalTokens = 0;
         if (chat.totalCost === undefined) chat.totalCost = 0;
+      }
+      // One-time reclaim for histories written by builds that persisted full
+      // attachment text and duplicated search snippets.
+      const before = migrated ? 0 : localStorageBytes('mc_chats');
+      if (compactChats(conversations)) {
+        migrated = true;
+        const freed = before - JSON.stringify(conversations).length * 2;
+        if (before && freed > 262144) {
+          console.info(`[MultiChat] Compacted chat storage, freed ~${fmtSize(freed)}`);
+        }
       }
       if (migrated) saveChats();
     }
@@ -3943,7 +4128,7 @@ function buildMsgHTML(m, msgIndex) {
       <div class="think-body">${esc(m.thinking)}</div>
     </div>`;
   }
-  const searchHTML = (!isUser && m.searchMeta?.results?.length) ? renderSearchPanel(m.searchMeta) : '';
+  const searchHTML = (!isUser && searchResultsOf(m.searchMeta).length) ? renderSearchPanel(m.searchMeta) : '';
   let attachHTML = '';
   if (isUser && m.attachments?.length) {
     attachHTML = `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px;">${
@@ -4083,8 +4268,11 @@ async function sendMessage() {
   const chat = conversations[currentChatId];
   if (!chat.messages.length) chat.title = (text||attachedFiles[0]?.name||'Chat').slice(0,42) + ((text?.length||0)>42?'…':'');
 
-  // Build user message including any inline attachments
-  const userMsg = {role:'user', content: text, attachments: attachedFiles.length ? [...attachedFiles] : undefined};
+  // Build user message including any inline attachments.
+  // Persist metadata only — `snapAttach` below keeps the full text/chunks alive
+  // for this send, and history rendering only ever reads name/size. Storing the
+  // extracted content here would pin megabytes in localStorage permanently.
+  const userMsg = {role:'user', content: text, attachments: attachedFiles.length ? attachedFiles.map(leanAttachment) : undefined};
   chat.messages.push(userMsg);
   chat.updatedAt = Date.now();
 
@@ -4348,9 +4536,9 @@ function buildApiMessages(chatMessages, snapAttach, systemPrompt, searchContext 
       // Re-inject search context from the assistant reply that followed this message
       if (!isLast) {
         const nextMsg = chatMessages[idx + 1];
-        if (nextMsg?.role === 'assistant' && nextMsg?.searchMeta?.results?.length) {
+        if (nextMsg?.role === 'assistant' && searchResultsOf(nextMsg.searchMeta).length) {
           const sm = nextMsg.searchMeta;
-          const grouped = sm.grouped || sm.results.map(r => ({query: sm.query || '', items: [r]}));
+          const grouped = sm.grouped || searchResultsOf(sm).map(r => ({query: sm.query || '', items: [r]}));
           const histCtx = formatSearchContext(sm.queries || (sm.query ? [sm.query] : []), grouped);
           if (histCtx) content = content + '\n\n' + histCtx;
         }
@@ -4500,8 +4688,9 @@ function fmtText(text, searchMeta) {
     const items = m.trim().split('\n').map(l => `<li>${l.replace(/^\d+\. /, '')}</li>`).join('');
     return `<ol>${items}</ol>`;
   });
-  if (searchMeta?.results?.length) {
-    const results = searchMeta.results;
+  const citationResults = searchResultsOf(searchMeta);
+  if (citationResults.length) {
+    const results = citationResults;
     text = text.replace(/\[(\d+)\]/g, (match, n) => {
       const r = results[parseInt(n) - 1];
       return r?.url
