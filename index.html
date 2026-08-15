@@ -504,7 +504,9 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
    absorb all remaining height between the header and input area. Smooth scroll
    is set here so programmatic scrollTop assignments animate gracefully.
 ══════════════════════════════════════════════════ */
-#messages{flex:1 1 auto;overflow-y:auto;padding:28px 0 16px;scroll-behavior:smooth;min-height:0;}
+/* overscroll-behavior-y:contain stops the overscroll from chaining to the page
+   (pull-to-refresh) natively, without cancelling any touch gesture. */
+#messages{flex:1 1 auto;overflow-y:auto;overscroll-behavior-y:contain;padding:28px 0 16px;scroll-behavior:smooth;min-height:0;}
 #messages::-webkit-scrollbar{width:4px;}
 #messages::-webkit-scrollbar-thumb{background:var(--scrollbar);border-radius:4px;}
 
@@ -4998,12 +5000,25 @@ if (new URLSearchParams(location.search).get('new') === '1') {
   window.addEventListener('load', () => setTimeout(newChat, 200));
 }
 
-// Prevent pull-to-refresh on the messages area when at top of scroll
+// Prevent pull-to-refresh on the messages area when at top of scroll.
+//
+// Only a DOWNWARD drag (the pull-to-refresh direction) is cancelled. Cancelling
+// every touchmove at scrollTop 0 — as this used to — also killed upward drags,
+// which are how you scroll back DOWN through the conversation. The browser
+// aborts the whole gesture on preventDefault, so scrollTop stayed 0, the guard
+// stayed armed, and every following swipe was cancelled too: the view locked at
+// the top of the chat until reload.
+let _ptrStartY = 0;
+document.addEventListener('touchstart', e => {
+  if (e.touches && e.touches.length) _ptrStartY = e.touches[0].clientY;
+}, { passive: true });
+
 document.addEventListener('touchmove', e => {
   const msgs = document.getElementById('messages');
-  if (msgs && msgs.contains(e.target) && msgs.scrollTop <= 0) {
-    e.preventDefault();
-  }
+  if (!msgs || !msgs.contains(e.target) || msgs.scrollTop > 0) return;
+  const touch = e.touches && e.touches.length ? e.touches[0] : null;
+  // Finger travelling down the screen while already at the top = pull-to-refresh.
+  if (touch && touch.clientY > _ptrStartY) e.preventDefault();
 }, { passive: false });
 
 // Drag-and-drop file attachment into the chat input area

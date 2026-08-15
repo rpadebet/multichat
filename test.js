@@ -799,6 +799,41 @@ async function runAll() {
   });
 
   // ══════════════════════════════════════════
+  // MOBILE SCROLL — the pull-to-refresh guard must not lock the view
+  // ══════════════════════════════════════════
+
+  // Fires a synthetic touch event. jsdom has no TouchEvent constructor, so we
+  // decorate a plain Event with the touch lists the handler reads.
+  function fireTouch(target, type, clientY) {
+    const e = new window.Event(type, { bubbles: true, cancelable: true });
+    const point = { clientX: 100, clientY };
+    e.touches = type === 'touchend' ? [] : [point];
+    e.changedTouches = [point];
+    target.dispatchEvent(e);
+    return e;
+  }
+
+  await runTest('pull-to-refresh guard should block a DOWNWARD drag at the top of #messages', () => {
+    const msgs = window.document.getElementById('messages');
+    assert.ok(msgs, '#messages must exist');
+    assert.strictEqual(msgs.scrollTop, 0, 'jsdom reports the list pinned at the top');
+    fireTouch(msgs, 'touchstart', 300);
+    // Finger moving down the screen = the pull-to-refresh direction.
+    const move = fireTouch(msgs, 'touchmove', 360);
+    assert.strictEqual(move.defaultPrevented, true, 'downward pull must be cancelled');
+  });
+
+  await runTest('pull-to-refresh guard must NOT block an UPWARD drag at the top of #messages', () => {
+    const msgs = window.document.getElementById('messages');
+    fireTouch(msgs, 'touchstart', 300);
+    // Finger moving up the screen = scrolling back down through the messages.
+    // Cancelling this kills the gesture, scrollTop stays 0, and the user is
+    // permanently stuck at the top of the conversation.
+    const move = fireTouch(msgs, 'touchmove', 240);
+    assert.strictEqual(move.defaultPrevented, false, 'scrolling back down must stay native');
+  });
+
+  // ══════════════════════════════════════════
   finished = true;
   if (loadTimer) clearTimeout(loadTimer);
   console.log('\nResults: ' + passed + ' passed, ' + failed + ' failed' + (skipped ? ', ' + skipped + ' skipped' : ''));
