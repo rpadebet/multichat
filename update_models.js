@@ -26,6 +26,10 @@ function fmtCtx(n) {
   return n;
 }
 
+function isUsableModel(m) {
+  return typeof m.id === 'string' && !m.id.startsWith('~');
+}
+
 async function run() {
   console.log('Fetching latest models from OpenRouter and OpenCode Go...');
 
@@ -38,7 +42,7 @@ async function run() {
   const opencodeModels = ocData.data || [];
 
   // Sort OpenRouter models: free first, then by context window descending
-  const orSorted = openrouterModels.sort((a, b) => {
+  const orSorted = openrouterModels.filter(isUsableModel).sort((a, b) => {
     const aFree = parseFloat(a.pricing?.prompt || '1') === 0;
     const bFree = parseFloat(b.pricing?.prompt || '1') === 0;
     if (aFree && !bFree) return -1;
@@ -50,7 +54,7 @@ async function run() {
     const inP = parseFloat(m.pricing?.prompt || '0');
     const outP = parseFloat(m.pricing?.completion || '0');
     const isFree = inP === 0 && outP === 0;
-    const priceStr = isFree ? 'FREE' : `$${fmtPrice(inP*1e6)}/$${fmtPrice(outP*1e6)}`;
+    const priceStr = inP < 0 || outP < 0 ? '' : isFree ? 'FREE' : `$${fmtPrice(inP*1e6)}/$${fmtPrice(outP*1e6)}`;
     const freeTag = isFree ? '🆓 ' : '';
     const ctx = m.context_length ? ` (${fmtCtx(m.context_length)})` : '';
     const cleanName = `${freeTag}${m.name || m.id}${ctx}`.replace(/[\r\n]+/g, ' ').replace(/'/g, "\\'");
@@ -75,7 +79,7 @@ async function run() {
 
   // Format OpenCode Go models (no pricing from API — use static names)
   const formattedOc = opencodeModels
-    .filter(m => m.object === 'model')
+    .filter(m => m.object === 'model' && isUsableModel(m))
     .map(m => {
       const known = ocNameMap[m.id];
       return {
@@ -88,7 +92,7 @@ async function run() {
   // Preserve existing unknowns from static list (models NOT in the live API response)
   const liveOcIds = new Set(formattedOc.map(m => m.id));
   Object.entries(ocNameMap).forEach(([id, info]) => {
-    if (!liveOcIds.has(id)) {
+    if (!liveOcIds.has(id) && !id.startsWith('~')) {
       formattedOc.push({ id, name: info.name.replace(/'/g, "\\'"), p: info.p });
     }
   });

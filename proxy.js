@@ -4,6 +4,15 @@ const { URL } = require('url');
 
 const PROXY_PORT = 3456;
 const PROXY_KEY = process.env.PROXY_KEY || null; // set PROXY_KEY env var to enable simple auth
+const privateHostnames = /^(localhost|127\.\d+\.\d+\.\d+|\[::1\]|host\.docker\.internal|0\.0\.0\.0)$/i;
+
+function isAllowedTargetHost(hostname) {
+  const normalized = hostname.toLowerCase();
+  return normalized === 'opencode.ai'
+    || normalized.endsWith('.supabase.co')
+    || privateHostnames.test(normalized)
+    || !normalized.includes('.'); // bare hostname like a Docker container name
+}
 
 function rejectUnauthorized(res) {
   res.writeHead(403, {
@@ -30,6 +39,12 @@ function handleProxy(req, res, targetUrlStr) {
   } catch (e) {
     res.writeHead(400, { 'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*' });
     res.end('Invalid target URL');
+    return;
+  }
+
+  if (!isAllowedTargetHost(targetUrl.hostname)) {
+    console.warn(`[proxy] rejected target host — ${targetUrl.hostname}`);
+    rejectUnauthorized(res);
     return;
   }
 
@@ -107,6 +122,6 @@ server.listen(PROXY_PORT, () => {
   console.log(`CORS proxy running on http://localhost:${PROXY_PORT}`);
   console.log(`OpenCode Go:   http://localhost:${PROXY_PORT}/zen/go/v1/...`);
   console.log(`Generic proxy: http://localhost:${PROXY_PORT}/proxy?url=<target>`);
-  console.log(`Proxy key:     ${PROXY_KEY === 'change-me-in-production' ? 'USING DEFAULT — SET PROXY_KEY ENV VAR' : 'set via PROXY_KEY env var'}`);
+  console.log(`Proxy key:     ${!PROXY_KEY ? 'disabled (set PROXY_KEY env var)' : 'enabled'}`);
   console.log(`Press Ctrl+C to stop`);
 });

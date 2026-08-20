@@ -129,7 +129,10 @@
 ══════════════════════════════════════════════════ */
 *{margin:0;padding:0;box-sizing:border-box;}
 html{zoom:var(--ui-scale,1);}
-body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:calc(100vh/var(--ui-scale,1));display:flex;overflow:hidden;transition:background 0.2s,color 0.2s;}
+@supports not (zoom:1) {
+  html{transform:scale(var(--ui-scale,1));transform-origin:0 0;width:calc(100% / var(--ui-scale,1));height:calc(100vh / var(--ui-scale,1));}
+}
+body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:calc(100vh/var(--ui-scale,1));display:flex;overflow:hidden;overscroll-behavior:none;transition:background 0.2s,color 0.2s;}
 
 /* ══════════════════════════════════════════════════
    SIDEBAR
@@ -1054,7 +1057,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
     <div class="logo">
       <div class="logo-mark"></div>
       <span class="logo-name">MultiChat</span>
-      <button class="sidebar-collapse-btn" onclick="toggleSidebarCollapse()" title="Collapse sidebar">◀</button>
+      <button class="sidebar-collapse-btn" onclick="toggleSidebarCollapse()" title="Collapse sidebar" aria-label="Collapse sidebar">◀</button>
     </div>
     <!-- Creates a new conversation, resets the message view, and closes the
          sidebar on mobile via the patched window.newChat wrapper. -->
@@ -1092,16 +1095,13 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
        CSS Grid layout: hamburger (left) · hdr-center (provider+model, centered, wraps) · settings (right, never wraps) -->
   <div id="header">
     <!-- Mobile hamburger — visible on all viewports now -->
-    <button id="mob-menu-btn" onclick="toggleSidebar()" title="Menu">
+    <button id="mob-menu-btn" onclick="toggleSidebar()" title="Menu" aria-label="Menu">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
     </button>
     <div class="hdr-center">
       <div class="sel-wrap">
         <select class="hdr-select" id="prov-sel" onchange="onProviderChange()">
-          <option value="groq">⚡ Groq</option>
-          <option value="opencode">🟠 OpenCode Go</option>
-          <option value="openrouter" selected>🔀 OpenRouter</option>
-          <option value="neuralwatt">🔋 NeuralWatt</option>
+          <!-- Options are populated from PROVIDER_META during initialization. -->
         </select>
         <span class="sel-chev">▾</span>
       </div>
@@ -1124,7 +1124,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
         <label class="tog"><input type="checkbox" id="show-think" onchange="updateThinkLabel()"><div class="tog-track"></div><div class="tog-thumb"></div></label>
         <span class="think-lbl" id="think-lbl">Hide thinking</span>
       </div>
-      <button class="icon-btn" id="settings-toggle" onclick="toggleSettings()" title="Model settings">
+      <button class="icon-btn" id="settings-toggle" onclick="toggleSettings()" title="Model settings" aria-label="Model settings">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       </button>
     </div>
@@ -1183,7 +1183,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
   <!-- Chat info bar — thin strip between messages and input containing
        the info (ⓘ) button. Hidden when no conversation is loaded. -->
   <div id="chat-info-bar">
-    <button id="info-btn" onclick="openInfoPopup()" title="Chat Info">ⓘ</button>
+    <button id="info-btn" onclick="openInfoPopup()" title="Chat Info" aria-label="Chat Info">ⓘ</button>
   </div>
 
   <!-- ── Input area ──
@@ -1201,10 +1201,10 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
         <textarea id="chat-input" placeholder="Message MultiChat…" rows="1"
           onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
         <div class="input-actions">
-          <button class="attach-btn" onclick="document.getElementById('attach-input').click()" title="Attach file">
+          <button class="attach-btn" onclick="document.getElementById('attach-input').click()" title="Attach file" aria-label="Attach file">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
           </button>
-          <button id="send-btn" onclick="sendMessage()" title="Send">
+          <button id="send-btn" onclick="sendMessage()" title="Send" aria-label="Send">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
           </button>
         </div>
@@ -1406,11 +1406,11 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
           </div>
           <div>
             <div class="sp-label">Supabase Project URL</div>
-            <input class="key-input" id="cs-url" type="password" placeholder="https://xxxx.supabase.co" oninput="saveCloudSettings()"/>
+            <input class="key-input" id="cs-url" type="text" autocomplete="off" spellcheck="false" placeholder="https://xxxx.supabase.co" oninput="saveCloudSettings()"/>
           </div>
           <div>
             <div class="sp-label">Supabase Anon Key</div>
-            <input class="key-input" id="cs-key" type="password" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." oninput="saveCloudSettings()"/>
+            <input class="key-input" id="cs-key" type="text" autocomplete="off" spellcheck="false" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." oninput="saveCloudSettings()"/>
           </div>
           <div>
             <div class="sp-label">Sync Passphrase <span style="font-size:10px;color:var(--text3);">(same on all devices)</span></div>
@@ -1465,7 +1465,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
   <div class="popup-content">
     <div class="popup-header">
       <h3>Chat Info</h3>
-      <button class="popup-close" onclick="closeInfoPopup()" title="Close">✕</button>
+      <button class="popup-close" onclick="closeInfoPopup()" title="Close" aria-label="Close">✕</button>
     </div>
     <div class="popup-body">
       <div class="info-row">
@@ -1505,6 +1505,24 @@ let _lastTokCount = 0;
 let attachedFiles = []; // {name, content, size} for inline attach (per-message)
 let ragFiles = [];      // {name, content, size} for persistent RAG context
 let lastSearchMeta = null; // {queries[], provider, results[], grouped[]} for the current in-flight response
+
+// Provider interface: the static model registry remains in models.js, while
+// this single metadata view supplies the runtime provider capabilities. New
+// provider loops should use PROVIDER_IDS rather than repeating provider names.
+const PROVIDER_ICONS = { groq:'⚡', opencode:'🟠', openrouter:'🔀', neuralwatt:'🔋' };
+const PROVIDER_META = Object.freeze(Object.fromEntries(
+  Object.entries(PROVIDERS).map(([pid, info]) => [pid, Object.freeze({
+    label: info.label,
+    badge: info.badge,
+    url: info.url,
+    usageUrl: info.usageUrl,
+    needsProxy: pid === 'opencode',
+    live: true,
+    icon: PROVIDER_ICONS[pid] || '🤖'
+  })])
+));
+const PROVIDER_IDS = Object.keys(PROVIDER_META);
+const LIVE_PROVIDERS = new Set(PROVIDER_IDS.filter(pid => PROVIDER_META[pid].live));
 
 // ══════════════════════════════════════════
 // WEB SEARCH
@@ -2322,12 +2340,12 @@ You MUST output ONLY a raw JSON object. No markdown. No explanation. No code fen
 {"needs_search": true, "search_queries": ["query 1", "query 2"]}`;
 
   try {
-    const providerUrl = PROVIDERS[provider]?.url;
+    const providerUrl = PROVIDER_META[provider]?.url;
     if (!providerUrl) throw new Error('Unknown provider');
     const isFlex = provider === 'neuralwatt' && JSON.parse(localStorage.getItem('mc_settings') || '{}').neuralwattFlexEnabled;
     const resp = await fetch(providerUrl + '/chat/completions', {
       method: 'POST',
-      headers: proxyHeaders({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` }, provider === 'opencode'),
+      headers: proxyHeaders({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` }, PROVIDER_META[provider]?.needsProxy),
       body: JSON.stringify({
         model,
         messages: [
@@ -2480,16 +2498,21 @@ function toggleSearch(hdr) {
 // would fire before item click events and prevent selection.
 // ══════════════════════════════════════════
 window.onload = async () => {
+  populateProviderSelect();
   loadKeys();
   loadCloudSettings();
   requestPersistentStorage();  // fire-and-forget; nothing below depends on it
   await loadChats();
+  await loadRagFiles();
   loadSettings();
   if (isCloudSyncEnabled()) {
     await pullSync();
   }
   // Restore last provider and model
-  const savedProvider = localStorage.getItem('mc_last_provider') || 'openrouter';
+  const savedProviderRaw = localStorage.getItem('mc_last_provider');
+  const savedProvider = PROVIDER_IDS.includes(savedProviderRaw)
+    ? savedProviderRaw
+    : (PROVIDER_IDS.includes('openrouter') ? 'openrouter' : PROVIDER_IDS[0]);
   document.getElementById('prov-sel').value = savedProvider;
   updateProviderBadge(savedProvider);
   await populateModels(savedProvider);
@@ -2515,6 +2538,11 @@ window.onload = async () => {
   loadSectionState();
   // Close the custom model dropdown when the user clicks anywhere outside it
   document.addEventListener('click', function(e) {
+    const modelItem = e.target.closest?.('#model-dd-list .model-dd-item');
+    if (modelItem) {
+      selectModel(modelItem.dataset.id, modelItem.dataset.name, modelItem.dataset.price || '');
+      return;
+    }
     const wrap = document.getElementById('model-dd-wrap');
     if (wrap && !wrap.contains(e.target)) {
       document.getElementById('model-dd-panel')?.classList.remove('open');
@@ -2613,7 +2641,7 @@ function saveKey(p, v) {
 }
 function getKey(p) { return localStorage.getItem('key_'+p) || ''; }
 function loadKeys() {
-  ['groq','opencode','openrouter','neuralwatt'].forEach(p => {
+  PROVIDER_IDS.forEach(p => {
     const k = getKey(p);
     if (k) { const el = document.getElementById('key-'+p); if(el) el.value=k; document.getElementById('dot-'+p)?.classList.add('saved'); }
   });
@@ -2867,17 +2895,39 @@ function handleRagDrop(e) {
 function handleRagFiles(fileList) {
   Promise.allSettled(Array.from(fileList).map(async f => {
     const chipId = 'rag-' + Date.now() + '-' + Math.random().toString(36).slice(2,6);
-    ragFiles.push({name: f.name, content: '', size: f.size, type: 'text', chunks: null, _extracting: true, _chipId: chipId});
+    const fileRecord = {name: f.name, content: '', size: f.size, type: 'text', chunks: null, _extracting: true, _chipId: chipId};
+    ragFiles.push(fileRecord);
     renderRagFileList();
     updateCtxPreview();
     try {
-      const isPdf = f.name.toLowerCase().endsWith('.pdf');
-      const rawText = isPdf
-        ? await extractTextFromPdf(f, (page, total) => {
-            const fo = ragFiles.find(a => a._chipId === chipId);
-            if (fo) { fo._page = page; fo._totalPages = total; renderRagFileList(); }
-          })
-        : await f.text();
+      // Keep the same 100 × 300 ms guard used while waiting to send inline
+      // attachments. A stuck PDF/text extraction must not leave this chip in
+      // the permanent "extracting" state.
+      const extraction = async () => {
+        const isPdf = f.name.toLowerCase().endsWith('.pdf');
+        return isPdf
+          ? extractTextFromPdf(f, (page, total) => {
+              const fo = ragFiles.find(a => a._chipId === chipId);
+              if (fo) { fo._page = page; fo._totalPages = total; renderRagFileList(); }
+            })
+          : f.text();
+      };
+      const rawText = await new Promise((resolve, reject) => {
+        let done = false;
+        let retries = 0;
+        const checkDone = () => {
+          if (done) return;
+          if (++retries > 100) {
+            const err = new Error('File extraction timed out');
+            err.name = 'ExtractionTimeout';
+            reject(err);
+            return;
+          }
+          setTimeout(checkDone, 300);
+        };
+        setTimeout(checkDone, 300);
+        extraction().then(value => { done = true; resolve(value); }, error => { done = true; reject(error); });
+      });
       const cleaned = extractStructuredText(rawText, f.name);
       const chunks = chunkText(cleaned);
       const fileObj = ragFiles.find(a => a._chipId === chipId);
@@ -2893,16 +2943,29 @@ function handleRagFiles(fileList) {
         fileObj._extracting = false;
         fileObj._error = e.message;
       }
+      if (e.name === 'ExtractionTimeout') showToast('⚠️ RAG file extraction timed out', 'err');
     }
     renderRagFileList();
     updateCtxPreview();
-  }));
+  })).then(() => saveRagFiles());
   document.getElementById('rag-input').value = '';
+}
+
+function populateProviderSelect() {
+  const sel = document.getElementById('prov-sel');
+  if (!sel) return;
+  const previous = sel.value || localStorage.getItem('mc_last_provider');
+  sel.innerHTML = PROVIDER_IDS.map(pid => {
+    const meta = PROVIDER_META[pid];
+    return `<option value="${esc(pid)}">${meta.icon} ${esc(meta.label)}</option>`;
+  }).join('');
+  sel.value = PROVIDER_IDS.includes(previous) ? previous : (PROVIDER_IDS.includes('openrouter') ? 'openrouter' : PROVIDER_IDS[0]);
 }
 function removeRagFile(i) {
   ragFiles.splice(i, 1);
   renderRagFileList();
   updateCtxPreview();
+  saveRagFiles();
 }
 function renderRagFileList() {
   const list = document.getElementById('rag-file-list');
@@ -3163,9 +3226,6 @@ function renderAttachedFiles() {
 // so switching back to a provider doesn't re-fetch unnecessarily.
 // ══════════════════════════════════════════
 
-// Which providers support a live /models endpoint
-const LIVE_PROVIDERS = new Set(['groq', 'opencode', 'openrouter', 'neuralwatt']);
-
 // Cache fetched model lists per provider for the session
 const modelCache = {};
 
@@ -3268,7 +3328,6 @@ async function populateModels(p) {
     if (ddList) {
       ddList.innerHTML = models.map(m =>
         `<div class="model-dd-item" data-id="${esc(m.id)}" data-name="${esc(m.name)}" data-price="${esc(m.p||'')}"
-              onclick="selectModel('${esc(m.id)}','${esc(m.name)}','${esc(m.p||'')}')"
               role="option">${esc(m.name)}</div>`
       ).join('');
     }
@@ -3304,7 +3363,7 @@ async function fetchLiveModels(provider) {
 
   // ── Primary: direct provider API ──
   try {
-    const url = PROVIDERS[provider].url + '/models';
+    const url = PROVIDER_META[provider].url + '/models';
     const res = await fetch(url, {
       method: 'GET',
       headers: proxyHeaders({
@@ -3313,7 +3372,7 @@ async function fetchLiveModels(provider) {
         ...(provider === 'openrouter'
           ? {'HTTP-Referer': location.origin, 'X-Title': 'MultiChat'}
           : {})
-      }, provider === 'opencode'),
+      }, PROVIDER_META[provider]?.needsProxy),
     });
 
     if (res.ok) {
@@ -3375,6 +3434,7 @@ async function fetchGroqViaOpenRouter() {
       id: m.id,
       name: groqDisplayNameFromOR(m),
       p: groqPrice(m.id),
+      contextLength: m.context_length || m.context_window,
     }));
   } catch(e) {
     console.warn('[MultiChat] OpenRouter Groq fallback failed:', e.message);
@@ -3397,6 +3457,7 @@ async function fetchGroqViaOpenRouterProvider() {
       id: m.id,
       name: groqDisplayNameFromOR(m),
       p: groqPrice(m.id),
+      contextLength: m.context_length || m.context_window,
     }));
   } catch(e) {
     return null;
@@ -3412,85 +3473,105 @@ function groqDisplayNameFromOR(m) {
 }
 
 
+// Provider-specific model response formatters. The dispatcher keeps the
+// provider-specific Groq and NeuralWatt handling without another chain of
+// provider conditionals whenever a formatter is added.
+const LIVE_MODEL_FORMATTERS = {
+  groq: formatGroqModels,
+  opencode: formatOpenCodeModels,
+  openrouter: formatOpenRouterModels,
+  neuralwatt: formatNeuralWattModels,
+};
+
 function formatLiveModels(provider, raw) {
-  if (provider === 'groq') {
-    // Groq returns {id, object, owned_by, active, context_window, ...}
-    return raw
-      .filter(m => m.active !== false && m.object === 'model')
-      .sort((a, b) => (b.context_window||0) - (a.context_window||0))
-      .map(m => ({
+  const formatter = LIVE_MODEL_FORMATTERS[provider];
+  return formatter ? formatter(raw) : raw.map(m => ({
+    id: m.id,
+    name: m.id,
+    p: '',
+    contextLength: m.context_length || m.context_window,
+  }));
+}
+
+function formatGroqModels(raw) {
+  // Groq returns {id, object, owned_by, active, context_window, ...}
+  return raw
+    .filter(m => m.active !== false && m.object === 'model')
+    .sort((a, b) => (b.context_window||0) - (a.context_window||0))
+    .map(m => ({
+      id: m.id,
+      name: groqDisplayName(m),
+      p: groqPrice(m.id),
+      contextLength: m.context_window,
+    }));
+}
+
+function formatOpenCodeModels(raw) {
+  // OpenCode Go returns {object, data:[{id, object, created, owned_by}]}
+  return raw
+    .filter(m => m.object === 'model')
+    .map(m => {
+      const staticMatch = (PROVIDERS.opencode?.models || []).find(s => s.id === m.id);
+      return {
         id: m.id,
-        name: groqDisplayName(m),
-        p: groqPrice(m.id),
-      }));
-  }
+        name: staticMatch ? staticMatch.name : m.id,
+        p: staticMatch ? staticMatch.p : '',
+        contextLength: m.context_length || m.context_window,
+      };
+    });
+}
 
-  if (provider === 'opencode') {
-    // OpenCode Go returns {object, data:[{id, object, created, owned_by}]}
-    return raw
-      .filter(m => m.object === 'model')
-      .map(m => {
-        const staticMatch = (PROVIDERS.opencode?.models || []).find(s => s.id === m.id);
-        return {
-          id: m.id,
-          name: staticMatch ? staticMatch.name : m.id,
-          p: staticMatch ? staticMatch.p : '',
-        };
-      });
-  }
+function formatOpenRouterModels(raw) {
+  // OpenRouter returns {id, name, description, pricing:{prompt,completion}, context_length, ...}
+  return raw
+    .sort((a, b) => {
+      // Sort: free first, then by context length desc
+      const aFree = parseFloat(a.pricing?.prompt||'1') === 0;
+      const bFree = parseFloat(b.pricing?.prompt||'1') === 0;
+      if (aFree && !bFree) return -1;
+      if (!aFree && bFree) return 1;
+      return (b.context_length||0) - (a.context_length||0);
+    })
+    .map(m => {
+      const inP = parseFloat(m.pricing?.prompt || '0');
+      const outP = parseFloat(m.pricing?.completion || '0');
+      const isFree = inP === 0 && outP === 0;
+      const priceStr = isFree
+        ? 'FREE'
+        : `$${fmtPrice(inP*1e6)}/$${fmtPrice(outP*1e6)}`;
+      const freeTag = isFree ? '🆓 ' : '';
+      const ctx = m.context_length ? ` (${fmtCtx(m.context_length)})` : '';
+      return {
+        id: m.id,
+        name: `${freeTag}${m.name || m.id}${ctx}`,
+        p: priceStr,
+        contextLength: m.context_length,
+      };
+    });
+}
 
-  if (provider === 'openrouter') {
-    // OpenRouter returns {id, name, description, pricing:{prompt,completion}, context_length, ...}
-    return raw
-      .sort((a, b) => {
-        // Sort: free first, then by context length desc
-        const aFree = parseFloat(a.pricing?.prompt||'1') === 0;
-        const bFree = parseFloat(b.pricing?.prompt||'1') === 0;
-        if (aFree && !bFree) return -1;
-        if (!aFree && bFree) return 1;
-        return (b.context_length||0) - (a.context_length||0);
-      })
-      .map(m => {
-        const inP = parseFloat(m.pricing?.prompt || '0');
-        const outP = parseFloat(m.pricing?.completion || '0');
-        const isFree = inP === 0 && outP === 0;
-        const priceStr = isFree
-          ? 'FREE'
-          : `$${fmtPrice(inP*1e6)}/$${fmtPrice(outP*1e6)}`;
-        const freeTag = isFree ? '🆓 ' : '';
-        const ctx = m.context_length ? ` (${fmtCtx(m.context_length)})` : '';
-        return {
-          id: m.id,
-          name: `${freeTag}${m.name || m.id}${ctx}`,
-          p: priceStr,
-        };
-      });
-  }
-
-  if (provider === 'neuralwatt') {
-    // NeuralWatt returns {data:[{id, metadata:{display_name, pricing:{input_per_million,
-    // output_per_million}, limits:{max_context_length}, deprecated}}]}
-    return raw
-      .filter(m => !(m.metadata && m.metadata.deprecated))
-      .map(m => {
-        const md = m.metadata || {};
-        const pr = md.pricing || {};
-        const staticMatch = (PROVIDERS.neuralwatt?.models || []).find(s => s.id === m.id);
-        const inP = pr.input_per_million, outP = pr.output_per_million;
-        const priceStr = (inP != null && outP != null)
-          ? `$${fmtPrice(inP)}/$${fmtPrice(outP)}`
-          : (staticMatch ? staticMatch.p : '');
-        const ctxLen = (md.limits && md.limits.max_context_length) || 0;
-        const ctx = ctxLen ? ` (${fmtCtx(ctxLen)})` : '';
-        return {
-          id: m.id,
-          name: staticMatch ? staticMatch.name : `${md.display_name || m.id}${ctx}`,
-          p: priceStr,
-        };
-      });
-  }
-
-  return raw.map(m => ({ id: m.id, name: m.id, p: '' }));
+function formatNeuralWattModels(raw) {
+  // NeuralWatt returns {data:[{id, metadata:{display_name, pricing:{input_per_million,
+  // output_per_million}, limits:{max_context_length}, deprecated}}]}
+  return raw
+    .filter(m => !(m.metadata && m.metadata.deprecated))
+    .map(m => {
+      const md = m.metadata || {};
+      const pr = md.pricing || {};
+      const staticMatch = (PROVIDERS.neuralwatt?.models || []).find(s => s.id === m.id);
+      const inP = pr.input_per_million, outP = pr.output_per_million;
+      const priceStr = (inP != null && outP != null)
+        ? `$${fmtPrice(inP)}/$${fmtPrice(outP)}`
+        : (staticMatch ? staticMatch.p : '');
+      const ctxLen = (md.limits && md.limits.max_context_length) || 0;
+      const ctx = ctxLen ? ` (${fmtCtx(ctxLen)})` : '';
+      return {
+        id: m.id,
+        name: staticMatch ? staticMatch.name : `${md.display_name || m.id}${ctx}`,
+        p: priceStr,
+        contextLength: ctxLen,
+      };
+    });
 }
 
 // Groom Groq model IDs into readable names
@@ -3514,7 +3595,7 @@ function groqPrice(id) {
   return m?.p || '';
 }
 
-// Format context length: 131072 → "128K", 1048576 → "1M"
+// Format context length: 262144 → "256K", 1048576 → "1M"
 function fmtCtx(n) {
   if (n >= 1000000) return (n/1000000).toFixed(0)+'M';
   if (n >= 1000) return Math.round(n/1024)+'K';
@@ -3554,12 +3635,12 @@ function updateModelSourceBadge(provider, count, isLive) {
 async function refreshModels() {
   const p = document.getElementById('prov-sel').value;
   delete modelCache[p]; // bust cache
-  showToast(`Refreshing ${PROVIDERS[p].label} models…`);
+  showToast(`Refreshing ${PROVIDER_META[p].label} models…`);
   await populateModels(p);
 }
 
 function updateProviderBadge(p) {
-  const info = PROVIDERS[p];
+  const info = PROVIDER_META[p];
   // Mirror in model info card
   const mb = document.getElementById('mic-badge');
   if (mb) { mb.textContent = info.label; mb.className = 'prov-badge ' + info.badge; }
@@ -3600,7 +3681,7 @@ function updatePricePill() {
     if (micOut) micOut.textContent = parts[1] || 'FREE';
     // Usage link — shown for providers with a usageUrl
     const provider = document.getElementById('prov-sel').value;
-    const usageUrl = PROVIDERS[provider]?.usageUrl;
+    const usageUrl = PROVIDER_META[provider]?.usageUrl;
     const usageDiv = document.getElementById('mic-usage-divider');
     const usageLink = document.getElementById('mic-usage-link');
     if (usageUrl && opt && opt.value) {
@@ -3768,6 +3849,7 @@ const IDB_NAME = 'multichat';
 const IDB_STORE = 'kv';
 const IDB_VERSION = 1;
 const CHATS_KEY = 'chats';
+const RAG_KEY = 'ragFiles';
 
 let _idbPromise = null;
 let _idbUnavailable = false;
@@ -3820,6 +3902,72 @@ function idbRequest(mode, fn) {
 const idbGet = key => idbRequest('readonly', s => s.get(key));
 const idbSet = (key, value) => idbRequest('readwrite', s => s.put(value, key));
 
+function ragFilesSnapshot(files) {
+  return (files || []).map(f => ({
+    name: f.name,
+    size: f.size,
+    type: f.type || 'text',
+    content: f.content || '',
+    chunks: Array.isArray(f.chunks) ? f.chunks.slice() : null,
+    words: f.words || 0,
+    ...(f._error ? {_error: f._error} : {})
+  }));
+}
+
+async function saveRagFiles() {
+  const snapshot = ragFilesSnapshot(ragFiles);
+  if (!_idbUnavailable) {
+    try {
+      await idbSet(RAG_KEY, snapshot);
+      return 'IndexedDB';
+    } catch(e) {
+      console.warn('[MultiChat] IndexedDB RAG write failed, falling back to localStorage:', e);
+      _idbUnavailable = true;
+    }
+  }
+  try {
+    localStorage.setItem('mc_rag_files', JSON.stringify(snapshot));
+    return 'localStorage';
+  } catch(e) {
+    console.warn('[MultiChat] Failed to save RAG files:', e);
+    return null;
+  }
+}
+
+async function loadRagFiles() {
+  let stored = null;
+  if (!_idbUnavailable) {
+    try {
+      stored = await idbGet(RAG_KEY);
+    } catch(e) {
+      console.warn('[MultiChat] IndexedDB RAG read failed, falling back to localStorage:', e);
+      _idbUnavailable = true;
+    }
+  }
+  if (!Array.isArray(stored)) {
+    try {
+      const legacy = localStorage.getItem('mc_rag_files');
+      stored = legacy ? JSON.parse(legacy) : null;
+      if (Array.isArray(stored) && !_idbUnavailable) {
+        try {
+          await idbSet(RAG_KEY, ragFilesSnapshot(stored));
+          localStorage.removeItem('mc_rag_files');
+        } catch(e) {
+          _idbUnavailable = true;
+        }
+      }
+    } catch(e) {
+      console.warn('[MultiChat] Failed to load RAG files:', e);
+      stored = null;
+    }
+  }
+  if (Array.isArray(stored)) {
+    ragFiles = ragFilesSnapshot(stored);
+    renderRagFileList();
+    updateCtxPreview();
+  }
+}
+
 // Writes the chat map to the best available backend. Returns the backend used.
 async function persistChats(convos) {
   if (!_idbUnavailable) {
@@ -3828,6 +3976,7 @@ async function persistChats(convos) {
       // data, but a JSON round-trip guarantees it and drops any stray undefined.
       await idbSet(CHATS_KEY, JSON.parse(JSON.stringify(convos)));
       _chatStoreBackend = 'IndexedDB';
+      try { localStorage.removeItem('mc_chats_pending'); } catch(e) { /* ignore */ }
       return 'IndexedDB';
     } catch(e) {
       if (e && (e.name === 'QuotaExceededError' || e.code === 22)) throw e;
@@ -3836,6 +3985,7 @@ async function persistChats(convos) {
     }
   }
   localStorage.setItem('mc_chats', JSON.stringify(convos));
+  try { localStorage.removeItem('mc_chats_pending'); } catch(e) { /* ignore */ }
   _chatStoreBackend = 'localStorage';
   return 'localStorage';
 }
@@ -3844,6 +3994,27 @@ async function persistChats(convos) {
 // run. The localStorage copy is only dropped after the IDB write is confirmed,
 // so an interrupted migration can never lose history — worst case it re-runs.
 async function readPersistedChats() {
+  // A lifecycle flush may have written this synchronously while an older IDB
+  // record was still present. Promote it first so the latest edit wins.
+  try {
+    const pending = localStorage.getItem('mc_chats_pending');
+    if (pending) {
+      const parsed = JSON.parse(pending);
+      if (parsed && typeof parsed === 'object') {
+        if (!_idbUnavailable) {
+          try {
+            await idbSet(CHATS_KEY, parsed);
+            localStorage.removeItem('mc_chats_pending');
+          } catch(e) {
+            _idbUnavailable = true;
+          }
+        }
+        return parsed;
+      }
+    }
+  } catch(e) {
+    console.warn('[MultiChat] Failed to read pending chat flush:', e);
+  }
   if (!_idbUnavailable) {
     try {
       const stored = await idbGet(CHATS_KEY);
@@ -3890,9 +4061,16 @@ async function requestPersistentStorage() {
   } catch(e) { return false; }
 }
 
-async function saveChats() {
+let _persistTimer = null;
+let _pendingPersist = false;
+let _pendingPersistSnapshot = null;
+let _persistWaiters = [];
+let _persistInFlight = null;
+let _persistInFlightSnapshot = null;
+
+async function persistChatsNow(convos) {
   try {
-    await persistChats(conversations);
+    await persistChats(convos);
     debouncedPushSync();
   } catch(e) {
     console.warn('[MultiChat] Failed to save chats:', e);
@@ -3903,9 +4081,9 @@ async function saveChats() {
     // Quota blown. Drop dead weight and retry before telling the user to
     // delete anything — on a history full of old attachments this alone
     // usually frees several megabytes.
-    if (compactChats(conversations)) {
+    if (compactChats(convos)) {
       try {
-        await persistChats(conversations);
+        await persistChats(convos);
         debouncedPushSync();
         showToast('🗜 Storage was full — reclaimed space from old attachments');
         return;
@@ -3922,6 +4100,76 @@ async function saveChats() {
       showToast('⚠️ Storage full — delete old chats, or free up disk space for this site', 'err');
     }
   }
+}
+
+function finishPersistWaiters(waiters, error) {
+  waiters.forEach(({resolve, reject}) => error ? reject(error) : resolve());
+}
+
+function runPendingPersist(syncFallback) {
+  if (!_pendingPersist) return _persistInFlight || Promise.resolve();
+  if (_persistTimer) {
+    clearTimeout(_persistTimer);
+    _persistTimer = null;
+  }
+  const snapshot = _pendingPersistSnapshot || conversations;
+  _pendingPersist = false;
+  _pendingPersistSnapshot = null;
+
+  // IDB has no synchronous API. Keep a crash-safe localStorage copy before
+  // starting the async write; readPersistedChats() promotes it on next load.
+  if (syncFallback) {
+    try { localStorage.setItem('mc_chats_pending', JSON.stringify(snapshot)); }
+    catch(e) { console.warn('[MultiChat] Synchronous chat flush failed:', e); }
+  }
+
+  const waiters = _persistWaiters.splice(0);
+  const run = persistChatsNow(snapshot);
+  _persistInFlight = run;
+  _persistInFlightSnapshot = snapshot;
+  run.then(() => finishPersistWaiters(waiters), error => finishPersistWaiters(waiters, error))
+    .finally(() => {
+      if (_persistInFlight === run) {
+        _persistInFlight = null;
+        _persistInFlightSnapshot = null;
+      }
+    });
+  return run;
+}
+
+function schedulePersist() {
+  _pendingPersist = true;
+  _pendingPersistSnapshot = conversations;
+  const promise = new Promise((resolve, reject) => _persistWaiters.push({resolve, reject}));
+  if (_persistTimer) clearTimeout(_persistTimer);
+  _persistTimer = setTimeout(() => runPendingPersist(false), 400);
+  return promise;
+}
+
+// Called by lifecycle events. The localStorage write is synchronous so the
+// latest conversation survives even when the browser tears down the page
+// before the IndexedDB transaction gets a chance to finish.
+function flushPersist() {
+  if (!_pendingPersist && _persistInFlightSnapshot) {
+    try { localStorage.setItem('mc_chats_pending', JSON.stringify(_persistInFlightSnapshot)); }
+    catch(e) { console.warn('[MultiChat] Synchronous chat flush failed:', e); }
+  }
+  return runPendingPersist(true);
+}
+
+window.addEventListener('beforeunload', flushPersist);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') flushPersist();
+});
+
+// Keep the existing async API: normal callers await a coalesced write, while
+// internal recovery paths can request an immediate flush explicitly.
+async function saveChats(immediate = false) {
+  if (immediate && !_pendingPersist) {
+    _pendingPersist = true;
+    _pendingPersistSnapshot = conversations;
+  }
+  return immediate ? flushPersist() : schedulePersist();
 }
 async function loadChats() {
   try {
@@ -4225,7 +4473,8 @@ function providerFromModel(modelId) {
     const pdata = PROVIDERS[pid];
     if (pdata && pdata.models.some(m => m.id === modelId)) return pid;
   }
-  for (const [pid, pdata] of Object.entries(PROVIDERS)) {
+  for (const pid of PROVIDER_IDS) {
+    const pdata = PROVIDERS[pid];
     if (pdata.models.some(m => m.id === modelId)) return pid;
   }
   // fallback heuristic
@@ -4234,13 +4483,14 @@ function providerFromModel(modelId) {
 }
 
 function providerIcon(pid) {
-  return {groq:'⚡', opencode:'🟠', openrouter:'🔀', neuralwatt:'🔋'}[pid] || '🤖';
+  return PROVIDER_META[pid]?.icon || '🤖';
 }
 
 function shortModelName(modelId) {
   if (!modelId) return '';
   // Find display name from PROVIDERS
-  for (const pdata of Object.values(PROVIDERS)) {
+  for (const pid of PROVIDER_IDS) {
+    const pdata = PROVIDERS[pid];
     const found = pdata.models.find(m => m.id === modelId);
     if (found) {
       // Strip price/emoji suffixes for cleaner display
@@ -4252,7 +4502,13 @@ function shortModelName(modelId) {
 }
 
 function getModelContextSize(modelId) {
-  // Known context window sizes in tokens — conservative defaults
+  // Prefer context data from the live model registry when available.
+  for (const models of Object.values(modelCache)) {
+    const live = models?.find(m => m.id === modelId);
+    const liveCtx = Number(live?.contextLength);
+    if (Number.isFinite(liveCtx) && liveCtx > 0) return liveCtx;
+  }
+  // Known context window sizes in tokens — fallback defaults
   const ctxMap = {
     'deepseek-v4-pro': 1048576, 'deepseek-v4-flash': 1048576,
     'mimo-v2-pro': 1048576, 'mimo-v2.5-pro': 1048576, 'mimo-v2.5': 1048576,
@@ -4265,7 +4521,7 @@ function getModelContextSize(modelId) {
   for (const [key, val] of Object.entries(ctxMap)) {
     if (modelId.includes(key)) return val;
   }
-  return 131072; // default conservative: 128K
+  return 262144; // default: 256K, avoiding undersizing large-context models
 }
 
 function renderMessagesArray(messages, preserveScroll = false) {
@@ -4454,7 +4710,7 @@ async function sendMessage() {
   const provider = document.getElementById('prov-sel').value;
   const model = document.getElementById('model-sel').value;
   const apiKey = getKey(provider);
-  if (!apiKey) { showToast(`No API key for ${PROVIDERS[provider].label} — add it in sidebar`,'err'); return; }
+  if (!apiKey) { showToast(`No API key for ${PROVIDER_META[provider].label} — add it in sidebar`,'err'); return; }
 
   if (!currentChatId) {
     const id = 'c' + Date.now();
@@ -4595,13 +4851,13 @@ async function sendMessage() {
   };
 
   try {
-    const resp = await fetch(PROVIDERS[provider].url + '/chat/completions', {
+    const resp = await fetch(PROVIDER_META[provider].url + '/chat/completions', {
       method:'POST',
       signal: _streamController ? _streamController.signal : undefined,
       headers: proxyHeaders({
         'Content-Type':'application/json',
         'Authorization':`Bearer ${apiKey}`
-      }, provider === 'opencode'),
+      }, PROVIDER_META[provider]?.needsProxy),
       body: JSON.stringify(payload)
     });
 

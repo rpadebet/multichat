@@ -1,4 +1,4 @@
-const CACHE = 'multichat-v38';
+const CACHE = 'multichat-v39';
 const SHELL = [
   './',
   './index.html',
@@ -64,17 +64,17 @@ self.addEventListener('activate', e => {
   );
 });
 
-// Fetch: proxy CORS-blocked hosts, bypass other cross-origin, cache shell
+// Fetch: bypass cross-origin (Safari auth-header bug), cache only the shell
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
+  if (url.hostname !== location.hostname) return;
 
-  // Bypass Service Worker entirely for cross-origin API calls 
-  // (Prevents WebKit/Safari bugs where SW drops Authorization headers on POST requests)
-  if (url.hostname !== location.hostname) {
-    return;
-  }
+  const isShell = SHELL.some(p => {
+    const u = new URL(p, location.href).pathname;
+    return url.pathname === u || (p === './' && (url.pathname === '/' || url.pathname.endsWith('/index.html')));
+  });
+  if (!isShell) return; // let browser handle non-shell same-origin requests normally
 
-  // Cache-first for app shell assets
   e.respondWith(
     caches.match(e.request).then(cached => cached || fetch(e.request).then(resp => {
       const clone = resp.clone();
