@@ -3862,6 +3862,8 @@ let _chatStoreBackend = 'localStorage'; // updated after the first successful ID
 
 // Which backend chats are currently persisted to: 'IndexedDB' or 'localStorage'.
 function chatStoreBackend() { return _chatStoreBackend; }
+function getConversations() { return conversations; }
+function setConversations(c) { conversations = c; }
 
 function openChatDb() {
   if (_idbUnavailable) return Promise.resolve(null);
@@ -3913,7 +3915,6 @@ function ragFilesSnapshot(files) {
     size: f.size,
     type: f.type || 'text',
     content: f.content || '',
-    chunks: Array.isArray(f.chunks) ? f.chunks.slice() : null,
     words: f.words || 0,
     ...(f._error ? {_error: f._error} : {})
   }));
@@ -3967,7 +3968,15 @@ async function loadRagFiles() {
     }
   }
   if (Array.isArray(stored)) {
-    ragFiles = ragFilesSnapshot(stored);
+    ragFiles = stored.map(f => ({
+      name: f.name,
+      size: f.size,
+      type: f.type || 'text',
+      content: f.content || '',
+      chunks: f.content ? chunkText(f.content) : null,
+      words: f.words || (f.content ? f.content.split(/\s+/).filter(Boolean).length : 0),
+      ...(f._error ? {_error: f._error} : {})
+    }));
     renderRagFileList();
     updateCtxPreview();
   }
@@ -4068,10 +4077,8 @@ async function requestPersistentStorage() {
 
 let _persistTimer = null;
 let _pendingPersist = false;
-let _pendingPersistSnapshot = null;
 let _persistWaiters = [];
 let _persistInFlight = null;
-let _persistInFlightSnapshot = null;
 
 async function persistChatsNow(convos) {
   try {
@@ -4117,26 +4124,22 @@ function runPendingPersist(syncFallback) {
     clearTimeout(_persistTimer);
     _persistTimer = null;
   }
-  const snapshot = _pendingPersistSnapshot || conversations;
   _pendingPersist = false;
-  _pendingPersistSnapshot = null;
 
   // IDB has no synchronous API. Keep a crash-safe localStorage copy before
   // starting the async write; readPersistedChats() promotes it on next load.
   if (syncFallback) {
-    try { localStorage.setItem('mc_chats_pending', JSON.stringify(snapshot)); }
+    try { localStorage.setItem('mc_chats_pending', JSON.stringify(conversations)); }
     catch(e) { console.warn('[MultiChat] Synchronous chat flush failed:', e); }
   }
 
   const waiters = _persistWaiters.splice(0);
-  const run = persistChatsNow(snapshot);
+  const run = persistChatsNow(conversations);
   _persistInFlight = run;
-  _persistInFlightSnapshot = snapshot;
   run.then(() => finishPersistWaiters(waiters), error => finishPersistWaiters(waiters, error))
     .finally(() => {
       if (_persistInFlight === run) {
         _persistInFlight = null;
-        _persistInFlightSnapshot = null;
       }
     });
   return run;
@@ -4144,7 +4147,6 @@ function runPendingPersist(syncFallback) {
 
 function schedulePersist() {
   _pendingPersist = true;
-  _pendingPersistSnapshot = conversations;
   const promise = new Promise((resolve, reject) => _persistWaiters.push({resolve, reject}));
   if (_persistTimer) clearTimeout(_persistTimer);
   _persistTimer = setTimeout(() => runPendingPersist(false), 400);
@@ -4155,8 +4157,8 @@ function schedulePersist() {
 // latest conversation survives even when the browser tears down the page
 // before the IndexedDB transaction gets a chance to finish.
 function flushPersist() {
-  if (!_pendingPersist && _persistInFlightSnapshot) {
-    try { localStorage.setItem('mc_chats_pending', JSON.stringify(_persistInFlightSnapshot)); }
+  if (!_pendingPersist && _persistInFlight) {
+    try { localStorage.setItem('mc_chats_pending', JSON.stringify(conversations)); }
     catch(e) { console.warn('[MultiChat] Synchronous chat flush failed:', e); }
   }
   return runPendingPersist(true);
@@ -4172,7 +4174,6 @@ document.addEventListener('visibilitychange', () => {
 async function saveChats(immediate = false) {
   if (immediate && !_pendingPersist) {
     _pendingPersist = true;
-    _pendingPersistSnapshot = conversations;
   }
   return immediate ? flushPersist() : schedulePersist();
 }

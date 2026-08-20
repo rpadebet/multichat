@@ -7,11 +7,20 @@ const PROXY_KEY = process.env.PROXY_KEY || null; // set PROXY_KEY env var to ena
 const privateHostnames = /^(localhost|127\.\d+\.\d+\.\d+|\[::1\]|host\.docker\.internal|0\.0\.0\.0|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)$/i;
 
 function isAllowedTargetHost(hostname) {
-  const normalized = hostname.toLowerCase();
-  return normalized === 'opencode.ai'
+  const normalized = (hostname || '').toLowerCase();
+  if (!normalized) return false;
+  if (normalized === 'opencode.ai'
     || normalized.endsWith('.supabase.co')
-    || privateHostnames.test(normalized)
-    || !normalized.includes('.'); // bare hostname like a Docker container name
+    || privateHostnames.test(normalized)) {
+    return true;
+  }
+  // Bare hostnames (e.g. Docker container names like 'searxng' or 'ollama')
+  // Must contain at least one letter and adhere to container naming rules,
+  // preventing numeric / hex / octal IP formats (e.g. 2130706433 or 0x7f000001) from bypassing allow-list.
+  if (!normalized.includes('.')) {
+    return /^[a-z0-9][a-z0-9_-]*$/i.test(normalized) && /[a-z]/i.test(normalized) && !/^0x/i.test(normalized);
+  }
+  return false;
 }
 
 function rejectUnauthorized(res) {

@@ -257,7 +257,11 @@ The proxy adds synthetic `Access-Control-Allow-Origin: *` headers to all respons
     - Added missing `loadCloudSettings()` invocation in `resetSettings()`.
     - Scoped Service Worker fetch handling to app shell assets only.
   - **Provider abstraction**: Refactored provider dispatch in `index.html` to use `PROVIDER_META`, `PROVIDER_IDS`, `LIVE_MODEL_FORMATTERS`, and dynamic `populateProviderSelect()`.
-  - **Test suite**: Expanded jsdom unit tests to 82 + 79 tests covering SSRF host validation, live model formatting, context sizing, and RAG snapshot purity.
-  - Bumped Service Worker cache version in `sw.js` to `multichat-v40`.
+  - **Audit follow-up fixes**:
+    - Fixed data-loss race condition (BUG-1): removed `_pendingPersistSnapshot` and `_persistInFlightSnapshot` so debounced persist writes live `conversations` at fire time, preventing clobbering of remote chats merged via `pullSync()`.
+    - Fixed RAG storage bloat (BUG-2): omitted redundant `chunks` array from `ragFilesSnapshot()` and regenerated chunks on load via `chunkText(f.content)` in `loadRagFiles()`.
+    - Fixed SSRF bypass in proxy allow-list (SEC-1): updated `isAllowedTargetHost` in `proxy.js` to reject numeric (decimal/octal) and hexadecimal integer IP representations.
+    - **Test suite**: Expanded jsdom unit tests to 83 + 80 tests covering debounced persist race safety, RAG storage deduplication, and SSRF bypass vectors.
+    - Bumped Service Worker cache version in `sw.js` to `multichat-v41`.
 
 

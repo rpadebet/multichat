@@ -859,7 +859,7 @@ async function runAll() {
     assert.strictEqual(window.getModelContextSize('some-unknown-model-xyz'), 262144, 'default fallback should be 256K (262144)');
   });
 
-  await runTest('ragFilesSnapshot() should preserve valid metadata and strip transient extraction state', () => {
+  await runTest('ragFilesSnapshot() should preserve valid metadata, omit chunks to prevent storage duplication, and strip transient state', () => {
     const live = [
       { name: 'test.pdf', size: 1024, type: 'text', content: 'hello world', chunks: ['hello', 'world'], words: 2, _extracting: true, _chipId: 'rag-123', _page: 1, _totalPages: 5 }
     ];
@@ -867,10 +867,25 @@ async function runAll() {
     assert.strictEqual(snap.length, 1);
     assert.strictEqual(snap[0].name, 'test.pdf');
     assert.strictEqual(snap[0].content, 'hello world');
-    assert.deepStrictEqual(snap[0].chunks, ['hello', 'world']);
+    assert.strictEqual(snap[0].chunks, undefined, 'chunks must not be persisted (regenerated on load)');
     assert.strictEqual(snap[0].words, 2);
     assert.strictEqual(snap[0]._extracting, undefined, 'transient _extracting flag must be stripped');
     assert.strictEqual(snap[0]._chipId, undefined, 'transient _chipId must be stripped');
+  });
+
+  await runTest('debounced saveChats() should persist live conversations rather than a stale pre-merge snapshot', async () => {
+    window.setConversations({ c1: { title: 'Local 1', messages: [{ role: 'user', content: 'hello' }] } });
+    const savePromise = window.saveChats(false);
+    // Simulate remote pull arriving during the 400ms debounce window
+    window.setConversations({
+      c1: { title: 'Local 1', messages: [{ role: 'user', content: 'hello' }] },
+      c2: { title: 'Pulled 2', messages: [{ role: 'user', content: 'remote chat' }] }
+    });
+    await savePromise;
+    const stored = await window.readPersistedChats();
+    assert.ok(stored.c2, 'remote chat c2 must not have been overwritten by stale pre-merge snapshot');
+    assert.strictEqual(stored.c2.title, 'Pulled 2');
+    await window.persistChats({}); // cleanup
   });
 
   await runTest('isAllowedTargetHost() in proxy.js should allow trusted targets and block SSRF vectors', () => {
@@ -882,8 +897,15 @@ async function runAll() {
     assert.strictEqual(isAllowedTargetHost('192.168.1.100'), true);
     assert.strictEqual(isAllowedTargetHost('10.0.0.5'), true);
     assert.strictEqual(isAllowedTargetHost('searxng'), true, 'bare docker hostname should be allowed');
+    assert.strictEqual(isAllowedTargetHost('ollama'), true, 'bare docker hostname should be allowed');
+    assert.strictEqual(isAllowedTargetHost('searxng-web'), true, 'hyphenated bare docker hostname should be allowed');
 
     assert.strictEqual(isAllowedTargetHost('169.254.169.254'), false, 'cloud metadata IP must be blocked');
+    assert.strictEqual(isAllowedTargetHost('2130706433'), false, 'decimal integer loopback IP (2130706433) must be blocked');
+    assert.strictEqual(isAllowedTargetHost('0x7f000001'), false, 'hexadecimal loopback IP (0x7f000001) must be blocked');
+    assert.strictEqual(isAllowedTargetHost('017700000001'), false, 'octal loopback IP must be blocked');
+    assert.strictEqual(isAllowedTargetHost('2852039166'), false, 'decimal integer cloud metadata IP (2852039166) must be blocked');
+    assert.strictEqual(isAllowedTargetHost('0'), false, 'zero integer IP must be blocked');
     assert.strictEqual(isAllowedTargetHost('evil-supabase.com'), false, 'arbitrary external host must be blocked');
     assert.strictEqual(isAllowedTargetHost('google.com'), false, 'unapproved public domain must be blocked');
   });
