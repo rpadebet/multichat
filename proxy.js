@@ -4,7 +4,7 @@ const { URL } = require('url');
 
 const PROXY_PORT = 3456;
 const PROXY_KEY = process.env.PROXY_KEY || null; // set PROXY_KEY env var to enable simple auth
-const privateHostnames = /^(localhost|127\.\d+\.\d+\.\d+|\[::1\]|host\.docker\.internal|0\.0\.0\.0)$/i;
+const privateHostnames = /^(localhost|127\.\d+\.\d+\.\d+|\[::1\]|host\.docker\.internal|0\.0\.0\.0|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)$/i;
 
 function isAllowedTargetHost(hostname) {
   const normalized = hostname.toLowerCase();
@@ -118,10 +118,14 @@ const server = http.createServer((req, res) => {
   handleProxy(req, res, 'https://opencode.ai' + req.url);
 });
 
-server.listen(PROXY_PORT, () => {
-  console.log(`CORS proxy running on http://localhost:${PROXY_PORT}`);
-  console.log(`OpenCode Go:   http://localhost:${PROXY_PORT}/zen/go/v1/...`);
-  console.log(`Generic proxy: http://localhost:${PROXY_PORT}/proxy?url=<target>`);
-  console.log(`Proxy key:     ${!PROXY_KEY ? 'disabled (set PROXY_KEY env var)' : 'enabled'}`);
-  console.log(`Press Ctrl+C to stop`);
-});
+if (require.main === module) {
+  server.listen(PROXY_PORT, () => {
+    console.log(`CORS proxy running on http://localhost:${PROXY_PORT}`);
+    console.log(`OpenCode Go:   http://localhost:${PROXY_PORT}/zen/go/v1/...`);
+    console.log(`Generic proxy: http://localhost:${PROXY_PORT}/proxy?url=<target>`);
+    console.log(`Proxy key:     ${!PROXY_KEY ? 'disabled (set PROXY_KEY env var)' : 'enabled'}`);
+    console.log(`Press Ctrl+C to stop`);
+  });
+}
+
+module.exports = { isAllowedTargetHost, privateHostnames, server };

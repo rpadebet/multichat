@@ -240,3 +240,24 @@ The proxy adds synthetic `Access-Control-Allow-Origin: *` headers to all respons
   - `npm test` now runs the suite **twice** — once against a fake IndexedDB (primary path) and once with `--no-idb` (fallback path): 76 + 73 tests. Added `fake-indexeddb` as the first devDependency.
   - Bumped Service Worker cache version in `sw.js` to `multichat-v38`.
 
+### 2026-08-20
+- **Changes**:
+  - **Audit remediation & security hardening**:
+    - Added target hostname allow-listing in `proxy.js` (`isAllowedTargetHost`) covering `opencode.ai`, `*.supabase.co`, `localhost`, `127.0.0.1`, `[::1]`, private LAN subnets (`192.168.x`, `10.x`, `172.16-31.x`), and Docker container hostnames to prevent open SSRF pivoting. Added explicit `PROXY_KEY` status logging.
+    - Sanitized sentinel negative pricing (`inP < 0 || outP < 0`) and filtered shadow models (`~` prefix) in both `update_models.js` and `formatLiveModels()` / `formatOpenRouterModels()` in `index.html`.
+    - Sanitized model picker dropdown items by replacing inline string-interpolated handlers with `data-*` attributes and delegated event listening.
+  - **Storage & context improvements**:
+    - Debounced chat storage writes (`saveChats()`, 400ms coalescing) with crash-safe synchronous `beforeunload` and `visibilitychange` flush into `localStorage.mc_chats_pending`, automatically promoted on next load.
+    - Persisted persistent RAG file context (`ragFiles`) into IndexedDB (`RAG_KEY = 'ragFiles'`) with localStorage fallback and a 30-second extraction polling timeout guard (`ExtractionTimeout`).
+    - Dynamic context window calculation in `getModelContextSize()` reading live `contextLength` metadata from `modelCache`, raising conservative fallback default from 128K to 256K (`262144`).
+  - **UI/UX & accessibility**:
+    - Added `@supports not (zoom:1)` CSS transform fallback for Firefox to support the UI Scale slider.
+    - Changed Supabase Project URL and Anon Key inputs in Cloud Sync settings to unmasked `type="text"` (`autocomplete="off"`).
+    - Added `aria-label` attributes to icon buttons in header and sidebar.
+    - Added missing `loadCloudSettings()` invocation in `resetSettings()`.
+    - Scoped Service Worker fetch handling to app shell assets only.
+  - **Provider abstraction**: Refactored provider dispatch in `index.html` to use `PROVIDER_META`, `PROVIDER_IDS`, `LIVE_MODEL_FORMATTERS`, and dynamic `populateProviderSelect()`.
+  - **Test suite**: Expanded jsdom unit tests to 82 + 79 tests covering SSRF host validation, live model formatting, context sizing, and RAG snapshot purity.
+  - Bumped Service Worker cache version in `sw.js` to `multichat-v40`.
+
+

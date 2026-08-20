@@ -3485,7 +3485,7 @@ const LIVE_MODEL_FORMATTERS = {
 
 function formatLiveModels(provider, raw) {
   const formatter = LIVE_MODEL_FORMATTERS[provider];
-  return formatter ? formatter(raw) : raw.map(m => ({
+  return formatter ? formatter(raw) : (raw || []).filter(isUsableModel).map(m => ({
     id: m.id,
     name: m.id,
     p: '',
@@ -3493,10 +3493,14 @@ function formatLiveModels(provider, raw) {
   }));
 }
 
+function isUsableModel(m) {
+  return !!(m && typeof m.id === 'string' && !m.id.startsWith('~'));
+}
+
 function formatGroqModels(raw) {
   // Groq returns {id, object, owned_by, active, context_window, ...}
   return raw
-    .filter(m => m.active !== false && m.object === 'model')
+    .filter(m => m.active !== false && m.object === 'model' && isUsableModel(m))
     .sort((a, b) => (b.context_window||0) - (a.context_window||0))
     .map(m => ({
       id: m.id,
@@ -3509,7 +3513,7 @@ function formatGroqModels(raw) {
 function formatOpenCodeModels(raw) {
   // OpenCode Go returns {object, data:[{id, object, created, owned_by}]}
   return raw
-    .filter(m => m.object === 'model')
+    .filter(m => m.object === 'model' && isUsableModel(m))
     .map(m => {
       const staticMatch = (PROVIDERS.opencode?.models || []).find(s => s.id === m.id);
       return {
@@ -3524,6 +3528,7 @@ function formatOpenCodeModels(raw) {
 function formatOpenRouterModels(raw) {
   // OpenRouter returns {id, name, description, pricing:{prompt,completion}, context_length, ...}
   return raw
+    .filter(isUsableModel)
     .sort((a, b) => {
       // Sort: free first, then by context length desc
       const aFree = parseFloat(a.pricing?.prompt||'1') === 0;
@@ -3536,9 +3541,9 @@ function formatOpenRouterModels(raw) {
       const inP = parseFloat(m.pricing?.prompt || '0');
       const outP = parseFloat(m.pricing?.completion || '0');
       const isFree = inP === 0 && outP === 0;
-      const priceStr = isFree
-        ? 'FREE'
-        : `$${fmtPrice(inP*1e6)}/$${fmtPrice(outP*1e6)}`;
+      const priceStr = inP < 0 || outP < 0
+        ? ''
+        : (isFree ? 'FREE' : `$${fmtPrice(inP*1e6)}/$${fmtPrice(outP*1e6)}`);
       const freeTag = isFree ? '🆓 ' : '';
       const ctx = m.context_length ? ` (${fmtCtx(m.context_length)})` : '';
       return {
@@ -3554,7 +3559,7 @@ function formatNeuralWattModels(raw) {
   // NeuralWatt returns {data:[{id, metadata:{display_name, pricing:{input_per_million,
   // output_per_million}, limits:{max_context_length}, deprecated}}]}
   return raw
-    .filter(m => !(m.metadata && m.metadata.deprecated))
+    .filter(m => !(m.metadata && m.metadata.deprecated) && isUsableModel(m))
     .map(m => {
       const md = m.metadata || {};
       const pr = md.pricing || {};

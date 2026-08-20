@@ -834,6 +834,61 @@ async function runAll() {
   });
 
   // ══════════════════════════════════════════
+  // AUDIT REMEDIATION TESTS — Live models, context size, RAG, and Proxy SSRF
+  // ══════════════════════════════════════════
+
+  await runTest('formatLiveModels() for openrouter should filter shadow models and negative pricing', () => {
+    const raw = [
+      { id: '~openai/gpt-latest', name: 'OpenAI GPT Latest', pricing: { prompt: '0.000005', completion: '0.000030' }, context_length: 1048576 },
+      { id: 'openrouter/auto', name: 'Auto Router', pricing: { prompt: '-1000000', completion: '-1000000' }, context_length: 2000000 },
+      { id: 'google/gemini-2.5-pro', name: 'Gemini 2.5 Pro', pricing: { prompt: '0.00000125', completion: '0.000005' }, context_length: 1000000 },
+      { id: 'meta-llama/llama-4-free:free', name: 'Llama 4 Free', pricing: { prompt: '0', completion: '0' }, context_length: 131072 }
+    ];
+    const formatted = window.formatLiveModels('openrouter', raw);
+    assert.strictEqual(formatted.some(m => m.id.startsWith('~')), false, 'shadow models (~ prefix) must be filtered out');
+    const autoModel = formatted.find(m => m.id === 'openrouter/auto');
+    assert.ok(autoModel, 'auto router should be present');
+    assert.strictEqual(autoModel.p, '', 'negative sentinel pricing must be formatted as empty string');
+    const freeModel = formatted.find(m => m.id === 'meta-llama/llama-4-free:free');
+    assert.strictEqual(freeModel.p, 'FREE');
+    assert.strictEqual(freeModel.contextLength, 131072);
+  });
+
+  await runTest('getModelContextSize() should return known context or default to 256K', () => {
+    assert.strictEqual(window.getModelContextSize('deepseek-v4-pro'), 1048576);
+    assert.strictEqual(window.getModelContextSize('some-unknown-model-xyz'), 262144, 'default fallback should be 256K (262144)');
+  });
+
+  await runTest('ragFilesSnapshot() should preserve valid metadata and strip transient extraction state', () => {
+    const live = [
+      { name: 'test.pdf', size: 1024, type: 'text', content: 'hello world', chunks: ['hello', 'world'], words: 2, _extracting: true, _chipId: 'rag-123', _page: 1, _totalPages: 5 }
+    ];
+    const snap = window.ragFilesSnapshot(live);
+    assert.strictEqual(snap.length, 1);
+    assert.strictEqual(snap[0].name, 'test.pdf');
+    assert.strictEqual(snap[0].content, 'hello world');
+    assert.deepStrictEqual(snap[0].chunks, ['hello', 'world']);
+    assert.strictEqual(snap[0].words, 2);
+    assert.strictEqual(snap[0]._extracting, undefined, 'transient _extracting flag must be stripped');
+    assert.strictEqual(snap[0]._chipId, undefined, 'transient _chipId must be stripped');
+  });
+
+  await runTest('isAllowedTargetHost() in proxy.js should allow trusted targets and block SSRF vectors', () => {
+    const { isAllowedTargetHost } = require('./proxy.js');
+    assert.strictEqual(isAllowedTargetHost('opencode.ai'), true);
+    assert.strictEqual(isAllowedTargetHost('xyz.supabase.co'), true);
+    assert.strictEqual(isAllowedTargetHost('localhost'), true);
+    assert.strictEqual(isAllowedTargetHost('127.0.0.1'), true);
+    assert.strictEqual(isAllowedTargetHost('192.168.1.100'), true);
+    assert.strictEqual(isAllowedTargetHost('10.0.0.5'), true);
+    assert.strictEqual(isAllowedTargetHost('searxng'), true, 'bare docker hostname should be allowed');
+
+    assert.strictEqual(isAllowedTargetHost('169.254.169.254'), false, 'cloud metadata IP must be blocked');
+    assert.strictEqual(isAllowedTargetHost('evil-supabase.com'), false, 'arbitrary external host must be blocked');
+    assert.strictEqual(isAllowedTargetHost('google.com'), false, 'unapproved public domain must be blocked');
+  });
+
+  // ══════════════════════════════════════════
   finished = true;
   if (loadTimer) clearTimeout(loadTimer);
   console.log('\nResults: ' + passed + ' passed, ' + failed + ' failed' + (skipped ? ', ' + skipped + ' skipped' : ''));
