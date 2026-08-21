@@ -2,7 +2,7 @@
 <html lang="en" data-theme="claude">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; connect-src 'self' https://api.groq.com https://openrouter.ai https://proxy.opencodechat.dpdns.org https://api.neuralwatt.com https://api.tavily.com https://google.serper.dev https://*.supabase.co https://cdn.jsdelivr.net http://localhost:* http://127.0.0.1:*; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; connect-src 'self' https: http://localhost:* http://127.0.0.1:* http://192.168.*:* http://10.*:*; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:;">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -2257,40 +2257,78 @@ async function searchSearXNG(query, baseUrl) {
     url = new URL(baseUrl.trim());
   } catch (e) {
     console.error('[MultiChat] searchSearXNG — invalid URL:', baseUrl.trim(), e);
-    throw new Error('Invalid SearXNG URL. Expected something like https://searx.example.com/search');
+    throw new Error('Invalid SearXNG URL. Expected something like http://localhost:8888 or https://searx.example.com');
+  }
+  // Ensure the search endpoint is targeted if only base origin was provided
+  if (!url.pathname || url.pathname === '/') {
+    url.pathname = '/search';
   }
   url.searchParams.set('q', query);
   url.searchParams.set('format', 'json');
 
-  // Route localhost/private-network SearXNG through the CORS proxy.
-  // Covers Docker hostnames (host.docker.internal, container names) and all local variants.
-  const privateHostnames = /^(localhost|127\.\d+\.\d+\.\d+|\[::1\]|host\.docker\.internal|0\.0\.0\.0)$/i;
+  const privateHostnames = /^(localhost|127\.\d+\.\d+\.\d+|\[::1\]|host\.docker\.internal|0\.0\.0\.0|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)$/i;
   const isLocal = privateHostnames.test(url.hostname)
     || url.hostname === 'host.docker.internal'
-    || !url.hostname.includes('.');  // bare hostname like "searxng" (Docker container name) or "mylocal"
-  console.log('[MultiChat] searchSearXNG — hostname:', url.hostname, 'isLocal:', isLocal);
-  const fetchUrl = isLocal
-    ? 'https://proxy.opencodechat.dpdns.org/proxy?url=' + encodeURIComponent(url.toString())
-    : url.toString();
-  console.log('[MultiChat] searchSearXNG — fetchUrl:', fetchUrl);
+    || !url.hostname.includes('.');
 
-  try {
-    const resp = await fetch(fetchUrl, { headers: isLocal ? proxyHeaders({}, true) : {} });
-    console.log('[MultiChat] searchSearXNG — response status:', resp.status, 'ok:', resp.ok);
+  async function parseSearXNGResponse(resp) {
     if (!resp.ok) {
       const errText = await resp.text().catch(() => '');
-      console.error('[MultiChat] searchSearXNG — HTTP error body:', errText.slice(0, 500));
-      const errMsg = errText.trim() ? errText.slice(0, 100).replace(/\n/g, ' ') : '';
-      throw new Error(`SearXNG HTTP ${resp.status}${errMsg ? ` (${errMsg})` : ''}`);
+      let errMsg = errText.trim() ? errText.slice(0, 150).replace(/\n/g, ' ') : '';
+      if (resp.status === 403 || resp.status === 400 || errMsg.toLowerCase().includes('format') || errMsg.toLowerCase().includes('json')) {
+        errMsg = `JSON format may be disabled in SearXNG settings.yml (enable: search.formats: [html, json]). ${errMsg}`.trim();
+      }
+      throw new Error(`SearXNG HTTP ${resp.status}${errMsg ? `: ${errMsg}` : ''}`);
     }
-    const data = await resp.json();
-    console.log('[MultiChat] searchSearXNG — results count:', (data.results || []).length);
+    const text = await resp.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      if (text.includes('<!DOCTYPE') || text.includes('<html')) {
+        throw new Error('SearXNG returned HTML instead of JSON. Ensure "format=json" is enabled in SearXNG settings.yml.');
+      }
+      throw new Error('SearXNG returned invalid JSON.');
+    }
     return (data.results || []).map(r => ({
       title: r.title || '', url: r.url || '', snippet: (r.content || r.snippet || '').slice(0, 800)
     }));
-  } catch (e) {
-    console.error('[MultiChat] searchSearXNG — fetch/parse error:', e.message, e);
-    throw e;
+  }
+
+  // Keep direct local requests unchanged, but use IPv4 loopback in the
+  // encoded public-proxy target because Cloudflare blocks literal localhost.
+  const proxyTargetUrl = new URL(url.toString());
+  if (proxyTargetUrl.hostname.toLowerCase() === 'localhost') {
+    proxyTargetUrl.hostname = '127.0.0.1';
+  }
+  const encodedProxyTarget = encodeURIComponent(proxyTargetUrl.toString());
+
+  // Attempt direct fetch first
+  try {
+    const directResp = await fetch(url.toString());
+    return await parseSearXNGResponse(directResp);
+  } catch (directErr) {
+    if (directErr.message?.startsWith('SearXNG HTTP') || directErr.message?.includes('HTML instead of JSON')) {
+      throw directErr;
+    }
+
+    // Direct fetch failed (likely CORS or network restriction). Try local proxy first, then remote proxy.
+    const proxyCandidates = [];
+    if (isLocal) {
+      proxyCandidates.push(`http://localhost:3456/proxy?url=${encodedProxyTarget}`);
+    }
+    proxyCandidates.push(`https://proxy.opencodechat.dpdns.org/proxy?url=${encodedProxyTarget}`);
+
+    let lastErr = directErr;
+    for (const proxyUrl of proxyCandidates) {
+      try {
+        const pResp = await fetch(proxyUrl, { headers: proxyHeaders({}, true) });
+        return await parseSearXNGResponse(pResp);
+      } catch (pErr) {
+        lastErr = pErr;
+      }
+    }
+    throw new Error(`SearXNG search failed (${lastErr.message}). Ensure SearXNG is running with "json" format enabled in settings.yml, and CORS is allowed or proxy.js is active.`);
   }
 }
 

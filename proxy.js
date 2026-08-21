@@ -36,7 +36,7 @@ function handleProxy(req, res, targetUrlStr) {
   if (PROXY_KEY) {
     const providedKey = req.headers['x-proxy-key'] || '';
     if (providedKey !== PROXY_KEY) {
-      console.warn('[proxy] rejected request — invalid or missing x-proxy-key header');
+      console.warn(`[proxy] rejected request — invalid or missing x-proxy-key header (received length ${providedKey.length})`);
       rejectUnauthorized(res);
       return;
     }
