@@ -30,16 +30,32 @@ function isUsableModel(m) {
   return typeof m.id === 'string' && !m.id.startsWith('~');
 }
 
-async function run() {
-  console.log('Fetching latest models from OpenRouter and OpenCode Go...');
+function opencodeDisplayName(id) {
+  return id
+    .replace(/^minimax-/i, 'MiniMax ')
+    .replace(/^kimi-/i, 'Kimi ')
+    .replace(/^glm-/i, 'GLM ')
+    .replace(/^deepseek-/i, 'DeepSeek ')
+    .replace(/^qwen/i, 'Qwen ')
+    .replace(/^mimo-/i, 'MiMo ')
+    .replace(/^hy/i, 'Hunyuan ')
+    .replace(/^grok-/i, 'Grok ')
+    .replace(/^gpt-/i, 'GPT-')
+    .replace(/^muse-spark-/i, 'Muse Spark ');
+}
 
-  const [orData, ocData] = await Promise.all([
+async function run() {
+  console.log('Fetching latest models from OpenRouter, OpenCode Go, and NeuralWatt...');
+
+  const [orData, ocData, nwData] = await Promise.all([
     fetchJson('https://openrouter.ai/api/v1/models'),
-    fetchJson('https://opencode.ai/zen/go/v1/models')
+    fetchJson('https://opencode.ai/zen/go/v1/models'),
+    fetchJson('https://api.neuralwatt.com/v1/models')
   ]);
 
   const openrouterModels = orData.data || [];
   const opencodeModels = ocData.data || [];
+  const neuralwattModels = nwData.data || [];
 
   // Sort OpenRouter models: free first, then by context window descending
   const orSorted = openrouterModels.filter(isUsableModel).sort((a, b) => {
@@ -70,21 +86,21 @@ async function run() {
   const ocStaticRegex = /opencode:\{label:'OpenCode Go',badge:'badge-opencode',usageUrl:'[^']+',url:'[^']+',models:\[([\s\S]*?)\]\}/;
   const ocStaticMatch = indexHtml.match(ocStaticRegex);
   if (ocStaticMatch) {
-    const modelLines = ocStaticMatch[1].match(/\{id:'([^']+)',\s*name:'([^']+)',\s*p:'([^']+)'\}/g) || [];
+    const modelLines = ocStaticMatch[1].match(/\{id:'([^']+)',\s*name:'([^']*)',\s*p:'([^']*)'\}/g) || [];
     modelLines.forEach(line => {
-      const m = line.match(/id:'([^']+)',\s*name:'([^']+)',\s*p:'([^']+)'/);
+      const m = line.match(/id:'([^']+)',\s*name:'([^']*)',\s*p:'([^']*)'/);
       if (m) ocNameMap[m[1]] = { name: m[2], p: m[3] };
     });
   }
 
-  // Format OpenCode Go models (no pricing from API — use static names)
+  // Format OpenCode Go models (no pricing from API — use static names/prices or generate clean display name)
   const formattedOc = opencodeModels
     .filter(m => m.object === 'model' && isUsableModel(m))
     .map(m => {
       const known = ocNameMap[m.id];
       return {
         id: m.id,
-        name: (known ? known.name : m.id).replace(/'/g, "\\'"),
+        name: (known ? known.name : opencodeDisplayName(m.id)).replace(/'/g, "\\'"),
         p: known ? known.p : '',
       };
     });
@@ -96,6 +112,37 @@ async function run() {
       formattedOc.push({ id, name: info.name.replace(/'/g, "\\'"), p: info.p });
     }
   });
+
+  // Extract static model names/prices from current neuralwatt entry
+  const nwNameMap = {};
+  const nwStaticRegex = /neuralwatt:\{label:'NeuralWatt',badge:'badge-neuralwatt',usageUrl:'[^']+',url:'[^']+',models:\[([\s\S]*?)\]\}/;
+  const nwStaticMatch = indexHtml.match(nwStaticRegex);
+  if (nwStaticMatch) {
+    const modelLines = nwStaticMatch[1].match(/\{id:'([^']+)',\s*name:'([^']*)',\s*p:'([^']*)'\}/g) || [];
+    modelLines.forEach(line => {
+      const m = line.match(/id:'([^']+)',\s*name:'([^']*)',\s*p:'([^']*)'/);
+      if (m) nwNameMap[m[1]] = { name: m[2], p: m[3] };
+    });
+  }
+
+  // Format NeuralWatt models
+  const formattedNw = neuralwattModels
+    .filter(m => !(m.metadata && m.metadata.deprecated) && isUsableModel(m))
+    .map(m => {
+      const md = m.metadata || {};
+      const pr = md.pricing || {};
+      const inP = pr.input_per_million, outP = pr.output_per_million;
+      const priceStr = (inP != null && outP != null) ? `$${fmtPrice(inP)}/$${fmtPrice(outP)}` : (nwNameMap[m.id]?.p || '');
+      const ctxLen = (md.limits && md.limits.max_context_length) || m.max_model_len || 0;
+      const ctx = ctxLen ? ` (${fmtCtx(ctxLen)})` : '';
+      const known = nwNameMap[m.id];
+      const displayName = known?.name || `${md.display_name || m.id}${ctx}`;
+      return {
+        id: m.id,
+        name: displayName.replace(/'/g, "\\'"),
+        p: priceStr
+      };
+    });
 
   // Replace OpenRouter
   const orRegex = /openrouter:\{label:'OpenRouter',badge:'badge-openrouter',usageUrl:'[^']+',url:'[^']+',models:\[[\s\S]*?\n\s*\]\},?/;
@@ -113,8 +160,16 @@ async function run() {
   let newOcText = formattedOc.map(m => `    {id:'${m.id}', name:'${m.name}', p:'${m.p}'},`).join('\n');
   indexHtml = indexHtml.replace(ocRegex, () => `opencode:{label:'OpenCode Go',badge:'badge-opencode',usageUrl:'https://opencode.ai/workspace/wrk_01KQA49DFKK6FNKT2MX99WVGQH/usage',url:'https://proxy.opencodechat.dpdns.org/zen/go/v1',models:[\n${newOcText}\n  ]},`);
 
+  // Replace NeuralWatt
+  const nwRegex = /neuralwatt:\{label:'NeuralWatt',badge:'badge-neuralwatt',usageUrl:'[^']+',url:'[^']+',models:\[[\s\S]*?\n\s*\]\},?/;
+  if (!nwRegex.test(indexHtml)) {
+    throw new Error('NeuralWatt regex failed to match PROVIDERS in models.js');
+  }
+  let newNwText = formattedNw.map(m => `    {id:'${m.id}', name:'${m.name}', p:'${m.p}'},`).join('\n');
+  indexHtml = indexHtml.replace(nwRegex, () => `neuralwatt:{label:'NeuralWatt',badge:'badge-neuralwatt',usageUrl:'https://portal.neuralwatt.com',url:'https://api.neuralwatt.com/v1',models:[\n${newNwText}\n  ]},`);
+
   fs.writeFileSync(indexPath, indexHtml);
-  console.log(`Successfully updated models.js — OpenRouter: ${formattedOr.length} models, OpenCode Go: ${formattedOc.length} models`);
+  console.log(`Successfully updated models.js — OpenRouter: ${formattedOr.length} models, OpenCode Go: ${formattedOc.length} models, NeuralWatt: ${formattedNw.length} models`);
 }
 
 run().catch(console.error);

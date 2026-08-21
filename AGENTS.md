@@ -18,13 +18,13 @@ Vanilla HTML/CSS/JS PWA (Progressive Web App) hosted on GitHub Pages. No build t
 
 ## Updating model lists
 
-`update_models.js` is a Node.js script that fetches live `/models` endpoints from OpenRouter and OpenCode Go and **mutates `models.js` in-place** via regex replacement. Run it when providers release new models:
+`update_models.js` is a Node.js script that fetches live `/models` endpoints from OpenRouter, OpenCode Go, and NeuralWatt and **mutates `models.js` in-place** via regex replacement. Run it when providers release new models:
 
 ```bash
 node update_models.js
 ```
 
-It edits the `openrouter.models` and `opencode.models` arrays inside `models.js`. If either regex fails to match, the script **throws** (`OpenRouter regex failed to match PROVIDERS in models.js`) rather than silently reporting success — so a format change in `models.js` fails loudly. Groq has no public listing endpoint and remains hand-curated, as does NeuralWatt.
+It edits the `openrouter.models`, `opencode.models`, and `neuralwatt.models` arrays inside `models.js`. If any regex fails to match, the script **throws** (`OpenRouter regex failed to match PROVIDERS in models.js`, etc.) rather than silently reporting success — so a format change in `models.js` fails loudly. Groq has no public listing endpoint and remains hand-curated.
 
 ## Architecture notes an agent would miss
 
