@@ -144,6 +144,14 @@ async function run() {
       };
     });
 
+  // Preserve existing models from static list (custom or account-specific models not in public unauthenticated API)
+  const liveNwIds = new Set(formattedNw.map(m => m.id));
+  Object.entries(nwNameMap).forEach(([id, info]) => {
+    if (!liveNwIds.has(id) && !id.startsWith('~')) {
+      formattedNw.push({ id, name: info.name.replace(/'/g, "\\'"), p: info.p });
+    }
+  });
+
   // Replace OpenRouter
   const orRegex = /openrouter:\{label:'OpenRouter',badge:'badge-openrouter',usageUrl:'[^']+',url:'[^']+',models:\[[\s\S]*?\n\s*\]\},?/;
   if (!orRegex.test(indexHtml)) {
